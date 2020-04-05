@@ -4,12 +4,12 @@
   "main": "index.js",
   "license": "MIT",
   "bin": {
-    "warcio.js": "./indexer.js"
+    "warcio.js": "./cli.js"
   },
   "dependencies": {
-    "minimist": "^1.2.5",
-    "node-web-streams": "^0.2.2",
-    "pako": "^1.0.11"
+    "node-fetch": "^2.6.0",
+    "pako": "^1.0.11",
+    "web-streams-node": "^0.4.0"
   },
   "scripts": {
     "test": "nyc ava"
@@ -28,9 +28,7 @@
   "devDependencies": {
     "ava": "^3.5.2",
     "esm": "^3.2.25",
-    "node-fetch": "^2.6.0",
     "nyc": "^15.0.1",
-    "stream-buffers": "^3.0.2",
-    "web-streams-node": "^0.4.0"
+    "stream-buffers": "^3.0.2"
   }
 }

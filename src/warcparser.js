@@ -17,17 +17,14 @@ class WARCParser
   }
 
   async readToNextRecord() {
-    if (!this._atRecordBoundary && this._stream) {
-      if (this._record) {
-        await this._record.readFully();
-      }
+    if (!this._atRecordBoundary && this._stream && this._record) {
+      await this._record.readFully();
       await this._stream.readSize(4, false);
       this._atRecordBoundary = true;
     }
   }
 
   async parse(stream) {
-
     await this.readToNextRecord();
 
     this._offset = stream.getRawOffset();
@@ -73,7 +70,7 @@ class WARCParser
 
   async recordLength() {
     await this._record.readFully();
-    return this._stream.getRawOffset() - this._offset;
+    return this._stream.getRawLength(this._offset);
   }
 
   async* iterRecords(stream) {
@@ -84,8 +81,6 @@ class WARCParser
     while (record = await this.parse(stream)) {
       this._record = record;
       yield record;
-
-      await this.readToNextRecord();
     }
   }
 

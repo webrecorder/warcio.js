@@ -1,6 +1,4 @@
-//import { Inflate } from 'pako/lib/inflate.js';
-const pako = require('pako');
-const Inflate = pako.Inflate;
+const Inflate = require('pako').Inflate;
 
 // ===========================================================================
 class NoConcatInflator extends Inflate
@@ -226,6 +224,10 @@ class StreamReader {
 
   getRawOffset() {
     return this.compressed ? this._rawOffset : this._readOffset;
+  }
+
+  getRawLength(prevOffset) {
+    return this.compressed ? this.inflator.strm.total_in : this._readOffset - prevOffset;
   }
 }
 

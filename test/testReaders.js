@@ -4,37 +4,15 @@ import test from 'ava';
 
 import pako from 'pako';
 
-import { Headers } from 'node-fetch';
-
-import { ReadableStream } from "web-streams-node";
-
 import { LimitReader, StreamReader } from '../index';
 
-global.Headers = Headers;
-
+import { getReader } from './utils';
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
 
 
 // ===========================================================================
-// StreamReader utils
-function getReader(items) {
-
-  const rs = new ReadableStream({
-    start(controller) {
-      for (const item of items) {
-        const buff = typeof(item) === "string" ? encoder.encode(item) : item;
-        controller.enqueue(buff);
-      }
-
-      controller.close();
-    }
-  });
-
-  return rs.getReader();
-}
-
 async function readLines(t, input, expected) {
   const stream = new StreamReader(getReader(input));
 

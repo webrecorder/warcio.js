@@ -2,36 +2,12 @@
 
 import test from 'ava';
 
-import { Headers } from 'node-fetch';
-
-import { ReadableStream } from "web-streams-node";
-
 import { StatusAndHeadersParser, StreamReader, WARCParser } from '../index';
-
-global.Headers = Headers;
+import { getReader } from './utils';
 
 
 const decoder = new TextDecoder("utf-8");
-const encoder = new TextEncoder("utf-8");
 
-
-// ===========================================================================
-// StreamReader utils
-function getReader(items) {
-
-  const rs = new ReadableStream({
-    start(controller) {
-      for (const item of items) {
-        const buff = typeof(item) === "string" ? encoder.encode(item) : item;
-        controller.enqueue(buff);
-      }
-
-      controller.close();
-    }
-  });
-
-  return rs.getReader();
-}
 
 // ===========================================================================
 // StatusAndHeaders parsing utils
@@ -207,6 +183,8 @@ Content-Length: 0\r\n\
   t.is(record.warcPayloadDigest, 'sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O');
   t.is(record.warcContentType, 'application/http; msgtype=response');
   t.is(record.warcContentLength, 0);
+
+  t.is(record.httpHeaders, null);
 
 });
 
