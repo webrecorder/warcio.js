@@ -11,6 +11,8 @@ class Indexer
     this.fields = opts.fields || DEFAULT_FIELDS;
     /* istanbul ignore next */
     this.out = out || process.stdout;
+
+    this.parseHttp = true;
   }
 
   write(result) {
@@ -20,10 +22,12 @@ class Indexer
   async run(files) {
     const fields = this.fields.split(",");
 
-    for (const { filename, stream } of files) {
-      const reader = new StreamReader(stream.getReader());
+    const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
-      const parser = new WARCParser(true);
+    for (const { filename, stream } of files) {
+      const reader = new StreamReader(stream);
+
+      const parser = new WARCParser(params);
 
       for await (const record of parser.iterRecords(reader)) {
         if (this.filterRecord && !this.filterRecord(record)) {

@@ -16,10 +16,11 @@ class StreamReader {
     this.lastValue = null;
 
     this.done = false;
+    this.compressed = compressed;
+
+    this.decoder = new TextDecoder("utf-8");
 
     this._savedChunk = null;
-
-    this.compressed = compressed;
 
     this._rawOffset = 0;
     this._readOffset = 0;
@@ -179,14 +180,14 @@ class StreamReader {
 
     this._readOffset += size;
 
-    return new TextDecoder("utf-8").decode(buff);
+    return this.decoder.decode(buff);
   }
 
   readFully() {
     return this.readSize();
   }
 
-  async readSize(sizeLimit = -1, incOffset = true) {
+  async readSize(sizeLimit = -1, skip = false) {
     const chunks = [];
 
     let size = 0;
@@ -197,7 +198,9 @@ class StreamReader {
       if (sizeLimit >= 0) {
         if (chunk.length > sizeLimit) {
           const [first, remainder] = splitChunk(chunk, sizeLimit);
-          chunks.push(first);
+          if (!skip) {
+            chunks.push(first);
+          }
           size += first.byteLength;
           if (remainder.length > 0) {
             this._savedChunk = remainder;
@@ -207,15 +210,17 @@ class StreamReader {
           sizeLimit -= chunk.length;
         }
       }
-      chunks.push(chunk);
+      if (!skip) {
+        chunks.push(chunk);
+      }
       size += chunk.byteLength;
     }
 
-    if (incOffset) {
+    if (!skip) {
       this._readOffset += size;
     }
 
-    return concatChunks(chunks, size);
+    return skip ? null : concatChunks(chunks, size);
   }
 
   getReadOffset() {
@@ -298,6 +303,13 @@ class LimitReader
 
     return concatChunks(chunks, size);
   }
+
+  async skipFully() {
+    let res;
+    let chunk;
+
+    while (res = await this.read(), chunk = res.value);
+  }
 }
 
 
@@ -309,6 +321,9 @@ function splitChunk(chunk, inx) {
 
 // ===========================================================================
 function concatChunks(chunks, size) {
+  if (chunks.length === 1) {
+    return chunks[0];
+  }
   const buffer = new Uint8Array(size);
 
   let offset = 0;

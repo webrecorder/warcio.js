@@ -14,6 +14,8 @@ class WARCRecord
     this.httpHeaders = null;
     this.httpInfo = null;
 
+    this.consumed = false;
+
     this.fixUp();
   }
 
@@ -37,12 +39,22 @@ class WARCRecord
   }
 
   async readFully() {
-    if (this.payload) {
+    if (this.consumed) {
       return this.payload;
     }
 
     this.payload = await this.stream.readFully();
+    this.consumed = true;
     return this.payload;
+  }
+
+  async skipFully() {
+    if (this.consumed) {
+      return;
+    }
+
+    await this.stream.skipFully();
+    this.consumed = true;
   }
 
   warcHeader(name) {

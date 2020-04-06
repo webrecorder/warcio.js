@@ -5,21 +5,24 @@ const WARCRecord = require('./warcrecord').WARCRecord;
 // ===========================================================================
 class WARCParser
 {
-  constructor(strictHeaders = false) {
+  constructor({strictHeaders = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
     this._length = -1;
 
     this._headersClass = strictHeaders ? Headers : Map;
+    this._parseHttp = parseHttp;
+
     this._atRecordBoundary = true;
     this._stream = null;
     this._record = null;
+
   }
 
   async readToNextRecord() {
     if (!this._atRecordBoundary && this._stream && this._record) {
-      await this._record.readFully();
-      await this._stream.readSize(4, false);
+      await this._record.skipFully();
+      await this._stream.readSize(4, true);
       this._atRecordBoundary = true;
     }
   }
@@ -45,6 +48,10 @@ class WARCParser
     this._atRecordBoundary = false;
     this._record = record;
 
+    if (!this._parseHttp) {
+      return record;
+    }
+
     switch (record.warcType) {
       case "response":
         await this.addHttpHeaders(record, headersParser, stream);
@@ -69,7 +76,7 @@ class WARCParser
   }
 
   async recordLength() {
-    await this._record.readFully();
+    await this._record.skipFully();
     return this._stream.getRawLength(this._offset);
   }
 
@@ -79,9 +86,10 @@ class WARCParser
     this._stream = stream;
 
     while (record = await this.parse(stream)) {
-      this._record = record;
       yield record;
     }
+
+    this._record = null;
   }
 
   async addHttpHeaders(record, headersParser, stream) {

@@ -8,8 +8,7 @@
   },
   "dependencies": {
     "node-fetch": "^2.6.0",
-    "pako": "^1.0.11",
-    "web-streams-node": "^0.4.0"
+    "pako": "^1.0.11"
   },
   "scripts": {
     "test": "nyc ava"
@@ -29,6 +28,7 @@
     "ava": "^3.5.2",
     "esm": "^3.2.25",
     "nyc": "^15.0.1",
-    "stream-buffers": "^3.0.2"
+    "stream-buffers": "^3.0.2",
+    "web-streams-node": "^0.4.0"
   }
 }

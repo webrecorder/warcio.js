@@ -3,7 +3,10 @@
 const Indexer = require('./src/indexer').Indexer;
 const CDXIndexer = require('./src/indexer').CDXIndexer;
 
+const BUFF_SIZE = 1024 * 128;
 
+
+// ===========================================================================
 function main(args, out) {
   let promise = Promise.resolve(true);
 
@@ -55,21 +58,64 @@ function main(args, out) {
   return promise;
 }
 
+
 function loadStreams(filenames) {
-  const toWebReadableStream = require('web-streams-node').toWebReadableStream;
   global.Headers = require('node-fetch').Headers;
 
-  const fs = require('fs');
   const path = require('path');
 
   return filenames.map((filename) => {   
-    const rawStream = fs.createReadStream(filename);
-    const stream = toWebReadableStream(rawStream);
+    const stream = new FileReader(filename);
     filename = path.basename(filename);
     return {filename, stream};
   });
 }
 
+
+// ===========================================================================
+class FileReader
+{
+  constructor(filename) {
+    const fs = require('fs');
+    const rawStream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
+    this.stream = rawStream;
+    this.nextChunk = new Promise((resolve) => this.nextReady = resolve);
+
+    this.chunks = [];
+
+    this.stream.on('data', (chunk) => {
+      //if (this.chunks.length) {
+      //  this.stream.pause();
+      //}
+      this.chunks.push(chunk);
+      this.nextReady(this.chunks.shift());
+      //if (!this.chunks.length) {
+      //  this.stream.resume();
+      //}
+
+      this.nextChunk = new Promise((resolve) => this.nextReady = resolve);
+    });
+
+    this.done = false;
+    this.stream.on('end', () => {
+      this.done = true;
+      this.nextReady(null);
+    });
+  }
+
+  async read() {
+    if (this.done) {
+      return {value: null, done: true};
+    }
+
+    if (this.chunks.length) {
+      return this.chunks.shift();
+    }
+
+    const value = await this.nextChunk;
+    return {value, done: !value};
+  }
+}
 
 /* istanbul ignore if */
 if (require.main === module) {
