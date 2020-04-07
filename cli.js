@@ -2,6 +2,7 @@
 
 const Indexer = require('./src/indexer').Indexer;
 const CDXIndexer = require('./src/indexer').CDXIndexer;
+const WrapNodeStream = require('./src/utils').WrapNodeStream;
 
 const BUFF_SIZE = 1024 * 128;
 
@@ -65,9 +66,7 @@ function loadStreams(filenames) {
   const path = require('path');
 
   return filenames.map((filename) => {   
-    const stream = new FileReader(filename);
-    //const fs = require('fs');
-    //const stream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
+    const stream = new FileStream(filename, {highWaterMark: BUFF_SIZE});
     filename = path.basename(filename);
     return {filename, stream};
   });
@@ -75,24 +74,22 @@ function loadStreams(filenames) {
 
 
 // ===========================================================================
-class FileReader
+class FileStream extends WrapNodeStream
 {
-  constructor(filename) {
+  constructor(filename, opts) {
     const fs = require('fs');
-    const rawStream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
-    this.iter = rawStream[Symbol.asyncIterator]();
-  }
-
-  async read() {
-    return await this.iter.next();
+    super(fs.createReadStream(filename, opts));
   }
 }
 
 
+// ===========================================================================
 /* istanbul ignore if */
 if (require.main === module) {
   main();
 }
 
+
+// ===========================================================================
 exports.main = main
 

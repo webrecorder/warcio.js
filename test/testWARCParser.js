@@ -170,9 +170,9 @@ Content-Length: 0\r\n\
 
   const parser = new WARCParser();
 
-  const stream = new StreamReader(getReader([input]));
+  //const stream = new StreamReader(getReader([input]));
 
-  const record = await parser.parse(stream);
+  const record = await parser.parse(getReader([input]));
 
   t.is(record.warcHeader('warc-record-id'), '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>');
   t.is(record.warcType, "revisit");

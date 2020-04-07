@@ -1,5 +1,4 @@
 const WARCParser = require('./warcparser').WARCParser;
-const StreamReader = require('./readers').StreamReader;
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri';
 
@@ -25,11 +24,9 @@ class Indexer
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
     for (const { filename, stream } of files) {
-      const reader = new StreamReader(stream);
-
       const parser = new WARCParser(params);
 
-      for await (const record of parser.iterRecords(reader)) {
+      for await (const record of parser.iterRecords(stream)) {
         if (this.filterRecord && !this.filterRecord(record)) {
           continue;
         }
