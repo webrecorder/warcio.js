@@ -66,6 +66,8 @@ function loadStreams(filenames) {
 
   return filenames.map((filename) => {   
     const stream = new FileReader(filename);
+    //const fs = require('fs');
+    //const stream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
     filename = path.basename(filename);
     return {filename, stream};
   });
@@ -78,44 +80,14 @@ class FileReader
   constructor(filename) {
     const fs = require('fs');
     const rawStream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
-    this.stream = rawStream;
-    this.nextChunk = new Promise((resolve) => this.nextReady = resolve);
-
-    this.chunks = [];
-
-    this.stream.on('data', (chunk) => {
-      //if (this.chunks.length) {
-      //  this.stream.pause();
-      //}
-      this.chunks.push(chunk);
-      this.nextReady(this.chunks.shift());
-      //if (!this.chunks.length) {
-      //  this.stream.resume();
-      //}
-
-      this.nextChunk = new Promise((resolve) => this.nextReady = resolve);
-    });
-
-    this.done = false;
-    this.stream.on('end', () => {
-      this.done = true;
-      this.nextReady(null);
-    });
+    this.iter = rawStream[Symbol.asyncIterator]();
   }
 
   async read() {
-    if (this.done) {
-      return {value: null, done: true};
-    }
-
-    if (this.chunks.length) {
-      return this.chunks.shift();
-    }
-
-    const value = await this.nextChunk;
-    return {value, done: !value};
+    return await this.iter.next();
   }
 }
+
 
 /* istanbul ignore if */
 if (require.main === module) {

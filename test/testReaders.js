@@ -88,7 +88,7 @@ async function _readDecomp(t, chunks, expectedOffsets, splitSize) {
 
   // try parsing each chunk individually
   if (chunks.length > 1) {
-    const first = offsets[1];
+    const first = offsets[0];
     const newOffsets = offsets.slice(1).map((offset) => offset - first);
     await readDecomp(t, chunks.slice(1), newOffsets, splitSize);
   }
@@ -192,7 +192,7 @@ ABC`,
 test('decompressed reader single member', readDecomp,
   [
     'Some Data\nto read',
-  ], [0]
+  ], [37]
 );
 
 
@@ -204,14 +204,14 @@ test('decompressed reader multi member', readDecomp,
     'Some\n More Data',
     'Another Chunk of Data',
     'extra data'
-  ], [0, 29, 64, 105]
+  ], [29, 64, 105, 135]
 );
 
 
 test('decompressed reader single member (1 to 10 byte chunks)', readDecomp,
   [
     'Some Data\nto read',
-  ], [0], 10
+  ], [37], 10
 );
 
 
@@ -221,7 +221,7 @@ test('decompressed reader multi member (1 to 15 byte chunks)', readDecomp,
     'Some\n More Data',
     'Another Chunk of Data',
     'extra data'
-  ], [0, 29, 64, 105], 15, 5
+  ], [29, 64, 105, 135], 15, 5
 );
 
 

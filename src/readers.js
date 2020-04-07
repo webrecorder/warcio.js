@@ -3,15 +3,24 @@ const Inflate = require('pako').Inflate;
 // ===========================================================================
 class NoConcatInflator extends Inflate
 {
+  constructor(reader) {
+    super();
+    this.reader = reader;
+  }
+
   onEnd(status) {
     this.err = status;
+    if (!this.err) {
+      this.reader._rawOffset += this.strm.total_in;
+    }
   } 
 }
+
 
 // ===========================================================================
 class StreamReader {
   constructor(stream, compressed = true) {
-    this.inflator = new NoConcatInflator();
+    this.inflator = new NoConcatInflator(this);
     this.stream = stream;
     this.lastValue = null;
 
@@ -94,7 +103,7 @@ class StreamReader {
     this.lastValue = value;
 
     if (this.inflator.ended) {
-      this.inflator = new NoConcatInflator();
+      this.inflator = new NoConcatInflator(this);
     }
     this.inflator.push(value);
   }
@@ -113,8 +122,6 @@ class StreamReader {
         }
 
         const avail_in = this.inflator.strm.avail_in;
-
-        this._rawOffset += this.inflator.strm.total_in;
 
         if (avail_in && this.lastValue) {
           this._push(this.lastValue.slice(-avail_in));
@@ -205,6 +212,13 @@ class StreamReader {
           if (remainder.length > 0) {
             this._savedChunk = remainder;
           }
+          break;
+        } else if (chunk.length === sizeLimit) {
+          if (!skip) {
+            chunks.push(chunk);
+          }
+          size += chunk.byteLength;
+          sizeLimit = 0;
           break;
         } else {
           sizeLimit -= chunk.length;

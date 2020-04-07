@@ -192,7 +192,7 @@ class CDXIndexer extends Indexer
       }
       surt += ")";
       surt += urlObj.pathname;
-      return surt;
+      return surt.toLowerCase();
     } catch (e) {
       return url;
     }
