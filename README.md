@@ -27,7 +27,7 @@ async function readWARC(url) {
   
   const parser = new WARCParser();
 
-  for await (const record of parser.iterRecords(rawStream)) {
+  for await (const record of parser.iterRecords(response.body)) {
     // ways to access warc data
     console.log(record.warcType);
     console.log(record.warcTargetURI);
@@ -44,6 +44,7 @@ A key property of `warcio.js` is to support streaming WARC records from a server
 For example, the following could be used to load a WARC record, parse headers, and return a streaming `Response` from a ServiceWorker. The response continues reading from the upstream source.
 
 ```javascript
+import { WARCParser, StreamReader } from 'warcio';
 
 async function streamWARCRecord(url) {
   const response = await fetch(url);
