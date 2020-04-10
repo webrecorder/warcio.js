@@ -27,7 +27,8 @@
     "pako": "^1.0.11"
   },
   "scripts": {
-    "test": "nyc ava"
+    "test": "nyc ava",
+    "coverage": "codecov"
   },
   "ava": {
     "concurrency": 1,
