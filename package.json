@@ -27,7 +27,7 @@
     "pako": "^1.0.11"
   },
   "scripts": {
-    "test": "nyc ava",
+    "test": "nyc --reporter=lcov --reporter=text ava",
     "coverage": "codecov"
   },
   "ava": {
