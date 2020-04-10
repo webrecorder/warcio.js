@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "ava": "^3.5.2",
+    "codecov": "^3.6.5",
     "esm": "^3.2.25",
     "nyc": "^15.0.1",
     "stream-buffers": "^3.0.2",
