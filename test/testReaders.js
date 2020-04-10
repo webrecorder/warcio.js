@@ -29,11 +29,27 @@ async function readLines(t, input, expected) {
 
 // ===========================================================================
 // Compression utils
-function compressMembers(chunks) {
+function compressMembers(chunks, method = "gzip") {
   const buffers = [];
 
   for (const chunk of chunks) {
-    buffers.push(pako.gzip(encoder.encode(chunk)));
+    const binChunk = encoder.encode(chunk);
+    switch (method) {
+      case "deflate":
+        buffers.push(pako.deflate(binChunk));
+        break;
+
+      case "deflateRaw":
+        buffers.push(pako.deflateRaw(binChunk));
+        break;
+
+      case "gzip":
+        buffers.push(pako.gzip(binChunk));
+        break;
+
+      default:
+        buffers.push(binChunk);
+    }
   }
 
   return Buffer.concat(buffers);
@@ -100,6 +116,20 @@ async function readDecompFully(t, chunks, expected) {
   const stream = new StreamReader(getReader([input]));
 
   t.deepEqual(decoder.decode(await stream.readFully()), expected);
+}
+
+async function readDecompTypes(t, chunk, expected, methods) {
+  for (const [decompress, compress, match] of methods) {
+    const input = compressMembers([chunk], compress);
+    const stream = new StreamReader(getReader([input]), decompress);
+    const result = decoder.decode(await stream.readFully());
+    
+    if (match) {
+      t.is(result, expected, JSON.stringify([compress, decompress, match]));
+    } else {
+      t.not(result, expected);
+    }
+  }
 }
 
 async function readDecompLines(t, chunks, expected) {
@@ -238,6 +268,33 @@ Another LineNew Chunk
 Same Chunk
 Single Line
 Next`
+);
+
+
+test('read compress / decompress types', readDecompTypes,
+  'Some Data More Data','Some Data More Data', [
+    //decompress compress valid
+    ['gzip', 'gzip', true],
+    ['gzip', 'deflate', true],
+    ['gzip', 'deflateRaw', false],
+    ['gzip', null, true],
+
+    ['deflate', 'deflate', true],
+    ['deflate', 'gzip', true],
+    ['deflate', 'deflateRaw', true],
+    ['deflate', null, true],
+
+    ['deflateRaw', 'deflateRaw', true],
+    ['deflateRaw', 'deflate', false],
+    ['deflateRaw', 'gzip', false],
+    ['deflateRaw', null, true],
+
+    [null, null, true],
+    [null, 'gzip', false],
+    [null, 'deflate', false],
+    [null, 'deflateRaw', false],
+
+  ]
 );
 
 

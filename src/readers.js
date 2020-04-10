@@ -1,10 +1,11 @@
 const Inflate = require('pako').Inflate;
 
+
 // ===========================================================================
 class NoConcatInflator extends Inflate
 {
-  constructor(reader) {
-    super();
+  constructor(options, reader) {
+    super(options);
     this.reader = reader;
   }
 
@@ -19,13 +20,16 @@ class NoConcatInflator extends Inflate
 
 // ===========================================================================
 class StreamReader {
-  constructor(stream, compressed = true) {
-    this.inflator = new NoConcatInflator(this);
+  constructor(stream, compressed = "gzip") {
+    this.compressed = compressed;
+    this.opts = {raw: compressed === "deflateRaw"};
+
+    this.inflator = compressed ? new NoConcatInflator(this.opts, this) : null;
+
     this.stream = stream;
     this.lastValue = null;
 
     this.done = false;
-    this.compressed = compressed;
 
     this.decoder = new TextDecoder("utf-8");
 
@@ -33,6 +37,8 @@ class StreamReader {
 
     this._rawOffset = 0;
     this._readOffset = 0;
+
+    this.numChunks = 0;
   }
 
   async _loadNext()  {
@@ -103,21 +109,32 @@ class StreamReader {
     this.lastValue = value;
 
     if (this.inflator.ended) {
-      this.inflator = new NoConcatInflator(this);
+      this.inflator = new NoConcatInflator(this.opts, this);
     }
     this.inflator.push(value);
+
+    // "deflate" allows automatically trying "deflateRaw", while "gzip" does not
+    if (this.inflator.err && this.inflator.ended && this.compressed === "deflate" &&
+        this.opts.raw === false && this.numChunks === 0) {
+      this.opts.raw = true;
+      this.compressed = "deflateRaw";
+
+      this.inflator = new NoConcatInflator(this.opts, this);
+      this.inflator.push(value);
+    }
   }
 
   _getNextChunk(original) {
     while (true) {
       if (this.inflator.chunks.length > 0) {
+        this.numChunks++;
         return this.inflator.chunks.shift();
       }
 
       if (this.inflator.ended) {
         if (this.inflator.err !== 0)  {          
           // assume not compressed
-          this.compressed = false;
+          this.compressed = null;
           return original;
         }
 
@@ -230,9 +247,7 @@ class StreamReader {
       size += chunk.byteLength;
     }
 
-    if (!skip) {
-      this._readOffset += size;
-    }
+    this._readOffset += size;
 
     return skip ? null : concatChunks(chunks, size);
   }

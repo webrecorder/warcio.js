@@ -31,11 +31,11 @@ test('index custom fields warc', index,
   ['index', './test/data/example.warc', '--fields', 'offset,length,warc-type,http:status,http:content-type'],
   `\
 {"offset":0,"length":484,"warc-type":"warcinfo"}
-{"offset":484,"length":705,"warc-type":"warcinfo"}
-{"offset":1189,"length":1365,"warc-type":"response","http:status":200,"http:content-type":"text/html"}
-{"offset":2554,"length":800,"warc-type":"request"}
-{"offset":3354,"length":942,"warc-type":"revisit","http:status":200,"http:content-type":"text/html"}
-{"offset":4296,"length":800,"warc-type":"request"}
+{"offset":488,"length":705,"warc-type":"warcinfo"}
+{"offset":1197,"length":1365,"warc-type":"response","http:status":200,"http:content-type":"text/html"}
+{"offset":2566,"length":800,"warc-type":"request"}
+{"offset":3370,"length":942,"warc-type":"revisit","http:status":200,"http:content-type":"text/html"}
+{"offset":4316,"length":800,"warc-type":"request"}
 `);
 
 
@@ -68,6 +68,14 @@ com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMS
 `);
 
 
+test('cdx11 warc', index,
+  ['cdx-index', './test/data/example.warc', '--format', 'cdx'],
+  `\
+com,example)/ 20170306040206 http://example.com/ text/html 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 1365 1197 example.warc
+com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 942 3370 example.warc
+`);
+
+
 test('cdx json warc.gz all', index,
   ['cdx-index', './test/data/example.warc.gz', '--format', 'json', '--all'],
   `\
@@ -84,4 +92,6 @@ test('cdx resource', index,
   `\
 com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","mime":"text/plain","digest":"QEF4QP424P5IOPMURMAC4K6KNUTHXQW2","length":261,"offset":0,"filename":"example-resource.warc.gz"}
 `);
- 
+
+test('skip dir', index,
+  ['cdx-index', './'], false);

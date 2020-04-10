@@ -3,11 +3,6 @@ const WARCRecord = require('./warcrecord').WARCRecord;
 const toStreamReader = require('./utils').toStreamReader;
 
 
-if (!this.Headers) {
-  global.Headers = require('node-fetch').Headers;
-}
-
-
 // ===========================================================================
 class WARCParser
 {

@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "index.js",
   "license": "Apache-2.0",
   "author": "Webrecorder Software, Ilya Kreymer",
@@ -23,7 +23,7 @@
     "node": ">=12.0.0"
   },
   "dependencies": {
-    "node-fetch": "^2.6.0",
+    "@titelmedia/node-fetch": "^3.0.1",
     "pako": "^1.0.11"
   },
   "scripts": {

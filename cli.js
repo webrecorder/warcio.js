@@ -2,7 +2,6 @@
 
 const Indexer = require('./src/indexer').Indexer;
 const CDXIndexer = require('./src/indexer').CDXIndexer;
-const WrapNodeStream = require('./src/utils').WrapNodeStream;
 
 const BUFF_SIZE = 1024 * 128;
 
@@ -61,25 +60,21 @@ function main(args, out) {
 
 
 function loadStreams(filenames) {
-  global.Headers = require('node-fetch').Headers;
+  global.Headers = require('@titelmedia/node-fetch').Headers;
 
   const path = require('path');
+  const fs = require('fs');
 
-  return filenames.map((filename) => {   
-    const stream = new FileStream(filename, {highWaterMark: BUFF_SIZE});
+  return filenames.map((filename) => {
+    if (!fs.lstatSync(filename).isFile()) {
+      process.stderr.write(`Skipping ${filename}, not a file\n`);
+      return {};
+    }
+
+    const stream = fs.createReadStream(filename, {highWaterMark: BUFF_SIZE});
     filename = path.basename(filename);
     return {filename, stream};
   });
-}
-
-
-// ===========================================================================
-class FileStream extends WrapNodeStream
-{
-  constructor(filename, opts) {
-    const fs = require('fs');
-    super(fs.createReadStream(filename, opts));
-  }
 }
 
 

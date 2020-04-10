@@ -3,7 +3,7 @@
 import test from 'ava';
 
 import { StatusAndHeadersParser, StreamReader, WARCParser } from '../index';
-import { getReader } from './utils';
+import { getReadableStream, getReader } from './utils';
 
 
 const decoder = new TextDecoder("utf-8");
@@ -146,6 +146,9 @@ json-metadata: {"foo": "bar"}\r\n\
 
   t.is(await parser.parse(stream), null);
 
+  // reread payload
+  t.is(decoder.decode(await record.readFully()), "some\ntext");
+
 });
 
 
@@ -170,9 +173,7 @@ Content-Length: 0\r\n\
 
   const parser = new WARCParser();
 
-  //const stream = new StreamReader(getReader([input]));
-
-  const record = await parser.parse(getReader([input]));
+  const record = await parser.parse(getReadableStream([input]));
 
   t.is(record.warcHeader('warc-record-id'), '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>');
   t.is(record.warcType, "revisit");
@@ -188,3 +189,37 @@ Content-Length: 0\r\n\
 
 });
 
+
+
+test('No parse http, record headers only', async t => {
+  const input = `\
+WARC/1.0\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:KMUABC6URWIQ7QXCZDQ5FS6WIBBFRORR\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 268\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Disposition: attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
+Custom-Header: somevalue\r\n\
+Unicode-Header: %F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F\r\n\
+\r\n\
+more\n\
+text\r\n\
+\r\n\
+`
+
+  const parser = new WARCParser({parseHttp: false});
+  
+  const record = await parser.parse(getReader([input]));
+
+  t.is(record.warcContentLength, 268);
+  t.true(record.warcHeaders !== null);
+  t.true(record.httpHeaders === null);
+
+});

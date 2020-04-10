@@ -21,7 +21,7 @@ function toStreamReader(streamOrReader) {
     obj = streamOrReader;
   }
 
-  return obj ? new StreamReader(obj) : null;
+  return new StreamReader(obj);
 }
 
 

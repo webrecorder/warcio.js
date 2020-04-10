@@ -1,17 +1,16 @@
 const WARCParser = require('./warcparser').WARCParser;
 
-const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri';
+const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
 
 // ===========================================================================
-class Indexer
+class BaseIndexer
 {
   constructor(opts, out) {
-    this.fields = opts.fields || DEFAULT_FIELDS;
+    this.opts = opts;
+
     /* istanbul ignore next */
     this.out = out || process.stdout;
-
-    this.parseHttp = true;
   }
 
   write(result) {
@@ -19,11 +18,13 @@ class Indexer
   }
 
   async run(files) {
-    const fields = this.fields.split(",");
-
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
     for (const { filename, stream } of files) {
+      if (!filename || !stream) {
+        continue;
+      }
+
       const parser = new WARCParser(params);
 
       for await (const record of parser.iterRecords(stream)) {
@@ -38,7 +39,7 @@ class Indexer
 
         const special = {offset, length, filename};
 
-        for (const field of fields) {
+        for (const field of this.fields) {
           if (special[field] != undefined) {
             result[field] = special[field];
           } else {
@@ -78,8 +79,30 @@ class Indexer
 }
 
 
+class Indexer extends BaseIndexer
+{
+  constructor(opts, out) {
+    super(opts, out);
+    if (!opts.fields) {
+      this.fields = DEFAULT_FIELDS;
+      this.parseHttp = false;
+    } else {
+      this.fields = opts.fields.split(",");
+      this.parseHttp = false;
+
+      for (const field of this.fields) {
+        if (field.startsWith("http:")) {
+          this.parseHttp = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+
 // ===========================================================================
-const DEFAULT_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,length,offset,filename';
+const DEFAULT_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,length,offset,filename'.split(',');
 const DEFAULT_LEGACY_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename'.split(',');
 
 
@@ -90,6 +113,7 @@ class CDXIndexer extends Indexer
     super(opts, out);
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
+    this.parseHttp = true;
 
     switch (opts.format) {
       case "cdxj":
