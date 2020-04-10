@@ -1,5 +1,9 @@
 # warcio.js
 
+[![Build Status](https://travis-ci.com/ikreymer/warcio.js.svg?branch=master)](https://travis-ci.com/ikreymer/warcio.js)
+[![codecov](https://codecov.io/gh/ikreymer/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/ikreymer/warcio.js)
+
+
 Streaming web archive (WARC) file support for JS.
 
 This package represents a rough port of the python [warcio](https://github.com/webrecorder/warcio) for JavaScript
