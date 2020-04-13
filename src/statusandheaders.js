@@ -73,8 +73,8 @@ class StatusAndHeadersParser {
     return first === " " || first === "\t";
   }
 
-  async parse(stream, {headersClass = Map} = {}) {
-    const fullStatusLine = await stream.readline();
+  async parse(reader, {headersClass = Map} = {}) {
+    const fullStatusLine = await reader.readline();
 
     if (!fullStatusLine) {
       return null;
@@ -89,7 +89,7 @@ class StatusAndHeadersParser {
       //return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
     }
 
-    let line = (await stream.readline()).trimEnd();
+    let line = (await reader.readline()).trimEnd();
     while (line) {
       let [name, value] = splitRemainder(line, ":", 1);
       if (value) {
@@ -97,14 +97,14 @@ class StatusAndHeadersParser {
         value = value.trim();
       }
 
-      let nextLine = (await stream.readline()).trimEnd();
+      let nextLine = (await reader.readline()).trimEnd();
 
       while (this.startsWithSpace(nextLine)) {
         if (value) {
           value += nextLine;
         }
 
-        nextLine = (await stream.readline()).trimEnd();
+        nextLine = (await reader.readline()).trimEnd();
       }
 
       if (value) {
@@ -135,5 +135,4 @@ function splitRemainder(str, sep, limit) {
 
 
 // ===========================================================================
-exports.StatusAndHeadersParser = StatusAndHeadersParser;
-exports.StatusAndHeaders = StatusAndHeaders
+export { StatusAndHeaders, StatusAndHeadersParser };

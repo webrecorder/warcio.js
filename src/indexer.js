@@ -1,4 +1,4 @@
-const WARCParser = require('./warcparser').WARCParser;
+import { WARCParser } from './warcparser';
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
@@ -20,14 +20,14 @@ class BaseIndexer
   async run(files) {
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
-    for (const { filename, stream } of files) {
-      if (!filename || !stream) {
+    for (const { filename, reader } of files) {
+      if (!filename || !reader) {
         continue;
       }
 
-      const parser = new WARCParser(params);
+      const parser = new WARCParser(reader, params);
 
-      for await (const record of parser.iterRecords(stream)) {
+      for await (const record of parser) {
         if (this.filterRecord && !this.filterRecord(record)) {
           continue;
         }
@@ -79,6 +79,7 @@ class BaseIndexer
 }
 
 
+// ===========================================================================
 class Indexer extends BaseIndexer
 {
   constructor(opts, out) {
@@ -222,7 +223,6 @@ class CDXIndexer extends Indexer
 
 
 // ===========================================================================
-exports.Indexer = Indexer;
-exports.CDXIndexer = CDXIndexer;
+export { Indexer, CDXIndexer };
 
 

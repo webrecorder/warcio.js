@@ -1,10 +1,11 @@
-exports.StreamReader = require('./src/readers').StreamReader;
-exports.LimitReader = require('./src/readers').LimitReader;
-exports.concatChunks = require('./src/readers').concatChunks;
+require = require("esm")(module);
+module.exports = require("./main.js");
 
-exports.StatusAndHeadersParser = require('./src/statusandheaders').StatusAndHeadersParser;
-exports.StatusAndHeaders = require('./src/statusandheaders').StatusAndHeaders;
-
-exports.WARCParser = require('./src/warcparser').WARCParser;
-exports.WARCRecord = require('./src/warcrecord').WARCRecord;
+// ensure global Headers object is set for node
+/* istanbul ignore next */
+if (typeof process !== 'undefined' && typeof global === 'object') {
+  if (typeof(global.Headers) === 'undefined') {
+    global.Headers = require('@titelmedia/node-fetch').Headers;
+  }
+}
 

@@ -2,7 +2,7 @@
 
 import test from 'ava';
 
-import { main } from '../cli';
+import { main } from '../src/cli_main';
 
 import { WritableStreamBuffer } from 'stream-buffers';
 

@@ -1,4 +1,4 @@
-const Inflate = require('pako').Inflate;
+import { Inflate } from 'pako/lib/inflate'
 
 
 // ===========================================================================
@@ -19,17 +19,70 @@ class NoConcatInflator extends Inflate
 
 
 // ===========================================================================
-class StreamReader {
-  constructor(stream, compressed = "gzip") {
+class BaseAsyncIterReader
+{
+
+  static concatChunks(chunks, size) {
+    if (chunks.length === 1) {
+      return chunks[0];
+    }
+    const buffer = new Uint8Array(size);
+
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      buffer.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    return buffer;
+  }
+
+  static splitChunk(chunk, inx) {
+    return [chunk.slice(0, inx), chunk.slice(inx)];
+  }
+
+  getReadableStream(iterable) {
+    const streamIter = this[Symbol.asyncIterator]();
+
+    return new ReadableStream({
+      pull(controller) {
+        return streamIter.next().then((result) => {
+          // all done;
+          if (result.done || !result.value) {
+            controller.close();
+          } else {
+            controller.enqueue(result.value);
+          }
+        });
+      }
+    });
+  }
+}
+
+
+// ===========================================================================
+class AsyncIterReader extends BaseAsyncIterReader {
+  constructor(streamOrIter, compressed = "gzip") {
+    super();
     this.compressed = compressed;
     this.opts = {raw: compressed === "deflateRaw"};
 
     this.inflator = compressed ? new NoConcatInflator(this.opts, this) : null;
 
-    this.stream = stream;
-    this.lastValue = null;
+    if (typeof(streamOrIter[Symbol.asyncIterator]) !== "function") {
+      if (typeof(streamOrIter.getReader) === "function") {
+        streamOrIter = AsyncIterReader.fromReadable(streamOrIter.getReader());
+      } else if (typeof(streamOrIter.read) === "function") {
+        streamOrIter = AsyncIterReader.fromReadable(streamOrIter);
+      } else {
+        throw new TypeError("Invalid Stream Source");
+      }
+    }
 
-    this.done = false;
+    this._sourceIter = streamOrIter[Symbol.asyncIterator]();
+
+    this.lastValue = null;
 
     this.decoder = new TextDecoder("utf-8");
 
@@ -42,14 +95,12 @@ class StreamReader {
   }
 
   async _loadNext()  {
-    const res = await this.stream.read();
-    this.done = res.done;
-    return res.value;
+    const res = await this._sourceIter.next();
+    return !res.done ? res.value : null;
   }
 
   _unread(chunk) {
-    /* istanbul ignore if */
-    if (!chunk) {
+    if (!chunk.length) {
       return;
     }
 
@@ -61,22 +112,9 @@ class StreamReader {
     }
 
     this._savedChunk = chunk;
-    this.done = false;
   }
 
-  async read() {
-    const value = await this._read();
-    if (value) {
-      this._readOffset += value.length;
-    }
-    return {value, done: !value};
-  }
-
-  async _read() {
-    if (this.done) {
-      return null;
-    }
-
+  async _next() {
     if (this._savedChunk) {
       const chunk = this._savedChunk;
       this._savedChunk = null;
@@ -92,7 +130,7 @@ class StreamReader {
 
     let value = await this._loadNext();
 
-    while (this.compressed && !this.done) {
+    while (this.compressed && value) {
       this._push(value);
 
       const newValue = this._getNextChunk(value);
@@ -150,61 +188,59 @@ class StreamReader {
     }
   }
 
-  async* iterChunks() {
+  async* [Symbol.asyncIterator]() {
     let chunk = null;
-    while (chunk = await this._read()) {
+    while (chunk = await this._next()) {
+      this._readOffset += chunk.length;
       yield chunk;
     }
   }
 
   async* iterLines() {
-    let line = null;
-    while (line = await this.readline()) {
-      yield line;
+    let chunks = [];
+    let size = 0;
+
+    let res;
+    let chunk;
+
+    //while ((res = await this._readiter.next()) && (chunk = res.value)) {
+    for await (const chunk of this) {
+      const inx = chunk.indexOf(10);
+
+      if (inx < 0) {
+        chunks.push(chunk);
+        size += chunk.byteLength;
+        continue;
+      }
+
+      const [first, remainder] = AsyncIterReader.splitChunk(chunk, inx + 1);
+      chunks.push(first);
+      size += first.byteLength;
+
+      this._unread(remainder);
+  
+      const buff = AsyncIterReader.concatChunks(chunks, size);
+      //this._readOffset += size;
+
+      yield this.decoder.decode(buff);
+
+      size = 0;
+      chunks = [];
+    }
+
+    if (chunks.length) {
+      const buff = AsyncIterReader.concatChunks(chunks, size);
+      //this._readOffset += size;
+
+      yield this.decoder.decode(buff);
     }
   }
 
   async readline() {
-    if (this.done) {
-      return "";
+    for await (const line of this.iterLines()) {
+      return line;
     }
-
-    let inx = -1;
-    const chunks = [];
-
-    let size = 0;
-    let chunk;
-
-    while ((chunk = await this._read()) && ((inx = chunk.indexOf(10)) < 0)) {
-      chunks.push(chunk);
-      size += chunk.byteLength;
-    }
-
-    if (chunk) {
-      const [first, remainder] = splitChunk(chunk, inx + 1);
-      chunks.push(first);
-      size += first.byteLength;
-      chunk = remainder;
-    }
-
-    if (!chunk) {// || (!this.compressed && !chunk.length)) {
-      this._savedChunk = null;
-      this.done = true;
-    } else if (!chunk.length) {
-      this._savedChunk = null;
-    } else {
-      this._savedChunk = chunk;
-    }
-
-    if (!chunks.length) {
-      return "";
-    }
-
-    const buff = concatChunks(chunks, size);
-
-    this._readOffset += size;
-
-    return this.decoder.decode(buff);
+    return "";
   }
 
   readFully() {
@@ -213,20 +249,22 @@ class StreamReader {
 
   async readSize(sizeLimit = -1, skip = false) {
     const chunks = [];
-
     let size = 0;
 
+    let res;
     let chunk;
 
-    while (chunk = await this._read()) {
+    //while ((res = await this._readiter.next()) && (chunk = res.value)) {
+    for await (const chunk of this) {
       if (sizeLimit >= 0) {
         if (chunk.length > sizeLimit) {
-          const [first, remainder] = splitChunk(chunk, sizeLimit);
+          const [first, remainder] = AsyncIterReader.splitChunk(chunk, sizeLimit);
           if (!skip) {
             chunks.push(first);
           }
           size += first.byteLength;
-          this._savedChunk = remainder;
+          //this._savedChunk = remainder;
+          this._unread(remainder);
           break;
         } else if (chunk.length === sizeLimit) {
           if (!skip) {
@@ -245,9 +283,9 @@ class StreamReader {
       size += chunk.byteLength;
     }
 
-    this._readOffset += size;
+    //this._readOffset += size;
 
-    return skip ? size : concatChunks(chunks, size);
+    return skip ? size : AsyncIterReader.concatChunks(chunks, size);
   }
 
   getReadOffset() {
@@ -262,53 +300,28 @@ class StreamReader {
     return this.compressed ? this.inflator.strm.total_in : this._readOffset - prevOffset;
   }
 
-  static toStreamReader(source) {
-    // check for null
-    if (!source) {
-      return null;
-    }
+  static fromReadable(source) {
+    const iterable = {
+      async* [Symbol.asyncIterator]() {
+        let res = null;
 
-    // already StreamReader, use as is
-    if (source instanceof StreamReader) {
-      return source;
-    }
-
-    // web stream
-    if (typeof(source.getReader) === "function") {
-      return new StreamReader(source.getReader());
-    } else if (typeof(source[Symbol.asyncIterator]) === "function") {
-    // node stream with async iter support
-      return StreamReader.fromAsyncIter(source);
-    } else if (typeof(source.read) === "function") {
-    // assume object itself is a Readable
-      return new StreamReader(source);
-    } else {
-      return null;
-    }
-  }
-
-  static fromAsyncIter(stream) {
-    class WrapAsyncIter
-    {
-      constructor(stream) {
-        this.iter = stream[Symbol.asyncIterator]();
-      }
-
-      async read() {
-        return await this.iter.next();
+        while ((res = await source.read()) && !res.done) {
+          yield res.value;
+        }
       }
     }
 
-    return new StreamReader(new WrapAsyncIter(stream));
+    return iterable;
   }
 }
 
 
 // ===========================================================================
-class LimitReader
+class LimitReader extends BaseAsyncIterReader
 {
-  constructor(stream, limit, skip = 0) {
-    this.stream = stream;
+  constructor(streamIter, limit, skip = 0) {
+    super();
+    this.sourceIter = streamIter;
     this.length = limit;
     this.limit = limit;
     this.skip = skip;
@@ -319,96 +332,67 @@ class LimitReader
     this.skip = skip;
   }
 
-  async read() {
+  async* [Symbol.asyncIterator]() {
     if (this.limit === 0) {
-      return {done: true, value: null};
+      return;
     }
 
-    let res = await this.stream.read();
-    let chunk = res.value;
-
-    while (this.skip > 0) {
-      if (chunk.length >= this.skip) {
-        const [first, remainder] = splitChunk(chunk, this.skip);
-        chunk = remainder;
-        this.skip = 0;
-        break;
-      } else {
-        this.skip -= chunk.length;
-        res = await this.stream.read();
-        chunk = res.value;
+    for await (let chunk of this.sourceIter) {
+      if (this.skip > 0) {
+        if (chunk.length >= this.skip) {
+          const [first, remainder] = LimitReader.splitChunk(chunk, this.skip);
+          chunk = remainder;
+          this.skip = 0;
+        } else {
+          this.skip -= chunk.length;
+          continue;
+        }
       }
-    }
 
-    if (this.limit > 0 && chunk) {
       if (chunk.length > this.limit) {
-        const [first, remainder] = splitChunk(chunk, this.limit);
+        const [first, remainder] = LimitReader.splitChunk(chunk, this.limit);
         chunk = first;
 
-        this.stream._unread(remainder);
+        this.sourceIter._unread(remainder);
       }
       this.limit -= chunk.length;
-    }
 
-    return {done: !chunk, value: chunk}
+      yield chunk;
+
+      if (this.limit === 0) {
+        break;
+      }
+    }
   }
 
   async readFully() {
     const chunks = [];
-
     let size = 0;
 
-    let res;
-    let chunk;
-
-    while (res = await this.read(), chunk = res.value) {
+    //while (res = await this.read(), chunk = res.value) {
+    for await (const chunk of this) {
       chunks.push(chunk);
       size += chunk.byteLength;
     }
 
-    return concatChunks(chunks, size);
+    return LimitReader.concatChunks(chunks, size);
   }
 
   async skipFully() {
     let res;
     let chunk;
 
+    const origLimit = this.limit;
+
     while (this.limit > 0) {
-      this.limit -= this.stream.readSize(this.limit, true);
+      this.limit -= await this.sourceIter.readSize(this.limit, true);
     }
-    //while (res = await this.read(), chunk = res.value);
+
+    return origLimit;
   }
 }
 
 
 // ===========================================================================
-function splitChunk(chunk, inx) {
-  return [chunk.slice(0, inx), chunk.slice(inx)];
-}
-
-
-// ===========================================================================
-function concatChunks(chunks, size) {
-  if (chunks.length === 1) {
-    return chunks[0];
-  }
-  const buffer = new Uint8Array(size);
-
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    buffer.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return buffer;
-}
-
-
-// ===========================================================================
-exports.StreamReader = StreamReader;
-exports.LimitReader = LimitReader;
-
-exports.splitChunk = splitChunk;
-exports.concatChunks = concatChunks;
+export { BaseAsyncIterReader, AsyncIterReader, LimitReader };
 

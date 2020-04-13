@@ -2,7 +2,8 @@
 
 import test from 'ava';
 
-import { StatusAndHeadersParser, StreamReader, WARCParser } from '../index';
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser } from '../index';
+
 import { getReadableStream, getReader } from './utils';
 
 
@@ -13,7 +14,7 @@ const decoder = new TextDecoder("utf-8");
 // StatusAndHeaders parsing utils
 async function readSH(t, input, expected) {
   const parser = new StatusAndHeadersParser();
-  const result = await parser.parse(new StreamReader(getReader([input])));
+  const result = await parser.parse(new AsyncIterReader(getReader([input])));
 
   t.deepEqual(result.toString(), expected);
 }
@@ -59,7 +60,7 @@ Bad: multi\r
 
 test('StatusAndHeaders test empty', async t => {
   const parser = new StatusAndHeadersParser();
-  const result = await parser.parse(new StreamReader(getReader(['\r\n\r\n'])));
+  const result = await parser.parse(new AsyncIterReader(getReader(['\r\n\r\n'])));
 
   t.is(result, null);
 });
@@ -118,11 +119,11 @@ text\r\n\
 \r\n\
 `
 
-  const parser = new WARCParser();
+  let reader = new AsyncIterReader(getReader([input]));
 
-  let reader = new StreamReader(getReader([input]));
+  let parser = new WARCParser(reader);
 
-  const record0 = await parser.parse(reader);
+  const record0 = await parser.parse();
 
   t.is(record0.warcType, "warcinfo");
 
@@ -134,27 +135,27 @@ format: WARC File Format 1.0\r\n\
 json-metadata: {"foo": "bar"}\r\n\
 `);
 
-  const record = await parser.parse(reader);
+  const record = await parser.parse();
 
   t.is(record.warcTargetURI, "http://example.com/");
 
   t.is(decoder.decode(await record.readFully()), "some\ntext");
 
-  const record2 = await parser.parse(reader);
+  const record2 = await parser.parse();
 
   t.is(decoder.decode(await record2.readFully()), "more\ntext");
 
-  t.is(await parser.parse(reader), null);
+  t.is(await parser.parse(), null);
 
   // reread payload
   t.is(decoder.decode(await record.readFully()), "some\ntext");
 
 
   // reread via getReadableStream
-  reader = new StreamReader(getReader([input]));
-  const record3 = await parser.parse(reader);
-  const record4 = await parser.parse(reader);
-  const reader2 = new StreamReader(record4.getReadableStream().getReader());
+  parser = new WARCParser(getReader([input]));
+  const record3 = await parser.parse();
+  const record4 = await parser.parse();
+  const reader2 = new AsyncIterReader(record4.getReadableStream().getReader());
   t.is(decoder.decode(await reader2.readFully()), "some\ntext");
 
 });
@@ -179,9 +180,9 @@ Content-Length: 0\r\n\
 \r\n\
 `;
 
-  const parser = new WARCParser();
+  const parser = new WARCParser(getReadableStream([input]));
 
-  const record = await parser.parse(getReadableStream([input]));
+  const record = await parser.parse();
 
   t.is(record.warcHeader('warc-record-id'), '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>');
   t.is(record.warcType, "revisit");
@@ -221,9 +222,9 @@ text\r\n\
 \r\n\
 `
 
-  const parser = new WARCParser({parseHttp: false});
+  const parser = new WARCParser(getReader([input]), {parseHttp: false});
   
-  const record = await parser.parse(getReader([input]));
+  const record = await parser.parse();
 
   t.is(record.warcContentLength, 268);
   t.not(record.warcHeaders, null);
@@ -239,10 +240,13 @@ test('warc1.1 response and request, status checks', async t => {
   const path = require('path');
   const input = fs.readFileSync(path.join(__dirname, 'data', 'redirect.warc'), 'utf-8')
 
-  const parser = new WARCParser();
-  let reader = new StreamReader(getReader([input]));
+  let parser = new WARCParser(getReader([input]));
 
-  let response = await parser.parse(reader);
+  let response;
+
+  for await (response of parser) {
+    break;
+  }
 
   t.is(response.warcHeaders.protocol, "WARC/1.1");
 
@@ -252,7 +256,7 @@ test('warc1.1 response and request, status checks', async t => {
 
   t.is(response.warcDate, "2020-04-12T18:42:50.696509Z");
 
-  let request = await parser.parse(reader);
+  let request = await parser.parse();
 
   t.is(request.warcHeaders.protocol, "WARC/1.1");
 
@@ -261,8 +265,9 @@ test('warc1.1 response and request, status checks', async t => {
   t.is(request.warcDate, "2020-04-12T18:42:50.696509Z");
 
   // read again, access in different order
-  reader = new StreamReader(getReader([input]));
-  response = await parser.parse(reader);
+  parser = new WARCParser(getReader([input]));
+
+  response = await parser.parse();
 
   // incorrect accessor, just return protocol
   t.is(response.warcHeaders.verb, "WARC/1.1");
@@ -277,7 +282,7 @@ test('warc1.1 response and request, status checks', async t => {
   t.is(statusText, "Moved Permanently");
   t.is(headers, response.httpHeaders.headers);
 
-  request = await parser.parse(reader);
+  request = await parser.parse();
   t.is(request.httpHeaders.requestPath, "/domains/example");
   t.is(request.httpHeaders.verb, "GET");
 

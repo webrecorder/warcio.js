@@ -1,76 +1,70 @@
-const StatusAndHeadersParser = require('./statusandheaders').StatusAndHeadersParser;
-const WARCRecord = require('./warcrecord').WARCRecord;
-const StreamReader = require('./readers').StreamReader;
+import { StatusAndHeadersParser } from './statusandheaders';
+import { WARCRecord } from './warcrecord';
+import { AsyncIterReader } from './readers';
 
 
 // ===========================================================================
 class WARCParser
 {
-  constructor({strictHeaders = false, parseHttp = true} = {}) {
+  constructor(source, {strictHeaders = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
-    this._length = -1;
 
     this._headersClass = strictHeaders ? Headers : Map;
     this._parseHttp = parseHttp;
 
     this._atRecordBoundary = true;
-    this._stream = null;
+
+    if (!(source instanceof AsyncIterReader)) {
+      source = new AsyncIterReader(source);
+    }
+
+    this._reader = source;
     this._record = null;
 
   }
 
   async readToNextRecord() {
-    if (!this._atRecordBoundary && this._stream && this._record) {
+    if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
-      await this._stream.readSize(4, true);
+      await this._reader.readSize(4, true);
       this._atRecordBoundary = true;
     }
   }
 
-  parse(source) {
-    return this._parse(StreamReader.toStreamReader(source));
-  }
-
-  async _parse(stream) {
+  async parse() {
     await this.readToNextRecord();
 
-    this._offset = stream.getRawOffset();
-    this._stream = stream;
+    this._offset = this._reader.getRawOffset();
 
     const headersParser = new StatusAndHeadersParser();
 
-    const warcHeaders = await headersParser.parse(stream, {headersClass: Headers});
+    const warcHeaders = await headersParser.parse(this._reader, {headersClass: Headers});
 
     if (!warcHeaders) {
       return null;
     }
 
-    this._warcHeadersLength = stream.getReadOffset();
+    this._warcHeadersLength = this._reader.getReadOffset();
 
-    const record = new WARCRecord({warcHeaders, stream});
+    const record = new WARCRecord({warcHeaders, reader: this._reader});
 
     this._atRecordBoundary = false;
     this._record = record;
 
-    if (!this._parseHttp) {
-      return record;
-    }
+    if (this._parseHttp) {
+      switch (record.warcType) {
+        case "response":
+        case "request":
+          await this.addHttpHeaders(record, headersParser, this._reader);
+          break;
 
-    switch (record.warcType) {
-      case "response":
-        await this.addHttpHeaders(record, headersParser, stream);
-        break;
-
-      case "request":
-        await this.addHttpHeaders(record, headersParser, stream);
-        break;
-
-      case "revisit":
-        if (record.warcContentLength > 0) {
-          await this.addHttpHeaders(record, headersParser, stream);
-        }
-        break;
+        case "revisit":
+          if (record.warcContentLength > 0) {
+            await this.addHttpHeaders(record, headersParser, this._reader);
+          }
+          break;
+      }
     }
 
     return record;
@@ -81,28 +75,27 @@ class WARCParser
   }
 
   async recordLength() {
-    await this._record.skipFully();
-    return this._stream.getRawLength(this._offset);
+    const res = await this._record.skipFully();
+    return this._reader.getRawLength(this._offset);
   }
 
-  async* iterRecords(source) {
+  async* [Symbol.asyncIterator]() {
     let record = null;
 
-    this._stream = StreamReader.toStreamReader(source);
-
-    while (record = await this._parse(this._stream)) {
+    while (record = await this.parse(this._reader)) {
       yield record;
     }
 
     this._record = null;
   }
 
-  async addHttpHeaders(record, headersParser, stream) {
-    const httpHeaders = await headersParser.parse(stream, {headersClass: this._headersClass});
-    record.addHttpHeaders(httpHeaders, stream.getReadOffset() - this._warcHeadersLength);
+  async addHttpHeaders(record, headersParser, reader) {
+    const httpHeaders = await headersParser.parse(reader, {headersClass: this._headersClass});
+    record.addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
   }
 }
 
 
 // ===========================================================================
-exports.WARCParser = WARCParser;
+export { WARCParser };
+

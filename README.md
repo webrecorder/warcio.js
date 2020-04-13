@@ -1,36 +1,37 @@
 # warcio.js
 
-Streaming web archive (WARC) file support for JS.
+Streaming web archive (WARC) file support for modern browsers and Node.
 
-This package represents a rough port of the python [warcio](https://github.com/webrecorder/warcio) for JavaScript
-
-The package is optimized for modern browsers as well as Node.
+This package represents an approxipate port Javascript port of the Python [warcio](https://github.com/webrecorder/warcio) module.
 
 [![Build Status](https://travis-ci.com/ikreymer/warcio.js.svg?branch=master)](https://travis-ci.com/ikreymer/warcio.js)
 [![codecov](https://codecov.io/gh/ikreymer/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/ikreymer/warcio.js)
+
 
 ## Browser Usage 
 
 ### Reading WARC Files
 
-The package is designed to work with web streams, in particular [ReadableStream.getReader()](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/getReader)
-to read WARC files incrementally.
+Read operations are performed via async iterators, supporting Node streams and web streams, in particular [ReadableStream.getReader()](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/getReader) to read WARC files incrementally.
 
-Any gzip-compressed records are automatically decompressed using [pako](https://github.com/nodeca/pako) library.
+Gzip-compressed WARC records are automatically decompressed using [pako](https://github.com/nodeca/pako) library.
 
-The below example calls `response.body.getReader()` to access the stream:
+The package uses async iterator and supports ReadableStream, async iterators, and any stream with read() method as input sources.
 
-```javascript
-import { WARCParser } from 'warcio';
+The below example can be used in the browser to parse a streaming WARC file.
 
-...
+
+```html
+<script type="module">
+import { WARCParser } from 'https://unpkg.com/warcio/dist/warcio.js';
+
 
 async function readWARC(url) {
   const response = await fetch(url);
   
-  const parser = new WARCParser();
+  const parser = new WARCParser(response.body);
 
-  for await (const record of parser.iterRecords(response.body)) {
+  for await (const record of parser) {
     // ways to access warc data
     console.log(record.warcType);
     console.log(record.warcTargetURI);
@@ -39,7 +40,13 @@ async function readWARC(url) {
   }
 }
 
+readWARC('https://example.com/path/to/mywarc.warc');
+
+</script>
+
 ```
+
+
 ### Streaming WARCs in the Browser
 
 A key property of `warcio.js` is to support streaming WARC records from a server via a ServiceWorker.
@@ -71,7 +78,7 @@ async function streamWARCRecord(url) {
 
 ## Node Usage
 
-Although designed for the browser, `warcio.js` should also work in Node, though it does not using native Node streams or native zlib.
+`warcio.js` can also be used in Node, though it does not use the native zlib (due to a limitation with indexing multi-member zip files).
 
 After installing the package, for example, with `yarn add warcio`, the above example could be run as follows in Node:
 
@@ -82,11 +89,11 @@ const fs = require('fs');
 
 
 async function readWARC(filename) {
-  const rawStream = fs.createReadStream(filename);
+  const nodeStream = fs.createReadStream(filename);
 
-  const parser = new WARCParser();
+  const parser = new WARCParser(nodeStream);
 
-  for await (const record of parser.iterRecords(rawStream)) {
+  for await (const record of parser) {
     // ways to access warc data
     console.log(record.warcType);
     console.log(record.warcTargetURI);
@@ -96,12 +103,16 @@ async function readWARC(filename) {
 }
 ```
 
+To build the browser-packaged files in `dist/`, run `yarn run build`.
+
+To run tests, run `yarn run test`.
+
 
 ## CLI Indexing Tools
 
 ### index
 
-The tool does includes command-line interface which can be used in node to index WARC files (similar to python `warcio index`)
+The tool does includes command-line interface which can be used in Node to index WARC files (similar to python `warcio index`)
 
 ```
 warcio.js index <path-to-warc> --fields <comma,sep,fields>
@@ -134,8 +145,9 @@ com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit",
 The indexers can also be used programmatically, including in the browser.
 The following example provides a writer that outputs each entry to the console.
 
-```javascript
-import { CDXIndexer } from 'warcio';
+```html
+<script type="module">
+import { CDXIndexer } from 'https://unpkg.com/warcio/dist/warcio.js';
 
 async function indexWARC(url) {
   const response = await fetch(url);
@@ -147,11 +159,14 @@ async function indexWARC(url) {
   
   await indexer.run([{stream: response.body, filename: url}]);
 }
+
+indexWARC('https://example.com/path/to/mywarc.warc');
+</script>
 ```
 
 ## Work in Progress
 
-This library is still a small prototype. Core functionality not yet implemented in `warcio.js` compared to python `warcio`:
+This library is still a work-in-progress. Some functionality not yet implemented in `warcio.js` compared to python `warcio` includes:
 - Writing WARC files
 - Chunked Decoding
 - Reading ARC files
@@ -163,7 +178,7 @@ This library is still a small prototype. Core functionality not yet implemented 
 
 The [node-warc](https://github.com/N0taN3rd/node-warc) package is optimized for use in Node specifically. `node-warc` also includes various capture utilities which are out of scope for `warcio.js`.
 
-`warcio.js` is intended to run in browser and in node, and to have an interface comparable to the python `warcio`.
+`warcio.js` is intended to run in browser and in Node, and to have an interface comparable to the python `warcio`.
 
 Wherever possible, an attempt is made to maintain compatibility. For example, the WARC record accessors, `record.warcType`, `record.warcTargetURI` in `warcio.js` are compatible with the ones used in `node-warc`.
 

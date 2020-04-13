@@ -4,7 +4,7 @@ import test from 'ava';
 
 import pako from 'pako';
 
-import { LimitReader, StreamReader } from '../index';
+import { LimitReader, AsyncIterReader } from '../index';
 
 import { getReader } from './utils';
 
@@ -14,13 +14,10 @@ const encoder = new TextEncoder("utf-8");
 
 // ===========================================================================
 async function readLines(t, input, expected) {
-  const stream = new StreamReader(getReader(input));
-
-  let line;
-
+  const reader = new AsyncIterReader(getReader(input));
   const output = [];
 
-  for await (const line of await stream.iterLines()) {
+  for await (const line of await reader.iterLines()) {
     output.push(line);
   }
 
@@ -81,20 +78,20 @@ async function _readDecomp(t, chunks, expectedOffsets, splitSize) {
     }
   }
 
-  const stream = new StreamReader(getReader(splits));
+  const reader = new AsyncIterReader(getReader(splits));
 
-  //const stream = new StreamReader(decomp);
+  //const reader = new AsyncIterReader(decomp);
 
-  //let chunk = await stream.read();
+  //let chunk = await reader.read();
 
   const buff = [];
 
   const offsets = [];
 
-  for await (const chunk of stream.iterChunks()) {
-    offsets.push(stream.getRawOffset());
+  for await (const chunk of reader) {
+    offsets.push(reader.getRawOffset());
     buff.push(decoder.decode(chunk));
-    //chunk = await stream.read();
+    //chunk = await reader.read();
   }
 
   //t.is(buff, chunks.join(""));
@@ -113,16 +110,16 @@ async function _readDecomp(t, chunks, expectedOffsets, splitSize) {
 async function readDecompFully(t, chunks, expected) {
   const input = compressMembers(chunks);
 
-  const stream = new StreamReader(getReader([input]));
+  const reader = new AsyncIterReader(getReader([input]));
 
-  t.deepEqual(decoder.decode(await stream.readFully()), expected);
+  t.deepEqual(decoder.decode(await reader.readFully()), expected);
 }
 
 async function readDecompTypes(t, chunk, expected, methods) {
   for (const [decompress, compress, match] of methods) {
     const input = compressMembers([chunk], compress);
-    const stream = new StreamReader(getReader([input]), decompress);
-    const result = decoder.decode(await stream.readFully());
+    const reader = new AsyncIterReader(getReader([input]), decompress);
+    const result = decoder.decode(await reader.readFully());
     
     if (match) {
       t.is(result, expected, JSON.stringify([compress, decompress, match]));
@@ -135,13 +132,13 @@ async function readDecompTypes(t, chunk, expected, methods) {
 async function readDecompLines(t, chunks, expected) {
   const input = compressMembers(chunks);
 
-  const stream = new StreamReader(getReader([input]));
+  const reader = new AsyncIterReader(getReader([input]));
 
-  //const stream = new StreamReader(decomp);
+  //const reader = new AsyncIterReader(decomp);
 
   const lines = [];
 
-  for await (const line of await stream.iterLines()) {
+  for await (const line of await reader.iterLines()) {
     lines.push(line);
   }
 
@@ -151,18 +148,19 @@ async function readDecompLines(t, chunks, expected) {
 
 async function readChunkSizes(t, chunks, sizes, expected) {
   const inputs = [[compressMembers(chunks)], chunks];
+  //const inputs = [[compressMembers(chunks)]];
 
   for (const input of inputs) {
-    const stream = new StreamReader(getReader(input));
+    const reader = new AsyncIterReader(getReader(input));
 
     const readChunks = [];
 
     for (const size of sizes) {
       let chunk = null;
       if (size === "line") {
-        chunk = await stream.readline();
+        chunk = await reader.readline();
       } else {
-        chunk = decoder.decode(await stream.readSize(size));
+        chunk = decoder.decode(await reader.readSize(size));
       }
       readChunks.push(chunk);
     }
@@ -173,7 +171,7 @@ async function readChunkSizes(t, chunks, sizes, expected) {
 
 async function readWithLimit(t, chunks, limit, offset, expected) {
 
-  const reader = new LimitReader(new StreamReader(getReader(chunks)), limit, offset);
+  const reader = new LimitReader(new AsyncIterReader(getReader(chunks)), limit, offset);
 
   const value =  await reader.readFully();
 
@@ -181,7 +179,7 @@ async function readWithLimit(t, chunks, limit, offset, expected) {
 
   t.deepEqual(output, expected);
 
-  const res = await reader.read();
+  const res = await reader[Symbol.asyncIterator]().next();
   t.is(res.done, true);
 }
 
@@ -369,23 +367,55 @@ test('LimitReader, offset >1 chunk', readWithLimit,
   'ven More Data');
 
 
-test('toStreamReader conversions, misc edge cases', async t => {
+test('AsyncIterReader conversions', async t => {
+  async function* iterData() {
+    yield encoder.encode('test\n');
+    yield encoder.encode('data\n');
+  }
 
-  t.is(StreamReader.toStreamReader(null), null);
-  t.is(StreamReader.toStreamReader('x'), null);
+  const iter = iterData();
+  const res2 = new AsyncIterReader(iter);
+  t.true(res2 instanceof AsyncIterReader);
+  t.is(res2._sourceIter, iter);
 
-  const res = StreamReader.toStreamReader(getReader(['abc']));
-  t.true(res instanceof StreamReader);
+  t.is(await res2.readline(), 'test\n');
+  t.is(await res2.readline(), 'data\n');
+
+  t.throws(() => new AsyncIterReader('x'), {"message": "Invalid Stream Source"});
+
 });
 
 test('skip fully', async t => {
-  const res = StreamReader.toStreamReader(getReader(['abc']));
+  const res = new AsyncIterReader(getReader(['abc']));
   t.is(await res.readSize(-1, true), 3);
   t.is(await res.readSize(-1, true), 0);
   t.deepEqual(await res.readSize(-1, false), new Uint8Array());
 });
 
+test('getReadableStream', async t => {
+
+  const reader = new AsyncIterReader(getReader(['some\ntext']));
+  const reader2 = new AsyncIterReader(reader.getReadableStream());
+  t.is(decoder.decode(await reader2.readFully()), "some\ntext");
+});
 
 
+test('readsize + readsize', async t => {
+  const reader = new AsyncIterReader(getReader(['test\ndata']));
 
+  t.is(decoder.decode(await reader.readSize(3)), "tes");
+  t.is(await reader.readline(), "t\n");
+  t.is(decoder.decode(await reader.readSize(2)), "da");
+  t.is(await reader.readline(), "ta");
+});
+
+test('readline + readsize', async t => {
+  const reader = new AsyncIterReader(getReader(['test\ndata\ndata']));
+
+  t.is(await reader.readline(), "test\n");
+  t.is(await reader.readline(), "data\n");
+  t.is(decoder.decode(await reader.readSize(3)), "dat");
+  t.is(await reader.readline(), "a");
+  t.is(decoder.decode(await reader.readSize(2)), "");
+});
 

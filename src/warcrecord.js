@@ -1,14 +1,14 @@
-const LimitReader = require('./readers').LimitReader;
+import { LimitReader } from './readers';
 
 
 // ===========================================================================
 class WARCRecord
 {
-  constructor({warcHeaders, stream}) {
+  constructor({warcHeaders, reader}) {
     this.warcHeaders = warcHeaders;
     this.headersLen = 0;
 
-    this.stream = new LimitReader(stream, this.warcContentLength);
+    this.reader = new LimitReader(reader, this.warcContentLength);
 
     this.payload = null;
     this.httpHeaders = null;
@@ -22,7 +22,7 @@ class WARCRecord
     this.httpHeaders = httpHeaders;
     this.headersLen = headersLen;
 
-    this.stream.setLimitSkip(this.warcContentLength - this.headersLen);
+    this.reader.setLimitSkip(this.warcContentLength - this.headersLen);
   }
 
   getResponseInfo() {
@@ -41,19 +41,7 @@ class WARCRecord
   }
 
   getReadableStream() {
-    const stream = this.stream;
-    return new ReadableStream({
-      pull(controller) {
-        return stream.read().then((result) => {
-          // all done;
-          if (result.done || !result.value) {
-            controller.close();
-          } else {
-            controller.enqueue(result.value);
-          }
-        });
-      }
-    });
+    return this.reader.getReadableStream();
   }
 
   fixUp() {
@@ -69,7 +57,7 @@ class WARCRecord
       return this.payload;
     }
 
-    this.payload = await this.stream.readFully();
+    this.payload = await this.reader.readFully();
     this.consumed = true;
     return this.payload;
   }
@@ -79,8 +67,9 @@ class WARCRecord
       return;
     }
 
-    await this.stream.skipFully();
+    const res = await this.reader.skipFully();
     this.consumed = true;
+    return res;
   }
 
   warcHeader(name) {
@@ -122,5 +111,5 @@ class WARCRecord
 
 
 // ===========================================================================
-exports.WARCRecord = WARCRecord;
+export { WARCRecord };
 
