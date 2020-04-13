@@ -12,7 +12,6 @@ class WARCRecord
 
     this.payload = null;
     this.httpHeaders = null;
-    this.httpInfo = null;
 
     this.consumed = false;
 
@@ -24,10 +23,37 @@ class WARCRecord
     this.headersLen = headersLen;
 
     this.stream.setLimitSkip(this.warcContentLength - this.headersLen);
+  }
 
-    this.httpInfo = {headers: httpHeaders.headers,
-                     statusCode: httpHeaders.statusCode(),
-                     statusReason: httpHeaders.statusText};
+  getResponseInfo() {
+    const httpHeaders = this.httpHeaders;
+
+    if (!httpHeaders) {
+      return null;
+    }
+
+    // match parameters for Response(..., initOpts);
+    return {
+      headers: httpHeaders.headers,
+      status: httpHeaders.statusCode,
+      statusText: httpHeaders.statusText
+    }
+  }
+
+  getReadableStream() {
+    const stream = this.stream;
+    return new ReadableStream({
+      pull(controller) {
+        return stream.read().then((result) => {
+          // all done;
+          if (result.done || !result.value) {
+            controller.close();
+          } else {
+            controller.enqueue(result.value);
+          }
+        });
+      }
+    });
   }
 
   fixUp() {

@@ -1,0 +1,56 @@
+WARC/1.1
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:29ef166a-ff44-4ff3-8158-0d1094ce7591>
+WARC-Target-URI: https://www.iana.org/domains/example
+WARC-Date: 2020-04-12T18:42:50.696509Z
+WARC-Payload-Digest: sha1:7NANJL7HGR4ESG7QW23AI5YXNPIJECAN
+WARC-Block-Digest: sha1:2PLPXGERFGKBMBIJCGMM7P2RUXSHYN6O
+Content-Type: application/http; msgtype=response
+Content-Length: 794
+
+HTTP/1.1 301 Moved Permanently
+Date: Sun, 12 Apr 2020 12:59:16 GMT
+Server: Apache
+Vary: Accept-Encoding
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: origin-when-cross-origin
+Content-Security-Policy: upgrade-insecure-requests
+Location: https://www.iana.org/domains/reserved
+Cache-Control: public, max-age=21603
+Expires: Sun, 12 Apr 2020 14:59:16 GMT
+Content-Length: 245
+Age: 20614
+Keep-Alive: timeout=5, max=100
+Connection: Keep-Alive
+Content-Type: text/html; charset=iso-8859-1
+Strict-Transport-Security: max-age=48211200; preload
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>301 Moved Permanently</title>
+</head><body>
+<h1>Moved Permanently</h1>
+<p>The document has moved <a href="https://www.iana.org/domains/reserved">here</a>.</p>
+</body></html>
+
+
+WARC/1.1
+WARC-Type: request
+WARC-Record-ID: <urn:uuid:b756355a-d372-49a6-88b3-ec3c86df7a25>
+WARC-Target-URI: https://www.iana.org/domains/example
+WARC-Date: 2020-04-12T18:42:50.696509Z
+WARC-Payload-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ
+WARC-Concurrent-To: <urn:uuid:29ef166a-ff44-4ff3-8158-0d1094ce7591>
+WARC-Block-Digest: sha1:5ZJ2HQNMEG3IVGJK4MHVLUFUXVXWG2EP
+Content-Type: application/http; msgtype=request
+Content-Length: 158
+
+GET /domains/example HTTP/1.1
+Host: www.iana.org
+Connection: keep-alive
+Accept-Encoding: gzip, deflate
+Accept: */*
+User-Agent: python-requests/2.21.0
+
+
+

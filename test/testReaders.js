@@ -369,3 +369,23 @@ test('LimitReader, offset >1 chunk', readWithLimit,
   'ven More Data');
 
 
+test('toStreamReader conversions, misc edge cases', async t => {
+
+  t.is(StreamReader.toStreamReader(null), null);
+  t.is(StreamReader.toStreamReader('x'), null);
+
+  const res = StreamReader.toStreamReader(getReader(['abc']));
+  t.true(res instanceof StreamReader);
+});
+
+test('skip fully', async t => {
+  const res = StreamReader.toStreamReader(getReader(['abc']));
+  t.is(await res.readSize(-1, true), 3);
+  t.is(await res.readSize(-1, true), 0);
+  t.deepEqual(await res.readSize(-1, false), new Uint8Array());
+});
+
+
+
+
+

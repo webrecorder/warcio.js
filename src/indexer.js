@@ -62,7 +62,7 @@ class BaseIndexer
   getField(field, record) {
     if (field === "http:status") {
       if (record.httpHeaders && (record.warcType === "response" || record.warcType === "revisit")) {
-        return record.httpHeaders.statusCode();
+        return record.httpHeaders.statusCode;
       }
       return null;
     }

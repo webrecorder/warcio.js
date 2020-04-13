@@ -45,38 +45,26 @@ async function readWARC(url) {
 
 A key property of `warcio.js` is to support streaming WARC records from a server via a ServiceWorker.
 
-For example, the following could be used to load a WARC record, parse headers, and return a streaming `Response` from a ServiceWorker. The response continues reading from the upstream source.
+For example, the following could be used to load a WARC record, parse the HTTP headers, and return a streaming `Response` from a ServiceWorker.
+
+The response continues reading from the upstream source.
 
 ```javascript
-import { WARCParser, StreamReader } from 'warcio';
+import { WARCParser } from 'warcio';
 
 async function streamWARCRecord(url) {
   const response = await fetch(url);
  
-  const reader = new StreamReader(response.body.getReader());
-  
   const parser = new WARCParser();
   
-  // parse WARC record, which includes WARC headers and http headers
-  const record = await parser.parse(reader);
+  // parse WARC record, which includes WARC headers and HTTP headers
+  const record = await parser.parse(response.body);
   
-  const [status, statusText] = record.httpHeaders.statusline.split(' ');
-  const headers = record.httpHeaders.headers;
-  
-  const rs = new ReadableStream({
-    pull(controller) {
-      return record.stream.read().then((result) => {
-        // all done;
-        if (result.done || !result.value) {
-          controller.close();
-        } else {
-          controller.enqueue(result.value);
-        }
-      });
-    }
-  });
-  
-  return new Response(rs, {status, statusText, headers});
+  // get the response options for Response constructor
+  const {status, statusText, headers} = record.getResponseInfo();
+ 
+  // get a ReadableStream from the WARC record and return streaming response
+  return new Response(record.getReadableStream(), {status, statusText, headers});
 }
 ```
   
@@ -164,18 +152,19 @@ async function indexWARC(url) {
 
 ## Work in Progress
 
-This library is still a small prototype. Core functionality still missing functionality (compared to python warcio):
+This library is still a small prototype. Core functionality not yet implemented in `warcio.js` compared to python `warcio`:
 - Writing WARC files
 - Chunked Decoding
-- ARC files
+- Reading ARC files
+- Digest computation.
 - URL canonicalization
+
 
 ## Differences from node-warc
 
-While a great library for node, the [node-warc](https://github.com/N0taN3rd/node-warc) package is optimized for use in Node specifically. `node-warc` also includes various capture utilities which are out of scope for `warcio.js`
+The [node-warc](https://github.com/N0taN3rd/node-warc) package is optimized for use in Node specifically. `node-warc` also includes various capture utilities which are out of scope for `warcio.js`.
 
-`warcio.js` is intended to run in browser and in node, and to have an interface comparable to the python `warcio`
-Node-warc includes various capture utilities that are missing from warcio.
+`warcio.js` is intended to run in browser and in node, and to have an interface comparable to the python `warcio`.
 
 Wherever possible, an attempt is made to maintain compatibility. For example, the WARC record accessors, `record.warcType`, `record.warcTargetURI` in `warcio.js` are compatible with the ones used in `node-warc`.
 

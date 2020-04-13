@@ -226,9 +226,7 @@ class StreamReader {
             chunks.push(first);
           }
           size += first.byteLength;
-          if (remainder.length > 0) {
-            this._savedChunk = remainder;
-          }
+          this._savedChunk = remainder;
           break;
         } else if (chunk.length === sizeLimit) {
           if (!skip) {
@@ -249,7 +247,7 @@ class StreamReader {
 
     this._readOffset += size;
 
-    return skip ? null : concatChunks(chunks, size);
+    return skip ? size : concatChunks(chunks, size);
   }
 
   getReadOffset() {
@@ -263,20 +261,60 @@ class StreamReader {
   getRawLength(prevOffset) {
     return this.compressed ? this.inflator.strm.total_in : this._readOffset - prevOffset;
   }
+
+  static toStreamReader(source) {
+    // check for null
+    if (!source) {
+      return null;
+    }
+
+    // already StreamReader, use as is
+    if (source instanceof StreamReader) {
+      return source;
+    }
+
+    // web stream
+    if (typeof(source.getReader) === "function") {
+      return new StreamReader(source.getReader());
+    } else if (typeof(source[Symbol.asyncIterator]) === "function") {
+    // node stream with async iter support
+      return StreamReader.fromAsyncIter(source);
+    } else if (typeof(source.read) === "function") {
+    // assume object itself is a Readable
+      return new StreamReader(source);
+    } else {
+      return null;
+    }
+  }
+
+  static fromAsyncIter(stream) {
+    class WrapAsyncIter
+    {
+      constructor(stream) {
+        this.iter = stream[Symbol.asyncIterator]();
+      }
+
+      async read() {
+        return await this.iter.next();
+      }
+    }
+
+    return new StreamReader(new WrapAsyncIter(stream));
+  }
 }
 
 
 // ===========================================================================
 class LimitReader
 {
-  constructor(stream, limit = -1, skip = 0) {
+  constructor(stream, limit, skip = 0) {
     this.stream = stream;
     this.length = limit;
     this.limit = limit;
     this.skip = skip;
   }
 
-  setLimitSkip(limit = -1, skip = 0) {
+  setLimitSkip(limit, skip = 0) {
     this.limit = limit;
     this.skip = skip;
   }
@@ -287,7 +325,7 @@ class LimitReader
     }
 
     let res = await this.stream.read();
-    let chunk = res ? res.value : null;
+    let chunk = res.value;
 
     while (this.skip > 0) {
       if (chunk.length >= this.skip) {
@@ -307,9 +345,7 @@ class LimitReader
         const [first, remainder] = splitChunk(chunk, this.limit);
         chunk = first;
 
-        if (remainder.length > 0) {
-          this.stream._unread(remainder);
-        }
+        this.stream._unread(remainder);
       }
       this.limit -= chunk.length;
     }
@@ -337,7 +373,10 @@ class LimitReader
     let res;
     let chunk;
 
-    while (res = await this.read(), chunk = res.value);
+    while (this.limit > 0) {
+      this.limit -= this.stream.readSize(this.limit, true);
+    }
+    //while (res = await this.read(), chunk = res.value);
   }
 }
 

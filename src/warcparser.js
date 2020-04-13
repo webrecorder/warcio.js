@@ -1,6 +1,6 @@
 const StatusAndHeadersParser = require('./statusandheaders').StatusAndHeadersParser;
 const WARCRecord = require('./warcrecord').WARCRecord;
-const toStreamReader = require('./utils').toStreamReader;
+const StreamReader = require('./readers').StreamReader;
 
 
 // ===========================================================================
@@ -28,8 +28,8 @@ class WARCParser
     }
   }
 
-  parse(streamOrReader) {
-    return this._parse(toStreamReader(streamOrReader));
+  parse(source) {
+    return this._parse(StreamReader.toStreamReader(source));
   }
 
   async _parse(stream) {
@@ -85,10 +85,10 @@ class WARCParser
     return this._stream.getRawLength(this._offset);
   }
 
-  async* iterRecords(streamOrReader) {
+  async* iterRecords(source) {
     let record = null;
 
-    this._stream = toStreamReader(streamOrReader);
+    this._stream = StreamReader.toStreamReader(source);
 
     while (record = await this._parse(this._stream)) {
       yield record;

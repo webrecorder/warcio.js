@@ -120,9 +120,9 @@ text\r\n\
 
   const parser = new WARCParser();
 
-  const stream = new StreamReader(getReader([input]));
+  let reader = new StreamReader(getReader([input]));
 
-  const record0 = await parser.parse(stream);
+  const record0 = await parser.parse(reader);
 
   t.is(record0.warcType, "warcinfo");
 
@@ -134,20 +134,28 @@ format: WARC File Format 1.0\r\n\
 json-metadata: {"foo": "bar"}\r\n\
 `);
 
-  const record = await parser.parse(stream);
+  const record = await parser.parse(reader);
 
   t.is(record.warcTargetURI, "http://example.com/");
 
   t.is(decoder.decode(await record.readFully()), "some\ntext");
 
-  const record2 = await parser.parse(stream);
+  const record2 = await parser.parse(reader);
 
   t.is(decoder.decode(await record2.readFully()), "more\ntext");
 
-  t.is(await parser.parse(stream), null);
+  t.is(await parser.parse(reader), null);
 
   // reread payload
   t.is(decoder.decode(await record.readFully()), "some\ntext");
+
+
+  // reread via getReadableStream
+  reader = new StreamReader(getReader([input]));
+  const record3 = await parser.parse(reader);
+  const record4 = await parser.parse(reader);
+  const reader2 = new StreamReader(record4.getReadableStream().getReader());
+  t.is(decoder.decode(await reader2.readFully()), "some\ntext");
 
 });
 
@@ -186,7 +194,6 @@ Content-Length: 0\r\n\
   t.is(record.warcContentLength, 0);
 
   t.is(record.httpHeaders, null);
-
 });
 
 
@@ -219,7 +226,59 @@ text\r\n\
   const record = await parser.parse(getReader([input]));
 
   t.is(record.warcContentLength, 268);
-  t.true(record.warcHeaders !== null);
-  t.true(record.httpHeaders === null);
+  t.not(record.warcHeaders, null);
+  t.is(record.httpHeaders, null);
+
+  t.is(record.getResponseInfo(), null);
+
+});
+
+
+test('warc1.1 response and request, status checks', async t => {
+  const fs = require('fs');
+  const path = require('path');
+  const input = fs.readFileSync(path.join(__dirname, 'data', 'redirect.warc'), 'utf-8')
+
+  const parser = new WARCParser();
+  let reader = new StreamReader(getReader([input]));
+
+  let response = await parser.parse(reader);
+
+  t.is(response.warcHeaders.protocol, "WARC/1.1");
+
+  t.is(response.httpHeaders.protocol, "HTTP/1.1");
+  t.is(response.httpHeaders.statusCode, 301);
+  t.is(response.httpHeaders.statusText, "Moved Permanently");
+
+  t.is(response.warcDate, "2020-04-12T18:42:50.696509Z");
+
+  let request = await parser.parse(reader);
+
+  t.is(request.warcHeaders.protocol, "WARC/1.1");
+
+  t.is(request.httpHeaders.verb, "GET");
+  t.is(request.httpHeaders.requestPath, "/domains/example");
+  t.is(request.warcDate, "2020-04-12T18:42:50.696509Z");
+
+  // read again, access in different order
+  reader = new StreamReader(getReader([input]));
+  response = await parser.parse(reader);
+
+  // incorrect accessor, just return protocol
+  t.is(response.warcHeaders.verb, "WARC/1.1");
+
+  t.is(response.httpHeaders.statusText, "Moved Permanently");
+  t.is(response.httpHeaders.protocol, "HTTP/1.1");
+
+  t.not(response.getResponseInfo(), null);
+
+  const {status, statusText, headers} = response.getResponseInfo();
+  t.is(status, 301);
+  t.is(statusText, "Moved Permanently");
+  t.is(headers, response.httpHeaders.headers);
+
+  request = await parser.parse(reader);
+  t.is(request.httpHeaders.requestPath, "/domains/example");
+  t.is(request.httpHeaders.verb, "GET");
 
 });
