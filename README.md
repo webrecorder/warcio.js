@@ -12,13 +12,12 @@ This package represents an approxipate port Javascript port of the Python [warci
 
 ### Reading WARC Files
 
-Read operations are performed via async iterators, supporting Node streams and web streams, in particular [ReadableStream.getReader()](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/getReader) to read WARC files incrementally.
+warcio.js is designed to read WARC files incrementally using async iterators.
+Browser streams via [ReadableStream](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) are also supported.
 
 Gzip-compressed WARC records are automatically decompressed using [pako](https://github.com/nodeca/pako) library.
 
-The package uses async iterator and supports ReadableStream, async iterators, and any stream with read() method as input sources.
-
-The below example can be used in the browser to parse a streaming WARC file.
+The below example can be used in the browser to parse a streaming WARC file:
 
 
 ```html
@@ -41,30 +40,34 @@ async function readWARC(url) {
 }
 
 readWARC('https://example.com/path/to/mywarc.warc');
-
 </script>
 
 ```
+
+The `WARCParser()` constructor accepts any async iterator or object with a [ReadableStream.getReader()](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/getReader) style `read()` method.
 
 
 ### Streaming WARCs in the Browser
 
 A key property of `warcio.js` is to support streaming WARC records from a server via a ServiceWorker.
 
-For example, the following could be used to load a WARC record, parse the HTTP headers, and return a streaming `Response` from a ServiceWorker.
+For example, the following could be used to load a single WARC record (via a Range request), parse the HTTP headers, and return a streaming `Response` from a ServiceWorker.
 
 The response continues reading from the upstream source.
 
 ```javascript
-import { WARCParser } from 'warcio';
+import { WARCParser } from 'https://unpkg.com/warcio/dist/warcio.js';
 
-async function streamWARCRecord(url) {
-  const response = await fetch(url);
- 
-  const parser = new WARCParser();
+
+async function streamWARCRecord(url, offset, length) {
+  const response = await fetch(url, {
+    "headers":  {"Range": `bytes=${offset}-${offset + length - 1}`}
+  });
+
+  const parser = new WARCParser(response.body);
   
   // parse WARC record, which includes WARC headers and HTTP headers
-  const record = await parser.parse(response.body);
+  const record = await parser.parse();
   
   // get the response options for Response constructor
   const {status, statusText, headers} = record.getResponseInfo();
@@ -78,7 +81,7 @@ async function streamWARCRecord(url) {
 
 ## Node Usage
 
-`warcio.js` can also be used in Node, though it does not use the native zlib (due to a limitation with indexing multi-member zip files).
+`warcio.js` can also be used in Node, though it does not use the native zlib (due to a limitation with indexing multi-member gzip files).
 
 After installing the package, for example, with `yarn add warcio`, the above example could be run as follows in Node:
 
