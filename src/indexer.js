@@ -17,6 +17,10 @@ class BaseIndexer
     this.out.write(JSON.stringify(result) + "\n");
   }
 
+  writeRaw(result) {
+    this.out.write(result);
+  }
+
   async run(files) {
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
@@ -84,6 +88,7 @@ class Indexer extends BaseIndexer
 {
   constructor(opts, out) {
     super(opts, out);
+
     if (!opts.fields) {
       this.fields = DEFAULT_FIELDS;
       this.parseHttp = false;
@@ -97,6 +102,10 @@ class Indexer extends BaseIndexer
           break;
         }
       }
+    }
+
+    if (opts.format === "raw") {
+      this.write = this.writeRaw;
     }
   }
 }
@@ -123,6 +132,10 @@ class CDXIndexer extends Indexer
 
       case "cdx":
         this.write = this.writeCDX11;
+        break;
+
+      case "raw":
+        this.write = this.writeRaw;
         break;
 
       case "json":

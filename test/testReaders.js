@@ -4,7 +4,7 @@ import test from 'ava';
 
 import pako from 'pako';
 
-import { LimitReader, AsyncIterReader } from '../index';
+import { LimitReader, AsyncIterReader } from '../main';
 
 import { getReader } from './utils';
 

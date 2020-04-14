@@ -5,7 +5,7 @@ require = require("esm")(module);
 // ===========================================================================
 /* istanbul ignore if */
 if (require.main === module) {
-  require("./cli_main.js").main();
+  require("./src/cli_main.js").main();
 }
 
 

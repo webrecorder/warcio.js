@@ -2,7 +2,7 @@
 
 import test from 'ava';
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser } from '../index';
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser } from '../main';
 
 import { getReadableStream, getReader } from './utils';
 

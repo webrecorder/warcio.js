@@ -144,11 +144,14 @@ warcio.js cdx-index ./test/data/example.warc
 com,example)/ 20170306040206 {"url":"http://example.com/","mime":"text/html","status":200,"digest":"G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK","length":1365,"offset":1189,"filename":"example.warc"}
 com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit","status":200,"digest":"G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK","length":942,"offset":3354,"filename":"example.warc"
 ```
-### Programmatic usage
+### Programmatic Usage
 
-The indexers can also be used programmatically, including in the browser.
+The indexers can also be used programmatically, both in the browser and in Node with a custom writer.
 
-The following example provides a writer that outputs each [CDXJ](https://pywb.readthedocs.io/en/latest/manual/indexing.html#cdxj-format) entry to the console.
+The `raw` format specifies for a raw CDX object to be passed to the `write()` function (otherwise a formatted json/cdxj/cdx string is passed in).
+
+For example, the following snippet demonstrates a writer that logs all HTML files in a WARC:
+
 
 ```html
 <script type="module">
@@ -156,12 +159,14 @@ import { CDXIndexer } from 'https://unpkg.com/warcio/dist/warcio.js';
 
 async function indexWARC(url) {
   const response = await fetch(url);
-  const indexer = new CDXIndexer({format: 'cdxj'}, {
+  const indexer = new CDXIndexer({format: 'raw'}, {
     write(cdx) {
-      console.log(cdx);
+      if (cdx['mime'] === 'text/html') {
+        console.log(cdx['url'] + ' is an HTML page');
+      }
     }
   });
-  
+ 
   await indexer.run([{reader: response.body, filename: url}]);
 }
 
@@ -169,14 +174,18 @@ indexWARC('https://example.com/path/to/mywarc.warc');
 </script>
 ```
 
-## Not yet implemented
+## Not Yet Implemented
 
-This library is still new and some functionality is 'not yet implemented' when compared to python `warcio` including.
-- Writing WARC files
-- Chunked Decoding
-- Reading ARC files
-- Digest computation.
-- URL canonicalization
+This library is still new and some functionality is 'not yet implemented' when compared to python `warcio` including:
+
+- Writing WARC files [#2](https://github.com/ikreymer/warcio.js/issues/2)
+- Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)
+- Brotli Payload Decoding [#4](https://github.com/ikreymer/warcio.js/issues/4)
+- Reading ARC files [#5](https://github.com/ikreymer/warcio.js/issues/5)
+- Digest computation [#6](https://github.com/ikreymer/warcio.js/issues/6)
+- URL canonicalization [#7](https://github.com/ikreymer/warcio.js/issues/7)
+
+They should eventually be added in future versions. See the referenced issues to track progress on each of these items.
 
 
 ## Differences from node-warc
