@@ -460,7 +460,7 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength = 0) {
-    this.sourceIter.readline(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+    return await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
   }
 
   async skipFully() {

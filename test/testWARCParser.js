@@ -241,8 +241,11 @@ text\r\n\
 
   t.is(record.getResponseInfo(), null);
 
+  const statusline = "HTTP/1.0 200 OK\r\n";
+  t.is(await record.reader.readline(), statusline)
+
   for await (const chunk of record) {
-    t.is(chunk.length, 268);
+    t.is(chunk.length, 268 - statusline.length + 4);
   }
 });
 
@@ -322,7 +325,7 @@ test('chunked warc read', async t => {
 
   t.is(text.split("\n")[0], "<html>");
 
-  await t.throwsAsync(async () => await record.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+  await t.throwsAsync(async () => await record.reader.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
 
   t.not(await record.readFully(true), null);
 

@@ -115,7 +115,7 @@ class WARCRecord extends BaseAsyncIterReader
     return new AsyncIterReader(source, contentEnc, chunked);
   }
 
-  async readlineRaw(maxLength = 0) {
+  async readlineRaw(maxLength) {
     return this.contentReader.readlineRaw(maxLength);
   }
 
