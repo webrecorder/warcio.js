@@ -275,7 +275,7 @@ test('warc1.1 response and request, status checks', async t => {
 
   t.is(request.warcHeaders.protocol, "WARC/1.1");
 
-  t.is(request.httpHeaders.verb, "GET");
+  t.is(request.httpHeaders.method, "GET");
   t.is(request.httpHeaders.requestPath, "/domains/example");
   t.is(request.warcDate, "2020-04-12T18:42:50.696509Z");
 
@@ -285,7 +285,7 @@ test('warc1.1 response and request, status checks', async t => {
   response = await parser.parse();
 
   // incorrect accessor, just return protocol
-  t.is(response.warcHeaders.verb, "WARC/1.1");
+  t.is(response.warcHeaders.method, "WARC/1.1");
 
   t.is(response.httpHeaders.statusText, "Moved Permanently");
   t.is(response.httpHeaders.protocol, "HTTP/1.1");
@@ -299,7 +299,7 @@ test('warc1.1 response and request, status checks', async t => {
 
   request = await parser.parse();
   t.is(request.httpHeaders.requestPath, "/domains/example");
-  t.is(request.httpHeaders.verb, "GET");
+  t.is(request.httpHeaders.method, "GET");
 
 });
 
@@ -309,7 +309,7 @@ test('chunked warc read', async t => {
   const path = require('path');
   const input = fs.readFileSync(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'), 'utf-8')
 
-  const parser = new WARCParser(getReader(input), {strictHeaders: true});
+  const parser = new WARCParser(getReader(input));
 
   await parser.parse();
   const record = await parser.parse();

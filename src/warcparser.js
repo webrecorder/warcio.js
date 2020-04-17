@@ -6,11 +6,11 @@ import { AsyncIterReader } from './readers';
 // ===========================================================================
 class WARCParser
 {
-  constructor(source, {strictHeaders = false, parseHttp = true} = {}) {
+  constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
 
-    this._headersClass = strictHeaders ? Headers : Map;
+    this._headersClass = keepHeadersCase ? Map : Headers;
     this._parseHttp = parseHttp;
 
     this._atRecordBoundary = true;
