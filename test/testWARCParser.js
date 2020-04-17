@@ -148,7 +148,14 @@ json-metadata: {"foo": "bar"}\r\n\
   t.is(await parser.parse(), null);
 
   // reread payload
-  t.is(decoder.decode(await record.readFully()), "some\ntext");
+  t.is(await record.contentText(), "some\ntext");
+
+  // iterate should return null
+  let count = 0;
+  for await (const chunk of record) {
+    count++;
+  }
+  t.is(count, 0);
 
 
   // reread via getReadableStream
@@ -195,6 +202,8 @@ Content-Length: 0\r\n\
   t.is(record.warcContentLength, 0);
 
   t.is(record.httpHeaders, null);
+
+  t.is(await record.contentText(), "");
 });
 
 
@@ -232,6 +241,17 @@ text\r\n\
 
   t.is(record.getResponseInfo(), null);
 
+  const statusline = "HTTP/1.0 200 OK\r\n";
+  t.is(await record.reader.readline(), statusline)
+
+  for await (const chunk of record) {
+    t.is(chunk.length, 268 - statusline.length);
+  }
+
+  // check headers case
+  const record2 = await new WARCParser(getReader(input), {keepHeadersCase: true}).parse();
+  t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
+
 });
 
 
@@ -260,7 +280,7 @@ test('warc1.1 response and request, status checks', async t => {
 
   t.is(request.warcHeaders.protocol, "WARC/1.1");
 
-  t.is(request.httpHeaders.verb, "GET");
+  t.is(request.httpHeaders.method, "GET");
   t.is(request.httpHeaders.requestPath, "/domains/example");
   t.is(request.warcDate, "2020-04-12T18:42:50.696509Z");
 
@@ -270,7 +290,7 @@ test('warc1.1 response and request, status checks', async t => {
   response = await parser.parse();
 
   // incorrect accessor, just return protocol
-  t.is(response.warcHeaders.verb, "WARC/1.1");
+  t.is(response.warcHeaders.method, "WARC/1.1");
 
   t.is(response.httpHeaders.statusText, "Moved Permanently");
   t.is(response.httpHeaders.protocol, "HTTP/1.1");
@@ -284,6 +304,38 @@ test('warc1.1 response and request, status checks', async t => {
 
   request = await parser.parse();
   t.is(request.httpHeaders.requestPath, "/domains/example");
-  t.is(request.httpHeaders.verb, "GET");
+  t.is(request.httpHeaders.method, "GET");
 
 });
+
+
+test('chunked warc read', async t => {
+  const fs = require('fs');
+  const path = require('path');
+  const input = fs.createReadStream(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'));
+
+  const parser = new WARCParser(input);
+
+  await parser.parse();
+  const record = await parser.parse();
+
+  t.is(record.warcType, "response");
+
+  t.is(await record.readline(), "<!doctype html>\n");
+
+  // can't read raw data anymore
+  await t.throwsAsync(async () => await record.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+
+  const text = await record.contentText();
+
+  t.is(text.split("\n")[0], "<html>");
+
+  await t.throwsAsync(async () => await record.reader.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+
+  t.not(await record.readFully(true), null);
+
+}); 
+
+
+
+

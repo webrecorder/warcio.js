@@ -1,14 +1,20 @@
-import { LimitReader } from './readers';
+import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from './readers';
+
+
+const decoder = new TextDecoder('utf-8');
 
 
 // ===========================================================================
-class WARCRecord
+class WARCRecord extends BaseAsyncIterReader
 {
   constructor({warcHeaders, reader}) {
+    super();
+
     this.warcHeaders = warcHeaders;
     this.headersLen = 0;
 
-    this.reader = new LimitReader(reader, this.warcContentLength);
+    this._reader = new LimitReader(reader, this.warcContentLength);
+    this._contentReader = null;
 
     this.payload = null;
     this.httpHeaders = null;
@@ -18,11 +24,11 @@ class WARCRecord
     this.fixUp();
   }
 
-  addHttpHeaders(httpHeaders, headersLen) {
+  _addHttpHeaders(httpHeaders, headersLen) {
     this.httpHeaders = httpHeaders;
     this.headersLen = headersLen;
 
-    this.reader.setLimitSkip(this.warcContentLength - this.headersLen);
+    this._reader.setLimitSkip(this.warcContentLength - this.headersLen);
   }
 
   getResponseInfo() {
@@ -40,10 +46,6 @@ class WARCRecord
     }
   }
 
-  getReadableStream() {
-    return this.reader.getReadableStream();
-  }
-
   fixUp() {
     // Fix wget-style error where WARC-Target-URI is wrapped in <>
     const uri = this.warcHeaders.headers.get("WARC-Target-URI");
@@ -52,14 +54,78 @@ class WARCRecord
     }
   }
 
-  async readFully() {
-    if (this.consumed) {
+  async readFully(isContent = false) {
+    if (this.httpHeaders) {
+      if (this._contentReader && !isContent) {
+        throw new TypeError("WARC Record decoding already started, but requesting raw payload");
+      }
+
+      if (isContent && this.consumed === "raw" && this.payload) {
+        return await this._createDecodingReader([this.payload]).readFully();
+      }
+    }
+
+    if (this.payload) {
       return this.payload;
     }
 
-    this.payload = await this.reader.readFully();
-    this.consumed = true;
+    if (isContent) {
+      this.payload = await super.readFully();
+      this.consumed = "content";
+    } else {
+      this.payload = await this._reader.readFully();
+      this.consumed = "raw";
+    }
+
     return this.payload;
+  }
+
+  get reader() {
+    if (this._contentReader) {
+      throw new TypeError("WARC Record decoding already started, but requesting raw payload");
+    }
+
+    return this._reader;
+  }
+
+  get contentReader() {
+    if (!this.httpHeaders) {
+      return this._reader;
+    }
+
+    if (!this._contentReader) {
+      this._contentReader = this._createDecodingReader(this._reader);
+    }
+
+    return this._contentReader;
+  }
+
+  _createDecodingReader(source) {
+    let contentEnc = this.httpHeaders.headers.get("content-encoding");
+    let transferEnc = this.httpHeaders.headers.get("transfer-encoding");
+
+    const chunked = (transferEnc === "chunked");
+
+    // Transfer-Encoding is not chunked and no Content-Encoding
+    // try Transfer-Encoding as Content-Encoding
+    if (!contentEnc && !chunked) {
+      contentEnc = transferEnc;
+    }
+
+    return new AsyncIterReader(source, contentEnc, chunked);
+  }
+
+  async readlineRaw(maxLength) {
+    return this.contentReader.readlineRaw(maxLength);
+  }
+
+  async contentText() {
+    const payload = await this.readFully(true);
+    return decoder.decode(payload);
+  }
+
+  async* [Symbol.asyncIterator]() {
+    yield* this.contentReader;
   }
 
   async skipFully() {
@@ -67,8 +133,8 @@ class WARCRecord
       return;
     }
 
-    const res = await this.reader.skipFully();
-    this.consumed = true;
+    const res = await this._reader.skipFully();
+    this.consumed = "skipped";
     return res;
   }
 

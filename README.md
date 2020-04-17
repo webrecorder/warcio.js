@@ -37,6 +37,14 @@ async function readWARC(url) {
     console.log(record.warcTargetURI);
     console.log(record.warcHeader('WARC-Target-URI'));
     console.log(record.warcHeaders.headers.get('WARC-Record-ID'));
+
+    // iterator over WARC content one chunk at a time (as Uint8Array)
+    for await (const chunk of record) {
+      ...
+    }
+
+    // access content as text
+    const text = await record.contentText();
   }
 }
 
@@ -77,8 +85,67 @@ async function streamWARCRecord(url, offset, length) {
   return new Response(record.getReadableStream(), {status, statusText, headers});
 }
 ```
+
+### Accessing WARC Content
+
+`warcio.js` provides several ways to access WARC record content. When dealing with HTTP response records,
+the default behavior is to decode transfer and content encoding, de-chunking and uncompressing if necessary.
+
+For example, the following accessors, as shown above, provide access to the decompressed/dechunked content:
+
+```javascript
+
+  // iterate over each chunk (Uint8Array)
+  for await (const chunk of record) {
+    ...
+  }
+
+  // iterate over lines
+  for await (const line of record.iterLines()) {
+    ...
+  }
+
+  // read one line
+  const line = await record.readline()
   
-  
+  // read entire contents as Uint8Array
+  const payload = await record.readFully(true)
+
+  // read entire contents as a String (calls readFully)
+  const text = await record.contentText()
+
+```
+
+#### Raw WARC Payload
+
+The raw WARC content is also available using the following methods:
+
+```javascript
+
+  // iterate over each raw chunk (not dechunked or decompressed)
+  for await (const chunk of record.reader) {
+    ...
+  }
+
+  const rawPayload = await record.readFully(false)
+```
+
+The `readFully()` method can read either the raw or decoded content.
+When using `readFully()`, the payload is stored in the record as `record.payload` so that it can be accessed again.
+
+Note that decoded and raw access should not be mixed. Attempting to access raw data after beginning decoding will result in an exception:
+
+```javascript
+  // read decoded line
+  const line = await record.readline()
+
+  // XX this will throw error, raw data no longer available
+  const full = await record.readFully(false)
+
+  // this is ok
+  const fullDecoded = await record.readFully(true)
+```
+
 
 ## Node Usage
 
@@ -103,6 +170,14 @@ async function readWARC(filename) {
     console.log(record.warcTargetURI);
     console.log(record.warcHeader('WARC-Target-URI'));
     console.log(record.warcHeaders.headers.get('WARC-Record-ID'));
+
+    // iterator over WARC content one chunk at a time (as Uint8Array)
+    for await (const chunk of record) {
+      ...
+    }
+
+    // OR, access content as text
+    const text = await record.contentText();
   }
 }
 ```
@@ -179,7 +254,7 @@ indexWARC('https://example.com/path/to/mywarc.warc');
 This library is still new and some functionality is 'not yet implemented' when compared to python `warcio` including:
 
 - Writing WARC files [#2](https://github.com/ikreymer/warcio.js/issues/2)
-- Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)
+- ~~Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)~~ Implemented!
 - Brotli Payload Decoding [#4](https://github.com/ikreymer/warcio.js/issues/4)
 - Reading ARC files [#5](https://github.com/ikreymer/warcio.js/issues/5)
 - Digest computation [#6](https://github.com/ikreymer/warcio.js/issues/6)

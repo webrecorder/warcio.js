@@ -47,15 +47,15 @@ class StatusAndHeaders {
 
   _parseRequestStatusLine() {
     const parts = this.statusline.split(" ", 2);
-    this._verb = parts[0];
+    this._method = parts[0];
     this._requestPath = parts.length > 1 ? parts[1] : "";
   }
 
-  get verb() {
-    if (this._verb === undefined) {
+  get method() {
+    if (this._method === undefined) {
       this._parseRequestStatusLine();
     }
-    return this._verb;
+    return this._method;
   }
 
   get requestPath() {

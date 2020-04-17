@@ -3208,6 +3208,9 @@ Inflate.prototype.onEnd = function (status) {
 
 var Inflate_1 = Inflate;
 
+const decoder = new TextDecoder("utf-8");
+
+
 // ===========================================================================
 class NoConcatInflator extends Inflate_1
 {
@@ -3249,7 +3252,7 @@ class BaseAsyncIterReader
     return [chunk.slice(0, inx), chunk.slice(inx)];
   }
 
-  getReadableStream(iterable) {
+  getReadableStream() {
     const streamIter = this[Symbol.asyncIterator]();
 
     return new ReadableStream({
@@ -3265,12 +3268,37 @@ class BaseAsyncIterReader
       }
     });
   }
+
+  async readFully() {
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of this) {
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    return BaseAsyncIterReader.concatChunks(chunks, size);
+  }
+
+  async readline(maxLength = 0) {
+    const lineBuff = await this.readlineRaw(maxLength);
+    return lineBuff ? decoder.decode(lineBuff) : "";
+  }
+
+  async* iterLines(maxLength = 0) {
+    let line = null;
+
+    while (line = await this.readline(maxLength)) {
+      yield line;
+    }
+  }
 }
 
 
 // ===========================================================================
 class AsyncIterReader extends BaseAsyncIterReader {
-  constructor(streamOrIter, compressed = "gzip") {
+  constructor(streamOrIter, compressed = "gzip", dechunk = false) {
     super();
     this.compressed = compressed;
     this.opts = {raw: compressed === "deflateRaw"};
@@ -3282,6 +3310,8 @@ class AsyncIterReader extends BaseAsyncIterReader {
         streamOrIter = AsyncIterReader.fromReadable(streamOrIter.getReader());
       } else if (typeof(streamOrIter.read) === "function") {
         streamOrIter = AsyncIterReader.fromReadable(streamOrIter);
+      } else if (typeof(streamOrIter[Symbol.iterator]) === "function") {
+        streamOrIter = AsyncIterReader.fromIter(streamOrIter);
       } else {
         throw new TypeError("Invalid Stream Source");
       }
@@ -3289,9 +3319,13 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
     this._sourceIter = streamOrIter[Symbol.asyncIterator]();
 
+    if (dechunk) {
+      this._sourceIter = this.dechunk(this._sourceIter);
+    }
+
     this.lastValue = null;
 
-    this.decoder = new TextDecoder("utf-8");
+    this.errored = false;
 
     this._savedChunk = null;
 
@@ -3304,6 +3338,61 @@ class AsyncIterReader extends BaseAsyncIterReader {
   async _loadNext()  {
     const res = await this._sourceIter.next();
     return !res.done ? res.value : null;
+  }
+
+  async* dechunk(source) {
+    const reader = new AsyncIterReader(source, null);
+
+    let size = -1;
+    let first = true;
+
+    while (size != 0) {
+      const lineBuff = await reader.readlineRaw(64);
+      let chunk = null;
+
+      size = parseInt(decoder.decode(lineBuff), 16);
+
+      if (!size || size > 2**32) {
+        if (Number.isNaN(size) || size > 2**32) {
+          if (!first) {
+            this.errored = true;
+          }
+          yield lineBuff;
+          break;
+        }
+      } else {
+        chunk = await reader.readSize(size);
+
+        if (chunk.length != size) {
+          if (!first) {
+            this.errored = true;
+          } else {
+            yield lineBuff;
+          }
+          yield chunk;
+          break;
+        }
+      }
+
+      const sep = await reader.readSize(2);
+
+      if (sep[0] != 13 || sep[1] != 10) {
+        if (!first) {
+          this.errored = true;
+        } else {
+          yield lineBuff;
+        }
+        yield chunk;
+        yield sep;
+        break;
+
+      } else {
+        yield chunk;
+        first = false;
+      }
+    }
+
+    yield *reader;
   }
 
   _unread(chunk) {
@@ -3403,48 +3492,47 @@ class AsyncIterReader extends BaseAsyncIterReader {
     }
   }
 
-  async* iterLines() {
-    let chunks = [];
+  async readlineRaw(maxLength) {
+    const chunks = [];
     let size = 0;
 
-    //while ((res = await this._readiter.next()) && (chunk = res.value)) {
-    for await (const chunk of this) {
-      const inx = chunk.indexOf(10);
+    let inx;
 
-      if (inx < 0) {
-        chunks.push(chunk);
-        size += chunk.byteLength;
-        continue;
+    let lastChunk = null;
+
+    for await (const chunk of this) {
+      if (maxLength && (size + chunk.byteLength) > maxLength) {
+        lastChunk = chunk;
+        inx = maxLength - size - 1;
+        const lineInx = chunk.slice(0, inx + 1).indexOf(10);
+        if (lineInx >= 0) {
+          inx = lineInx;
+        }
+        break;
       }
 
-      const [first, remainder] = AsyncIterReader.splitChunk(chunk, inx + 1);
+      inx = chunk.indexOf(10);
+
+      if (inx >= 0) {
+        lastChunk = chunk;
+        break;
+      }
+
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    if (lastChunk) {
+      const [first, remainder] = AsyncIterReader.splitChunk(lastChunk, inx + 1);
       chunks.push(first);
       size += first.byteLength;
 
       this._unread(remainder);
-  
-      const buff = AsyncIterReader.concatChunks(chunks, size);
-      //this._readOffset += size;
-
-      yield this.decoder.decode(buff);
-
-      size = 0;
-      chunks = [];
+    } else if (!chunks.length) {
+      return null;
     }
 
-    if (chunks.length) {
-      const buff = AsyncIterReader.concatChunks(chunks, size);
-      //this._readOffset += size;
-
-      yield this.decoder.decode(buff);
-    }
-  }
-
-  async readline() {
-    for await (const line of this.iterLines()) {
-      return line;
-    }
-    return "";
+    return AsyncIterReader.concatChunks(chunks, size);
   }
 
   readFully() {
@@ -3464,7 +3552,6 @@ class AsyncIterReader extends BaseAsyncIterReader {
             chunks.push(first);
           }
           size += first.byteLength;
-          //this._savedChunk = remainder;
           this._unread(remainder);
           break;
         } else if (chunk.length === sizeLimit) {
@@ -3483,8 +3570,6 @@ class AsyncIterReader extends BaseAsyncIterReader {
       }
       size += chunk.byteLength;
     }
-
-    //this._readOffset += size;
 
     return skip ? size : AsyncIterReader.concatChunks(chunks, size);
   }
@@ -3514,6 +3599,18 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
     return iterable;
   }
+
+  static fromIter(source) {
+    const iterable = {
+      async* [Symbol.asyncIterator]() {
+        for (const chunk of source) {
+          yield chunk;
+        }
+      }
+    };
+
+    return iterable;
+  }
 }
 
 
@@ -3534,7 +3631,7 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    if (this.limit === 0) {
+    if (this.limit <= 0) {
       return;
     }
 
@@ -3556,27 +3653,23 @@ class LimitReader extends BaseAsyncIterReader
 
         this.sourceIter._unread(remainder);
       }
-      this.limit -= chunk.length;
 
-      yield chunk;
+      if (chunk.length) {
+        this.limit -= chunk.length;
 
-      if (this.limit === 0) {
+        yield chunk;
+      }
+
+      if (this.limit <= 0) {
         break;
       }
     }
   }
 
-  async readFully() {
-    const chunks = [];
-    let size = 0;
-
-    //while (res = await this.read(), chunk = res.value) {
-    for await (const chunk of this) {
-      chunks.push(chunk);
-      size += chunk.byteLength;
-    }
-
-    return LimitReader.concatChunks(chunks, size);
+  async readlineRaw(maxLength) {
+    const result = await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+    this.limit -= result.length;
+    return result;
   }
 
   async skipFully() {
@@ -3638,15 +3731,15 @@ class StatusAndHeaders {
 
   _parseRequestStatusLine() {
     const parts = this.statusline.split(" ", 2);
-    this._verb = parts[0];
+    this._method = parts[0];
     this._requestPath = parts.length > 1 ? parts[1] : "";
   }
 
-  get verb() {
-    if (this._verb === undefined) {
+  get method() {
+    if (this._method === undefined) {
       this._parseRequestStatusLine();
     }
-    return this._verb;
+    return this._method;
   }
 
   get requestPath() {
@@ -3723,14 +3816,20 @@ function splitRemainder(str, sep, limit) {
   return newParts;
 }
 
+const decoder$1 = new TextDecoder('utf-8');
+
+
 // ===========================================================================
-class WARCRecord
+class WARCRecord extends BaseAsyncIterReader
 {
   constructor({warcHeaders, reader}) {
+    super();
+
     this.warcHeaders = warcHeaders;
     this.headersLen = 0;
 
-    this.reader = new LimitReader(reader, this.warcContentLength);
+    this._reader = new LimitReader(reader, this.warcContentLength);
+    this._contentReader = null;
 
     this.payload = null;
     this.httpHeaders = null;
@@ -3740,11 +3839,11 @@ class WARCRecord
     this.fixUp();
   }
 
-  addHttpHeaders(httpHeaders, headersLen) {
+  _addHttpHeaders(httpHeaders, headersLen) {
     this.httpHeaders = httpHeaders;
     this.headersLen = headersLen;
 
-    this.reader.setLimitSkip(this.warcContentLength - this.headersLen);
+    this._reader.setLimitSkip(this.warcContentLength - this.headersLen);
   }
 
   getResponseInfo() {
@@ -3762,10 +3861,6 @@ class WARCRecord
     }
   }
 
-  getReadableStream() {
-    return this.reader.getReadableStream();
-  }
-
   fixUp() {
     // Fix wget-style error where WARC-Target-URI is wrapped in <>
     const uri = this.warcHeaders.headers.get("WARC-Target-URI");
@@ -3774,14 +3869,78 @@ class WARCRecord
     }
   }
 
-  async readFully() {
-    if (this.consumed) {
+  async readFully(isContent = false) {
+    if (this.httpHeaders) {
+      if (this._contentReader && !isContent) {
+        throw new TypeError("WARC Record decoding already started, but requesting raw payload");
+      }
+
+      if (isContent && this.consumed === "raw" && this.payload) {
+        return await this._createDecodingReader([this.payload]).readFully();
+      }
+    }
+
+    if (this.payload) {
       return this.payload;
     }
 
-    this.payload = await this.reader.readFully();
-    this.consumed = true;
+    if (isContent) {
+      this.payload = await super.readFully();
+      this.consumed = "content";
+    } else {
+      this.payload = await this._reader.readFully();
+      this.consumed = "raw";
+    }
+
     return this.payload;
+  }
+
+  get reader() {
+    if (this._contentReader) {
+      throw new TypeError("WARC Record decoding already started, but requesting raw payload");
+    }
+
+    return this._reader;
+  }
+
+  get contentReader() {
+    if (!this.httpHeaders) {
+      return this._reader;
+    }
+
+    if (!this._contentReader) {
+      this._contentReader = this._createDecodingReader(this._reader);
+    }
+
+    return this._contentReader;
+  }
+
+  _createDecodingReader(source) {
+    let contentEnc = this.httpHeaders.headers.get("content-encoding");
+    let transferEnc = this.httpHeaders.headers.get("transfer-encoding");
+
+    const chunked = (transferEnc === "chunked");
+
+    // Transfer-Encoding is not chunked and no Content-Encoding
+    // try Transfer-Encoding as Content-Encoding
+    if (!contentEnc && !chunked) {
+      contentEnc = transferEnc;
+    }
+
+    return new AsyncIterReader(source, contentEnc, chunked);
+  }
+
+  async readlineRaw(maxLength) {
+    return this.contentReader.readlineRaw(maxLength);
+  }
+
+  async contentText() {
+    const payload = await this.readFully(true);
+    return decoder$1.decode(payload);
+  }
+
+  async* [Symbol.asyncIterator]() {
+    yield* this.contentReader;
   }
 
   async skipFully() {
@@ -3789,8 +3948,8 @@ class WARCRecord
       return;
     }
 
-    const res = await this.reader.skipFully();
-    this.consumed = true;
+    const res = await this._reader.skipFully();
+    this.consumed = "skipped";
     return res;
   }
 
@@ -3834,11 +3993,11 @@ class WARCRecord
 // ===========================================================================
 class WARCParser
 {
-  constructor(source, {strictHeaders = false, parseHttp = true} = {}) {
+  constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
 
-    this._headersClass = strictHeaders ? Headers : Map;
+    this._headersClass = keepHeadersCase ? Map : Headers;
     this._parseHttp = parseHttp;
 
     this._atRecordBoundary = true;
@@ -3884,12 +4043,12 @@ class WARCParser
       switch (record.warcType) {
         case "response":
         case "request":
-          await this.addHttpHeaders(record, headersParser, this._reader);
+          await this._addHttpHeaders(record, headersParser, this._reader);
           break;
 
         case "revisit":
           if (record.warcContentLength > 0) {
-            await this.addHttpHeaders(record, headersParser, this._reader);
+            await this._addHttpHeaders(record, headersParser, this._reader);
           }
           break;
       }
@@ -3917,9 +4076,9 @@ class WARCParser
     this._record = null;
   }
 
-  async addHttpHeaders(record, headersParser, reader) {
+  async _addHttpHeaders(record, headersParser, reader) {
     const httpHeaders = await headersParser.parse(reader, {headersClass: this._headersClass});
-    record.addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
+    record._addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
   }
 }
 
