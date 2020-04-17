@@ -3510,7 +3510,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
         }
         break;
       }
-      
+
       inx = chunk.indexOf(10);
 
       if (inx >= 0) {
@@ -3631,7 +3631,7 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    if (this.limit === 0) {
+    if (this.limit <= 0) {
       return;
     }
 
@@ -3653,18 +3653,23 @@ class LimitReader extends BaseAsyncIterReader
 
         this.sourceIter._unread(remainder);
       }
-      this.limit -= chunk.length;
 
-      yield chunk;
+      if (chunk.length) {
+        this.limit -= chunk.length;
 
-      if (this.limit === 0) {
+        yield chunk;
+      }
+
+      if (this.limit <= 0) {
         break;
       }
     }
   }
 
-  async readlineRaw(maxLength = 0) {
-    this.sourceIter.readline(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+  async readlineRaw(maxLength) {
+    const result = await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+    this.limit -= result.length;
+    return result;
   }
 
   async skipFully() {
@@ -3726,15 +3731,15 @@ class StatusAndHeaders {
 
   _parseRequestStatusLine() {
     const parts = this.statusline.split(" ", 2);
-    this._verb = parts[0];
+    this._method = parts[0];
     this._requestPath = parts.length > 1 ? parts[1] : "";
   }
 
-  get verb() {
-    if (this._verb === undefined) {
+  get method() {
+    if (this._method === undefined) {
       this._parseRequestStatusLine();
     }
-    return this._verb;
+    return this._method;
   }
 
   get requestPath() {
@@ -3925,7 +3930,7 @@ class WARCRecord extends BaseAsyncIterReader
     return new AsyncIterReader(source, contentEnc, chunked);
   }
 
-  async readlineRaw(maxLength = 0) {
+  async readlineRaw(maxLength) {
     return this.contentReader.readlineRaw(maxLength);
   }
 
@@ -3988,11 +3993,11 @@ class WARCRecord extends BaseAsyncIterReader
 // ===========================================================================
 class WARCParser
 {
-  constructor(source, {strictHeaders = false, parseHttp = true} = {}) {
+  constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
 
-    this._headersClass = strictHeaders ? Headers : Map;
+    this._headersClass = keepHeadersCase ? Map : Headers;
     this._parseHttp = parseHttp;
 
     this._atRecordBoundary = true;
