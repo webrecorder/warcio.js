@@ -254,7 +254,7 @@ indexWARC('https://example.com/path/to/mywarc.warc');
 This library is still new and some functionality is 'not yet implemented' when compared to python `warcio` including:
 
 - Writing WARC files [#2](https://github.com/ikreymer/warcio.js/issues/2)
-- Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)
+- ~~Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)~~ Implemented!
 - Brotli Payload Decoding [#4](https://github.com/ikreymer/warcio.js/issues/4)
 - Reading ARC files [#5](https://github.com/ikreymer/warcio.js/issues/5)
 - Digest computation [#6](https://github.com/ikreymer/warcio.js/issues/6)
