@@ -56,12 +56,12 @@ class WARCParser
       switch (record.warcType) {
         case "response":
         case "request":
-          await this.addHttpHeaders(record, headersParser, this._reader);
+          await this._addHttpHeaders(record, headersParser, this._reader);
           break;
 
         case "revisit":
           if (record.warcContentLength > 0) {
-            await this.addHttpHeaders(record, headersParser, this._reader);
+            await this._addHttpHeaders(record, headersParser, this._reader);
           }
           break;
       }
@@ -89,9 +89,9 @@ class WARCParser
     this._record = null;
   }
 
-  async addHttpHeaders(record, headersParser, reader) {
+  async _addHttpHeaders(record, headersParser, reader) {
     const httpHeaders = await headersParser.parse(reader, {headersClass: this._headersClass});
-    record.addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
+    record._addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
   }
 }
 

@@ -13,11 +13,13 @@ const encoder = new TextEncoder("utf-8");
 
 
 // ===========================================================================
-async function readLines(t, input, expected) {
-  const reader = new AsyncIterReader(getReader(input));
+async function readLines(t, input, expected, maxLength = 0) {
+  //const reader = new AsyncIterReader(getReader(input));
+  const reader = new AsyncIterReader(input.map(str => encoder.encode(str)));
+
   const output = [];
 
-  for await (const line of await reader.iterLines()) {
+  for await (const line of await reader.iterLines(maxLength)) {
     output.push(line);
   }
 
@@ -201,6 +203,28 @@ test('readline() test 1', readLines,
 );
 
 
+test('readline() test with maxLength', readLines,
+  [
+    "ABC\nDEFBLAHBLAH\nFOO",
+    "BAR\n\n"
+  ],
+  [
+    "ABC",
+    "\n",
+    "DEF",
+    "BLA",
+    "HBL",
+    "AH\n",
+    "FOO",
+    "BAR",
+    "\n",
+    "\n"
+  ], 3
+);
+
+
+
+
 test('readline() test 2', readLines,
   [
     `ABC\r
@@ -214,6 +238,23 @@ ABC`,
     "TEST\n",
     "BART\rABCFOO",
   ]
+);
+
+test('readline() test 2 with maxLength', readLines,
+  [
+    `ABC\r
+TEST
+BART\r\
+ABC`,
+    "FOO"
+  ],
+  [
+    "ABC\r\n",
+    "TEST\n",
+    "BART\r",
+    "ABCFO",
+    "O",
+  ], 5
 );
 
 
@@ -381,7 +422,7 @@ test('AsyncIterReader conversions', async t => {
   t.is(await res2.readline(), 'test\n');
   t.is(await res2.readline(), 'data\n');
 
-  t.throws(() => new AsyncIterReader('x'), {"message": "Invalid Stream Source"});
+  t.throws(() => new AsyncIterReader(123), {"message": "Invalid Stream Source"});
 
 });
 
@@ -409,13 +450,100 @@ test('readsize + readsize', async t => {
   t.is(await reader.readline(), "ta");
 });
 
-test('readline + readsize', async t => {
-  const reader = new AsyncIterReader(getReader(['test\ndata\ndata']));
+test('readline + readsize, ignore chunks', async t => {
+  const reader = new AsyncIterReader(getReader(['test\ndata\ndata']), null, true);
 
   t.is(await reader.readline(), "test\n");
   t.is(await reader.readline(), "data\n");
   t.is(decoder.decode(await reader.readSize(3)), "dat");
   t.is(await reader.readline(), "a");
   t.is(decoder.decode(await reader.readSize(2)), "");
+});
+
+
+test('test chunks', async t => {
+  const data = `\
+4\r\n\
+Wiki\r\n\
+5\r\n\
+pedia\r\n\
+E\r\n\
+ in\r\n\
+\r\n\
+chunks.\r\n\
+0\r\n\
+\r\n`;
+
+  const reader = new AsyncIterReader(getReader([data]), null, true);
+  t.is(decoder.decode(await reader.readFully()), "Wikipedia in\r\n\r\nchunks.");
+});
+
+test('test compressed chunks', async t => {
+  const data = compressMembers(['test', 'some\n', 'mo\rre', 'data']);
+
+  async function* source() {
+    yield (10).toString(16);
+    yield "\r\n";
+    yield data.slice(0, 10);
+    yield "\r\n";
+    yield (25).toString(16);
+    yield "\r\n";
+    yield data.slice(10, 35);
+    yield "\r\n";
+    yield (data.length - 35).toString(16);
+    yield "\r\n";
+    yield data.slice(35);
+    yield "\r\n";
+    yield "0\r\n\r\n";
+  }
+
+  async function* sourceEnc() {
+    for await (const chunk of source()) {
+      yield (typeof(chunk) === "string" ? encoder.encode(chunk) : chunk);
+    }
+  }
+
+  const reader = new AsyncIterReader(sourceEnc(), "gzip", true);
+  t.is(decoder.decode(await reader.readFully()), "testsome\nmo\rredata");
+});
+
+
+test('test chunked specified, non-chunked actual', async t=> {
+  async function readChunked(data, compress = null, errored = false) {
+    const reader = new AsyncIterReader(getReader([data]), compress, true);
+    const res = decoder.decode(await reader.readFully());
+    t.is(reader.errored, errored);
+    return res;
+  }
+
+  // Non-chunked
+  t.is(await readChunked("xyz123!@#"), "xyz123!@#");
+
+  //Non-chunked data, numbers only:
+  t.is(await readChunked("ABCDEABCDEABCDEABCDE"), "ABCDEABCDEABCDEABCDE");
+
+  //Non-chunked data, numbers new line, large:
+  t.is(await readChunked("ABCDEABCDEABCDEABCDE\r\n"), "ABCDEABCDEABCDEABCDE\r\n");
+
+  //Non-chunked, attempt decompression
+  t.is(await readChunked("ABCDE", "gzip"), "ABCDE");
+
+  //Non-chunked, actually compressed
+  t.is(await readChunked(compressMembers(["ABCDE"]), "gzip"), "ABCDE");
+
+  //Non-chunked, starts like chunked
+  t.is(await readChunked("1\r\nxyz123!@#"), "1\r\nxyz123!@#");
+
+  //Error: invalid second chunk length
+  t.is(await readChunked("4\r\n1234\r\nZ\r\n12", null, true), "1234Z\r\n12");
+
+  //Error: invalid second chunk, cut-off chunk
+  t.is(await readChunked("4\r\n1234\r\n4\r\n12", null, true), "123412");
+
+  //Error: invalid second chunk, no end \r\n
+  t.is(await readChunked("4\r\n1234\r\n4\r\n567890", null, true), "1234567890");
+
+  // zero length chunk
+  t.is(await readChunked("0\r\n\r\n"), "");
 });
 

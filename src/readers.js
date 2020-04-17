@@ -1,6 +1,9 @@
 import { Inflate } from 'pako/lib/inflate'
 
 
+const decoder = new TextDecoder("utf-8");
+
+
 // ===========================================================================
 class NoConcatInflator extends Inflate
 {
@@ -42,7 +45,7 @@ class BaseAsyncIterReader
     return [chunk.slice(0, inx), chunk.slice(inx)];
   }
 
-  getReadableStream(iterable) {
+  getReadableStream() {
     const streamIter = this[Symbol.asyncIterator]();
 
     return new ReadableStream({
@@ -58,12 +61,37 @@ class BaseAsyncIterReader
       }
     });
   }
+
+  async readFully() {
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of this) {
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    return BaseAsyncIterReader.concatChunks(chunks, size);
+  }
+
+  async readline(maxLength = 0) {
+    const lineBuff = await this.readlineRaw(maxLength);
+    return lineBuff ? decoder.decode(lineBuff) : "";
+  }
+
+  async* iterLines(maxLength = 0) {
+    let line = null;
+
+    while (line = await this.readline(maxLength)) {
+      yield line;
+    }
+  }
 }
 
 
 // ===========================================================================
 class AsyncIterReader extends BaseAsyncIterReader {
-  constructor(streamOrIter, compressed = "gzip") {
+  constructor(streamOrIter, compressed = "gzip", dechunk = false) {
     super();
     this.compressed = compressed;
     this.opts = {raw: compressed === "deflateRaw"};
@@ -75,6 +103,8 @@ class AsyncIterReader extends BaseAsyncIterReader {
         streamOrIter = AsyncIterReader.fromReadable(streamOrIter.getReader());
       } else if (typeof(streamOrIter.read) === "function") {
         streamOrIter = AsyncIterReader.fromReadable(streamOrIter);
+      } else if (typeof(streamOrIter[Symbol.iterator]) === "function") {
+        streamOrIter = AsyncIterReader.fromIter(streamOrIter);
       } else {
         throw new TypeError("Invalid Stream Source");
       }
@@ -82,9 +112,13 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
     this._sourceIter = streamOrIter[Symbol.asyncIterator]();
 
+    if (dechunk) {
+      this._sourceIter = this.dechunk(this._sourceIter);
+    }
+
     this.lastValue = null;
 
-    this.decoder = new TextDecoder("utf-8");
+    this.errored = false;
 
     this._savedChunk = null;
 
@@ -97,6 +131,61 @@ class AsyncIterReader extends BaseAsyncIterReader {
   async _loadNext()  {
     const res = await this._sourceIter.next();
     return !res.done ? res.value : null;
+  }
+
+  async* dechunk(source) {
+    const reader = new AsyncIterReader(source, null);
+
+    let size = -1;
+    let first = true;
+
+    while (size != 0) {
+      const lineBuff = await reader.readlineRaw(64);
+      let chunk = null;
+
+      size = parseInt(decoder.decode(lineBuff), 16);
+
+      if (!size || size > 2**32) {
+        if (Number.isNaN(size) || size > 2**32) {
+          if (!first) {
+            this.errored = true;
+          }
+          yield lineBuff;
+          break;
+        }
+      } else {
+        chunk = await reader.readSize(size);
+
+        if (chunk.length != size) {
+          if (!first) {
+            this.errored = true;
+          } else {
+            yield lineBuff;
+          }
+          yield chunk;
+          break;
+        }
+      }
+
+      const sep = await reader.readSize(2);
+
+      if (sep[0] != 13 || sep[1] != 10) {
+        if (!first) {
+          this.errored = true;
+        } else {
+          yield lineBuff;
+        }
+        yield chunk;
+        yield sep;
+        break;
+
+      } else {
+        yield chunk;
+        first = false;
+      }
+    }
+
+    yield *reader;
   }
 
   _unread(chunk) {
@@ -196,51 +285,47 @@ class AsyncIterReader extends BaseAsyncIterReader {
     }
   }
 
-  async* iterLines() {
-    let chunks = [];
+  async readlineRaw(maxLength) {
+    const chunks = [];
     let size = 0;
 
-    let res;
-    let chunk;
+    let inx;
 
-    //while ((res = await this._readiter.next()) && (chunk = res.value)) {
+    let lastChunk = null;
+
     for await (const chunk of this) {
-      const inx = chunk.indexOf(10);
-
-      if (inx < 0) {
-        chunks.push(chunk);
-        size += chunk.byteLength;
-        continue;
+      if (maxLength && (size + chunk.byteLength) > maxLength) {
+        lastChunk = chunk;
+        inx = maxLength - size - 1;
+        const lineInx = chunk.slice(0, inx + 1).indexOf(10);
+        if (lineInx >= 0) {
+          inx = lineInx;
+        }
+        break;
       }
 
-      const [first, remainder] = AsyncIterReader.splitChunk(chunk, inx + 1);
+      inx = chunk.indexOf(10);
+
+      if (inx >= 0) {
+        lastChunk = chunk;
+        break;
+      }
+
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    if (lastChunk) {
+      const [first, remainder] = AsyncIterReader.splitChunk(lastChunk, inx + 1);
       chunks.push(first);
       size += first.byteLength;
 
       this._unread(remainder);
-  
-      const buff = AsyncIterReader.concatChunks(chunks, size);
-      //this._readOffset += size;
-
-      yield this.decoder.decode(buff);
-
-      size = 0;
-      chunks = [];
+    } else if (!chunks.length) {
+      return null;
     }
 
-    if (chunks.length) {
-      const buff = AsyncIterReader.concatChunks(chunks, size);
-      //this._readOffset += size;
-
-      yield this.decoder.decode(buff);
-    }
-  }
-
-  async readline() {
-    for await (const line of this.iterLines()) {
-      return line;
-    }
-    return "";
+    return AsyncIterReader.concatChunks(chunks, size);
   }
 
   readFully() {
@@ -263,7 +348,6 @@ class AsyncIterReader extends BaseAsyncIterReader {
             chunks.push(first);
           }
           size += first.byteLength;
-          //this._savedChunk = remainder;
           this._unread(remainder);
           break;
         } else if (chunk.length === sizeLimit) {
@@ -282,8 +366,6 @@ class AsyncIterReader extends BaseAsyncIterReader {
       }
       size += chunk.byteLength;
     }
-
-    //this._readOffset += size;
 
     return skip ? size : AsyncIterReader.concatChunks(chunks, size);
   }
@@ -307,6 +389,18 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
         while ((res = await source.read()) && !res.done) {
           yield res.value;
+        }
+      }
+    }
+
+    return iterable;
+  }
+
+  static fromIter(source) {
+    const iterable = {
+      async* [Symbol.asyncIterator]() {
+        for (const chunk of source) {
+          yield chunk;
         }
       }
     }
@@ -365,17 +459,8 @@ class LimitReader extends BaseAsyncIterReader
     }
   }
 
-  async readFully() {
-    const chunks = [];
-    let size = 0;
-
-    //while (res = await this.read(), chunk = res.value) {
-    for await (const chunk of this) {
-      chunks.push(chunk);
-      size += chunk.byteLength;
-    }
-
-    return LimitReader.concatChunks(chunks, size);
+  async readlineRaw(maxLength = 0) {
+    this.sourceIter.readline(maxLength ? Math.min(maxLength, this.limit) : this.limit);
   }
 
   async skipFully() {

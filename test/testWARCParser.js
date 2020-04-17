@@ -148,7 +148,14 @@ json-metadata: {"foo": "bar"}\r\n\
   t.is(await parser.parse(), null);
 
   // reread payload
-  t.is(decoder.decode(await record.readFully()), "some\ntext");
+  t.is(await record.contentText(), "some\ntext");
+
+  // iterate should return null
+  let count = 0;
+  for await (const chunk of record) {
+    count++;
+  }
+  t.is(count, 0);
 
 
   // reread via getReadableStream
@@ -195,6 +202,8 @@ Content-Length: 0\r\n\
   t.is(record.warcContentLength, 0);
 
   t.is(record.httpHeaders, null);
+
+  t.is(await record.contentText(), "");
 });
 
 
@@ -232,6 +241,9 @@ text\r\n\
 
   t.is(record.getResponseInfo(), null);
 
+  for await (const chunk of record) {
+    t.is(chunk.length, 268);
+  }
 });
 
 
@@ -287,3 +299,35 @@ test('warc1.1 response and request, status checks', async t => {
   t.is(request.httpHeaders.verb, "GET");
 
 });
+
+
+test('chunked warc read', async t => {
+  const fs = require('fs');
+  const path = require('path');
+  const input = fs.readFileSync(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'), 'utf-8')
+
+  const parser = new WARCParser(getReader(input), {strictHeaders: true});
+
+  await parser.parse();
+  const record = await parser.parse();
+
+  t.is(record.warcType, "response");
+
+  t.is(await record.readline(), "<!doctype html>\n");
+
+  // can't read raw data anymore
+  await t.throwsAsync(async () => await record.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+
+  const text = await record.contentText();
+
+  t.is(text.split("\n")[0], "<html>");
+
+  await t.throwsAsync(async () => await record.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+
+  t.not(await record.readFully(true), null);
+
+}); 
+
+
+
+
