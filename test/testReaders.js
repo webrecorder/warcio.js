@@ -440,6 +440,13 @@ test('getReadableStream', async t => {
   t.is(decoder.decode(await reader2.readFully()), "some\ntext");
 });
 
+test('limitreader + readline', async t => {
+  const reader = new LimitReader(new AsyncIterReader([encoder.encode('test\ndata\n')]), 7);
+  t.is(await reader.readline(3), "tes");
+  t.is(await reader.readline(5), "t\n");
+  t.is(await reader.readline(5), "da"); 
+});
+
 
 test('readsize + readsize', async t => {
   const reader = new AsyncIterReader(getReader(['test\ndata']));

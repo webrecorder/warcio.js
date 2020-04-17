@@ -245,8 +245,13 @@ text\r\n\
   t.is(await record.reader.readline(), statusline)
 
   for await (const chunk of record) {
-    t.is(chunk.length, 268 - statusline.length + 4);
+    t.is(chunk.length, 268 - statusline.length);
   }
+
+  // check headers case
+  const record2 = await new WARCParser(getReader(input), {keepHeadersCase: true}).parse();
+  t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
+
 });
 
 
@@ -307,9 +312,9 @@ test('warc1.1 response and request, status checks', async t => {
 test('chunked warc read', async t => {
   const fs = require('fs');
   const path = require('path');
-  const input = fs.readFileSync(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'), 'utf-8')
+  const input = fs.createReadStream(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'));
 
-  const parser = new WARCParser(getReader(input));
+  const parser = new WARCParser(input);
 
   await parser.parse();
   const record = await parser.parse();

@@ -427,7 +427,7 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    if (this.limit === 0) {
+    if (this.limit <= 0) {
       return;
     }
 
@@ -449,18 +449,23 @@ class LimitReader extends BaseAsyncIterReader
 
         this.sourceIter._unread(remainder);
       }
-      this.limit -= chunk.length;
 
-      yield chunk;
+      if (chunk.length) {
+        this.limit -= chunk.length;
 
-      if (this.limit === 0) {
+        yield chunk;
+      }
+
+      if (this.limit <= 0) {
         break;
       }
     }
   }
 
-  async readlineRaw(maxLength = 0) {
-    return await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+  async readlineRaw(maxLength) {
+    const result = await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
+    this.limit -= result.length;
+    return result;
   }
 
   async skipFully() {
