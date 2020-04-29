@@ -2,6 +2,7 @@ import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from './readers';
 
 
 const decoder = new TextDecoder('utf-8');
+const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
 
 // ===========================================================================
@@ -80,6 +81,31 @@ class WARCRecord extends BaseAsyncIterReader
     return this.payload;
   }
 
+  async* iterSerialize(encoder) {
+    if (!encoder) {
+      encoder = new TextEncoder();
+    }
+
+    yield* this.warcHeaders.iterSerialize(encoder);
+
+    if (this.httpHeaders) {
+      yield* this.httpHeaders.iterSerialize(encoder);
+    }
+    yield* this.reader;
+    yield CRLFCRLF;
+  }
+
+  async toBuffer(encoder) {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of this.iterSerialize(encoder)) {
+      chunks.push(chunk);
+      size += chunk.length;
+    }
+
+    return WARCRecord.concatChunks(chunks, size);
+  }
+
   get reader() {
     if (this._contentReader) {
       throw new TypeError("WARC Record decoding already started, but requesting raw payload");
@@ -116,6 +142,9 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength) {
+    if (this.consumed) {
+      throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+    }
     return this.contentReader.readlineRaw(maxLength);
   }
 
@@ -125,7 +154,14 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    yield* this.contentReader;
+    for await (const chunk of this.contentReader) {
+      yield chunk;
+      if (this.consumed) {
+        throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+      }
+    }
+
+    this.consumed = "content";
   }
 
   async skipFully() {

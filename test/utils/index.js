@@ -1,4 +1,4 @@
-import { Headers } from '@titelmedia/node-fetch';
+import { Headers } from 'node-fetch';
 
 import { ReadableStream } from "web-streams-node";
 

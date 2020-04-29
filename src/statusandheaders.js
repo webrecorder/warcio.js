@@ -1,3 +1,4 @@
+const CRLF = new Uint8Array([13, 10]);
 
 
 // ===========================================================================
@@ -15,6 +16,15 @@ class StatusAndHeaders {
     }
 
     return buff.join('\r\n') + '\r\n';
+  }
+
+  async* iterSerialize(encoder) {
+    yield encoder.encode(this.statusline);
+    yield CRLF;
+    for (const [name, value] of this.headers) {
+      yield encoder.encode(`${name}: ${value}\r\n`);
+    }
+    yield CRLF;
   }
 
   _parseResponseStatusLine() {

@@ -62,7 +62,7 @@ function main(args, out) {
 
 
 function loadStreams(filenames) {
-  global.Headers = require('@titelmedia/node-fetch').Headers;
+  global.Headers = require('node-fetch').Headers;
 
   const path = require('path');
   const fs = require('fs');

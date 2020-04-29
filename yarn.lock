@@ -265,13 +265,6 @@
   dependencies:
     defer-to-connect "^1.0.1"
 
-"@titelmedia/node-fetch@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@titelmedia/node-fetch/-/node-fetch-3.0.1.tgz#cedba95b5d0002f7ed2310e4773cbc5f2ecfb76a"
-  integrity sha512-PXcQyoM3t8nRW+mrpq59HAclTr7g+zOrxPkNeet3FEM7E0gwjn089qvO+Xrh4SLKr56IXk5pMXBK58cygbrtKQ==
-  dependencies:
-    web-streams-polyfill "^1.3.2"
-
 "@tootallnate/once@1":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@tootallnate/once/-/once-1.0.0.tgz#9c13c2574c92d4503b005feca8f2e16cc1611506"
@@ -1722,7 +1715,7 @@ mute-stream@0.0.8:
   resolved "https://registry.yarnpkg.com/mute-stream/-/mute-stream-0.0.8.tgz#1630c42b2251ff81e2a283de96a5497ea92e5e0d"
   integrity sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==
 
-node-fetch@^2.2.0:
+node-fetch@^2.2.0, node-fetch@^2.6.0:
   version "2.6.0"
   resolved "https://registry.yarnpkg.com/node-fetch/-/node-fetch-2.6.0.tgz#e633456386d4aa55863f676a7ab0daa8fdecb0fd"
   integrity sha512-8dG4H5ujfvFiqDmVu9fQ5bOHUC15JMjMY/Zumv26oOvvVJjM67KF8koCWIabKQ1GJIa9r2mMZscBq/TbdOcmNA==
@@ -2540,11 +2533,6 @@ web-streams-node@^0.4.0:
     is-stream "^1.1.0"
     readable-stream-node-to-web "^1.0.1"
     web-streams-ponyfill "^1.4.1"
-
-web-streams-polyfill@^1.3.2:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/web-streams-polyfill/-/web-streams-polyfill-1.3.2.tgz#3719245e909282d93967825f44bcd550e9c03995"
-  integrity sha1-NxkkXpCSgtk5Z4JfRLzVUOnAOZU=
 
 web-streams-ponyfill@^1.4.1:
   version "1.4.2"
