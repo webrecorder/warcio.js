@@ -1,7 +1,10 @@
-import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from './readers';
-
+import { BaseAsyncIterReader, AsyncIterReader } from './readers';
+import { CRLF, CRLFCRLF } from './statusandheaders';
 
 const decoder = new TextDecoder('utf-8');
+
+
+
 
 
 // ===========================================================================
@@ -11,9 +14,8 @@ class WARCRecord extends BaseAsyncIterReader
     super();
 
     this.warcHeaders = warcHeaders;
-    this.headersLen = 0;
 
-    this._reader = new LimitReader(reader, this.warcContentLength);
+    this._reader = reader;
     this._contentReader = null;
 
     this.payload = null;
@@ -22,13 +24,6 @@ class WARCRecord extends BaseAsyncIterReader
     this.consumed = false;
 
     this.fixUp();
-  }
-
-  _addHttpHeaders(httpHeaders, headersLen) {
-    this.httpHeaders = httpHeaders;
-    this.headersLen = headersLen;
-
-    this._reader.setLimitSkip(this.warcContentLength - this.headersLen);
   }
 
   getResponseInfo() {
@@ -78,6 +73,26 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     return this.payload;
+  }
+
+  async toBuffer() {
+    return await WARCRecord.readFully(this.iterSerialize());
+  }
+
+  async* iterSerialize(encoder) {
+    if (!encoder) {
+      encoder = new TextEncoder();
+    }
+
+    yield* this.warcHeaders.iterSerialize(encoder);
+    yield CRLF;
+
+    if (this.httpHeaders) {
+      yield* this.httpHeaders.iterSerialize(encoder);
+      yield CRLF;
+    }
+    yield* this.reader;
+    yield CRLFCRLF;
   }
 
   get reader() {
