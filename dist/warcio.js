@@ -1,3 +1,5 @@
+var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -3252,6 +3254,20 @@ class BaseAsyncIterReader
     return [chunk.slice(0, inx), chunk.slice(inx)];
   }
 
+  static async readFully(iter) {
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of iter) {
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    return BaseAsyncIterReader.concatChunks(chunks, size);
+  }
+
+
+
   getReadableStream() {
     const streamIter = this[Symbol.asyncIterator]();
 
@@ -3269,16 +3285,8 @@ class BaseAsyncIterReader
     });
   }
 
-  async readFully() {
-    const chunks = [];
-    let size = 0;
-
-    for await (const chunk of this) {
-      chunks.push(chunk);
-      size += chunk.byteLength;
-    }
-
-    return BaseAsyncIterReader.concatChunks(chunks, size);
+  readFully() {
+    return BaseAsyncIterReader.readFully(this);
   }
 
   async readline(maxLength = 0) {
@@ -3317,10 +3325,10 @@ class AsyncIterReader extends BaseAsyncIterReader {
       }
     }
 
-    this._sourceIter = streamOrIter[Symbol.asyncIterator]();
-
     if (dechunk) {
-      this._sourceIter = this.dechunk(this._sourceIter);
+      this._sourceIter = this.dechunk(streamOrIter);
+    } else {
+      this._sourceIter = streamOrIter[Symbol.asyncIterator]();
     }
 
     this.lastValue = null;
@@ -3341,7 +3349,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   async* dechunk(source) {
-    const reader = new AsyncIterReader(source, null);
+    const reader = (source instanceof AsyncIterReader) ? source : new AsyncIterReader(source, null);
 
     let size = -1;
     let first = true;
@@ -3387,8 +3395,12 @@ class AsyncIterReader extends BaseAsyncIterReader {
         break;
 
       } else {
-        yield chunk;
         first = false;
+        if (!chunk || size === 0) {
+          return;
+        } else {
+          yield chunk;
+        }
       }
     }
 
@@ -3688,6 +3700,10 @@ class LimitReader extends BaseAsyncIterReader
   }
 }
 
+const CRLF = new Uint8Array([13, 10]);
+const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
+
+
 // ===========================================================================
 class StatusAndHeaders {
   constructor({statusline, headers}) {
@@ -3703,6 +3719,14 @@ class StatusAndHeaders {
     }
 
     return buff.join('\r\n') + '\r\n';
+  }
+
+  async* iterSerialize(encoder) {
+    yield encoder.encode(this.statusline);
+    yield CRLF;
+    for (const [name, value] of this.headers) {
+      yield encoder.encode(`${name}: ${value}\r\n`);
+    }
   }
 
   _parseResponseStatusLine() {
@@ -3823,16 +3847,60 @@ function splitRemainder(str, sep, limit) {
 const decoder$1 = new TextDecoder('utf-8');
 
 
+
+const defaultRecordCT = {
+  'warcinfo': 'application/warc-fields',
+  'response': 'application/http; msgtype=response',
+  'revisit': 'application/http; msgtype=response',
+  'request': 'application/http; msgtype=request',
+  'metadata': 'application/warc-fields',
+};
+
+
+
 // ===========================================================================
 class WARCRecord extends BaseAsyncIterReader
 {
+  static create({url, date, type, warcHeaders = {},
+                headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
+                warcVersion = 'WARC/1.0', keepHeadersCase = false} = {}, reader) {
+
+    warcHeaders = {...warcHeaders,
+      'WARC-Target-URI': url,
+      'WARC-Date': date,
+      'WARC-Type': type
+    };
+
+    warcHeaders = new StatusAndHeaders({
+      statusline: warcVersion,
+      headers: keepHeadersCase ? new Map(Object.entries(warcHeaders)) : new Headers(warcHeaders)
+    });
+
+    if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
+      warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
+    }
+
+    const record = new WARCRecord({warcHeaders, reader});
+
+    switch (type) {
+      case "response":
+      case "request":
+      case "revisit":
+        record.httpHeaders = new StatusAndHeaders({
+          statusline: httpVersion + " " + status + " " + statusText,
+          headers: keepHeadersCase ? new Map(Object.entries(headers)) : new Headers(headers)});
+        break;
+    }
+
+    return record;
+  }
+
   constructor({warcHeaders, reader}) {
     super();
 
     this.warcHeaders = warcHeaders;
-    this.headersLen = 0;
 
-    this._reader = new LimitReader(reader, this.warcContentLength);
+    this._reader = reader;
     this._contentReader = null;
 
     this.payload = null;
@@ -3841,13 +3909,6 @@ class WARCRecord extends BaseAsyncIterReader
     this.consumed = false;
 
     this.fixUp();
-  }
-
-  _addHttpHeaders(httpHeaders, headersLen) {
-    this.httpHeaders = httpHeaders;
-    this.headersLen = headersLen;
-
-    this._reader.setLimitSkip(this.warcContentLength - this.headersLen);
   }
 
   getResponseInfo() {
@@ -3995,6 +4056,10 @@ class WARCRecord extends BaseAsyncIterReader
     return this.warcHeaders.headers.get("WARC-Payload-Digest");
   }
 
+  get warcBlockDigest() {
+    return this.warcHeaders.headers.get("WARC-Block-Digest");
+  }
+
   get warcContentType() {
     return this.warcHeaders.headers.get("Content-Type");
   }
@@ -4012,7 +4077,7 @@ class WARCParser
   }
 
   static iterRecords(source, options) {
-    return new WARCParser(source, options);
+    return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
   constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
@@ -4041,6 +4106,10 @@ class WARCParser
     }
   }
 
+  _initRecordReader(warcHeaders) {
+    return new LimitReader(this._reader, Number(warcHeaders.headers.get("Content-Length") || 0));
+  }
+
   async parse() {
     await this.readToNextRecord();
 
@@ -4048,7 +4117,7 @@ class WARCParser
 
     const headersParser = new StatusAndHeadersParser();
 
-    const warcHeaders = await headersParser.parse(this._reader, {headersClass: Headers});
+    const warcHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
 
     if (!warcHeaders) {
       return null;
@@ -4056,7 +4125,7 @@ class WARCParser
 
     this._warcHeadersLength = this._reader.getReadOffset();
 
-    const record = new WARCRecord({warcHeaders, reader: this._reader});
+    const record = new WARCRecord({warcHeaders, reader: this._initRecordReader(warcHeaders)});
 
     this._atRecordBoundary = false;
     this._record = record;
@@ -4083,8 +4152,7 @@ class WARCParser
     return this._offset;
   }
 
-  async recordLength() {
-    const res = await this._record.skipFully();
+  get recordLength() {
     return this._reader.getRawLength(this._offset);
   }
 
@@ -4098,9 +4166,542 @@ class WARCParser
     this._record = null;
   }
 
-  async _addHttpHeaders(record, headersParser, reader) {
-    const httpHeaders = await headersParser.parse(reader, {headersClass: this._headersClass});
-    record._addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
+  async _addHttpHeaders(record, headersParser) {
+    const httpHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
+    record.httpHeaders = httpHeaders;
+
+    const headersLen = this._reader.getReadOffset() - this._warcHeadersLength;
+    if (record.reader.setLimitSkip) {
+      record.reader.setLimitSkip(record.warcContentLength - headersLen);
+    }
+  }
+}
+
+var base32 = createCommonjsModule(function (module) {
+/*
+ * [hi-base32]{@link https://github.com/emn178/hi-base32}
+ *
+ * @version 0.5.0
+ * @author Chen, Yi-Cyuan [emn178@gmail.com]
+ * @copyright Chen, Yi-Cyuan 2015-2018
+ * @license MIT
+ */
+/*jslint bitwise: true */
+(function () {
+
+  var root = typeof window === 'object' ? window : {};
+  var NODE_JS = !root.HI_BASE32_NO_NODE_JS && typeof process === 'object' && process.versions && process.versions.node;
+  if (NODE_JS) {
+    root = commonjsGlobal;
+  }
+  var COMMON_JS = !root.HI_BASE32_NO_COMMON_JS && 'object' === 'object' && module.exports;
+  var BASE32_ENCODE_CHAR = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'.split('');
+  var BASE32_DECODE_CHAR = {
+    'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8,
+    'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16,
+    'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24,
+    'Z': 25, '2': 26, '3': 27, '4': 28, '5': 29, '6': 30, '7': 31
+  };
+
+  var blocks = [0, 0, 0, 0, 0, 0, 0, 0];
+
+  var throwInvalidUtf8 = function (position, partial) {
+    if (partial.length > 10) {
+      partial = '...' + partial.substr(-10);
+    }
+    var err = new Error('Decoded data is not valid UTF-8.'
+      + ' Maybe try base32.decode.asBytes()?'
+      + ' Partial data after reading ' + position + ' bytes: ' + partial + ' <-');
+    err.position = position;
+    throw err;
+  };
+
+  var toUtf8String = function (bytes) {
+    var str = '', length = bytes.length, i = 0, followingChars = 0, b, c;
+    while (i < length) {
+      b = bytes[i++];
+      if (b <= 0x7F) {
+        str += String.fromCharCode(b);
+        continue;
+      } else if (b > 0xBF && b <= 0xDF) {
+        c = b & 0x1F;
+        followingChars = 1;
+      } else if (b <= 0xEF) {
+        c = b & 0x0F;
+        followingChars = 2;
+      } else if (b <= 0xF7) {
+        c = b & 0x07;
+        followingChars = 3;
+      } else {
+        throwInvalidUtf8(i, str);
+      }
+
+      for (var j = 0; j < followingChars; ++j) {
+        b = bytes[i++];
+        if (b < 0x80 || b > 0xBF) {
+          throwInvalidUtf8(i, str);
+        }
+        c <<= 6;
+        c += b & 0x3F;
+      }
+      if (c >= 0xD800 && c <= 0xDFFF) {
+        throwInvalidUtf8(i, str);
+      }
+      if (c > 0x10FFFF) {
+        throwInvalidUtf8(i, str);
+      }
+
+      if (c <= 0xFFFF) {
+        str += String.fromCharCode(c);
+      } else {
+        c -= 0x10000;
+        str += String.fromCharCode((c >> 10) + 0xD800);
+        str += String.fromCharCode((c & 0x3FF) + 0xDC00);
+      }
+    }
+    return str;
+  };
+
+  var decodeAsBytes = function (base32Str) {
+    if (!/^[A-Z2-7=]+$/.test(base32Str)) {
+      throw new Error('Invalid base32 characters');
+    }
+    base32Str = base32Str.replace(/=/g, '');
+    var v1, v2, v3, v4, v5, v6, v7, v8, bytes = [], index = 0, length = base32Str.length;
+
+    // 4 char to 3 bytes
+    for (var i = 0, count = length >> 3 << 3; i < count;) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v6 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v7 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v8 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      bytes[index++] = (v1 << 3 | v2 >>> 2) & 255;
+      bytes[index++] = (v2 << 6 | v3 << 1 | v4 >>> 4) & 255;
+      bytes[index++] = (v4 << 4 | v5 >>> 1) & 255;
+      bytes[index++] = (v5 << 7 | v6 << 2 | v7 >>> 3) & 255;
+      bytes[index++] = (v7 << 5 | v8) & 255;
+    }
+
+    // remain bytes
+    var remain = length - count;
+    if (remain === 2) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      bytes[index++] = (v1 << 3 | v2 >>> 2) & 255;
+    } else if (remain === 4) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      bytes[index++] = (v1 << 3 | v2 >>> 2) & 255;
+      bytes[index++] = (v2 << 6 | v3 << 1 | v4 >>> 4) & 255;
+    } else if (remain === 5) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      bytes[index++] = (v1 << 3 | v2 >>> 2) & 255;
+      bytes[index++] = (v2 << 6 | v3 << 1 | v4 >>> 4) & 255;
+      bytes[index++] = (v4 << 4 | v5 >>> 1) & 255;
+    } else if (remain === 7) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v6 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v7 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      bytes[index++] = (v1 << 3 | v2 >>> 2) & 255;
+      bytes[index++] = (v2 << 6 | v3 << 1 | v4 >>> 4) & 255;
+      bytes[index++] = (v4 << 4 | v5 >>> 1) & 255;
+      bytes[index++] = (v5 << 7 | v6 << 2 | v7 >>> 3) & 255;
+    }
+    return bytes;
+  };
+
+  var encodeAscii = function (str) {
+    var v1, v2, v3, v4, v5, base32Str = '', length = str.length;
+    for (var i = 0, count = parseInt(length / 5) * 5; i < count;) {
+      v1 = str.charCodeAt(i++);
+      v2 = str.charCodeAt(i++);
+      v3 = str.charCodeAt(i++);
+      v4 = str.charCodeAt(i++);
+      v5 = str.charCodeAt(i++);
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+        BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+        BASE32_ENCODE_CHAR[(v4 << 3 | v5 >>> 5) & 31] +
+        BASE32_ENCODE_CHAR[v5 & 31];
+    }
+
+    // remain char
+    var remain = length - count;
+    if (remain === 1) {
+      v1 = str.charCodeAt(i);
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2) & 31] +
+        '======';
+    } else if (remain === 2) {
+      v1 = str.charCodeAt(i++);
+      v2 = str.charCodeAt(i);
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4) & 31] +
+        '====';
+    } else if (remain === 3) {
+      v1 = str.charCodeAt(i++);
+      v2 = str.charCodeAt(i++);
+      v3 = str.charCodeAt(i);
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1) & 31] +
+        '===';
+    } else if (remain === 4) {
+      v1 = str.charCodeAt(i++);
+      v2 = str.charCodeAt(i++);
+      v3 = str.charCodeAt(i++);
+      v4 = str.charCodeAt(i);
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+        BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+        BASE32_ENCODE_CHAR[(v4 << 3) & 31] +
+        '=';
+    }
+    return base32Str;
+  };
+
+  var encodeUtf8 = function (str) {
+    var v1, v2, v3, v4, v5, code, end = false, base32Str = '',
+      index = 0, i, start = 0, length = str.length;
+    do {
+      blocks[0] = blocks[5];
+      blocks[1] = blocks[6];
+      blocks[2] = blocks[7];
+      for (i = start; index < length && i < 5; ++index) {
+        code = str.charCodeAt(index);
+        if (code < 0x80) {
+          blocks[i++] = code;
+        } else if (code < 0x800) {
+          blocks[i++] = 0xc0 | (code >> 6);
+          blocks[i++] = 0x80 | (code & 0x3f);
+        } else if (code < 0xd800 || code >= 0xe000) {
+          blocks[i++] = 0xe0 | (code >> 12);
+          blocks[i++] = 0x80 | ((code >> 6) & 0x3f);
+          blocks[i++] = 0x80 | (code & 0x3f);
+        } else {
+          code = 0x10000 + (((code & 0x3ff) << 10) | (str.charCodeAt(++index) & 0x3ff));
+          blocks[i++] = 0xf0 | (code >> 18);
+          blocks[i++] = 0x80 | ((code >> 12) & 0x3f);
+          blocks[i++] = 0x80 | ((code >> 6) & 0x3f);
+          blocks[i++] = 0x80 | (code & 0x3f);
+        }
+      }
+      start = i - 5;
+      if (index === length) {
+        ++index;
+      }
+      if (index > length && i < 6) {
+        end = true;
+      }
+      v1 = blocks[0];
+      if (i > 4) {
+        v2 = blocks[1];
+        v3 = blocks[2];
+        v4 = blocks[3];
+        v5 = blocks[4];
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+          BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+          BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+          BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+          BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+          BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+          BASE32_ENCODE_CHAR[(v4 << 3 | v5 >>> 5) & 31] +
+          BASE32_ENCODE_CHAR[v5 & 31];
+      } else if (i === 1) {
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+          BASE32_ENCODE_CHAR[(v1 << 2) & 31] +
+          '======';
+      } else if (i === 2) {
+        v2 = blocks[1];
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+          BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+          BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+          BASE32_ENCODE_CHAR[(v2 << 4) & 31] +
+          '====';
+      } else if (i === 3) {
+        v2 = blocks[1];
+        v3 = blocks[2];
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+          BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+          BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+          BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+          BASE32_ENCODE_CHAR[(v3 << 1) & 31] +
+          '===';
+      } else {
+        v2 = blocks[1];
+        v3 = blocks[2];
+        v4 = blocks[3];
+        base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+          BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+          BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+          BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+          BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+          BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+          BASE32_ENCODE_CHAR[(v4 << 3) & 31] +
+          '=';
+      }
+    } while (!end);
+    return base32Str;
+  };
+
+  var encodeBytes = function (bytes) {
+    var v1, v2, v3, v4, v5, base32Str = '', length = bytes.length;
+    for (var i = 0, count = parseInt(length / 5) * 5; i < count;) {
+      v1 = bytes[i++];
+      v2 = bytes[i++];
+      v3 = bytes[i++];
+      v4 = bytes[i++];
+      v5 = bytes[i++];
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+        BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+        BASE32_ENCODE_CHAR[(v4 << 3 | v5 >>> 5) & 31] +
+        BASE32_ENCODE_CHAR[v5 & 31];
+    }
+
+    // remain char
+    var remain = length - count;
+    if (remain === 1) {
+      v1 = bytes[i];
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2) & 31] +
+        '======';
+    } else if (remain === 2) {
+      v1 = bytes[i++];
+      v2 = bytes[i];
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4) & 31] +
+        '====';
+    } else if (remain === 3) {
+      v1 = bytes[i++];
+      v2 = bytes[i++];
+      v3 = bytes[i];
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1) & 31] +
+        '===';
+    } else if (remain === 4) {
+      v1 = bytes[i++];
+      v2 = bytes[i++];
+      v3 = bytes[i++];
+      v4 = bytes[i];
+      base32Str += BASE32_ENCODE_CHAR[v1 >>> 3] +
+        BASE32_ENCODE_CHAR[(v1 << 2 | v2 >>> 6) & 31] +
+        BASE32_ENCODE_CHAR[(v2 >>> 1) & 31] +
+        BASE32_ENCODE_CHAR[(v2 << 4 | v3 >>> 4) & 31] +
+        BASE32_ENCODE_CHAR[(v3 << 1 | v4 >>> 7) & 31] +
+        BASE32_ENCODE_CHAR[(v4 >>> 2) & 31] +
+        BASE32_ENCODE_CHAR[(v4 << 3) & 31] +
+        '=';
+    }
+    return base32Str;
+  };
+
+  var encode = function (input, asciiOnly) {
+    var notString = typeof(input) !== 'string';
+    if (notString && input.constructor === ArrayBuffer) {
+      input = new Uint8Array(input);
+    }
+    if (notString) {
+      return encodeBytes(input);
+    } else if (asciiOnly) {
+      return encodeAscii(input);
+    } else {
+      return encodeUtf8(input);
+    }
+  };
+
+  var decode = function (base32Str, asciiOnly) {
+    if (!asciiOnly) {
+      return toUtf8String(decodeAsBytes(base32Str));
+    }
+    if (!/^[A-Z2-7=]+$/.test(base32Str)) {
+      throw new Error('Invalid base32 characters');
+    }
+    var v1, v2, v3, v4, v5, v6, v7, v8, str = '', length = base32Str.indexOf('=');
+    if (length === -1) {
+      length = base32Str.length;
+    }
+
+    // 8 char to 5 bytes
+    for (var i = 0, count = length >> 3 << 3; i < count;) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v6 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v7 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v8 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      str += String.fromCharCode((v1 << 3 | v2 >>> 2) & 255) +
+        String.fromCharCode((v2 << 6 | v3 << 1 | v4 >>> 4) & 255) +
+        String.fromCharCode((v4 << 4 | v5 >>> 1) & 255) +
+        String.fromCharCode((v5 << 7 | v6 << 2 | v7 >>> 3) & 255) +
+        String.fromCharCode((v7 << 5 | v8) & 255);
+    }
+
+    // remain bytes
+    var remain = length - count;
+    if (remain === 2) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      str += String.fromCharCode((v1 << 3 | v2 >>> 2) & 255);
+    } else if (remain === 4) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      str += String.fromCharCode((v1 << 3 | v2 >>> 2) & 255) +
+        String.fromCharCode((v2 << 6 | v3 << 1 | v4 >>> 4) & 255);
+    } else if (remain === 5) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      str += String.fromCharCode((v1 << 3 | v2 >>> 2) & 255) +
+        String.fromCharCode((v2 << 6 | v3 << 1 | v4 >>> 4) & 255) +
+        String.fromCharCode((v4 << 4 | v5 >>> 1) & 255);
+    } else if (remain === 7) {
+      v1 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v2 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v3 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v4 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v5 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v6 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      v7 = BASE32_DECODE_CHAR[base32Str.charAt(i++)];
+      str += String.fromCharCode((v1 << 3 | v2 >>> 2) & 255) +
+        String.fromCharCode((v2 << 6 | v3 << 1 | v4 >>> 4) & 255) +
+        String.fromCharCode((v4 << 4 | v5 >>> 1) & 255) +
+        String.fromCharCode((v5 << 7 | v6 << 2 | v7 >>> 3) & 255);
+    }
+    return str;
+  };
+
+  var exports = {
+    encode: encode,
+    decode: decode
+  };
+  decode.asBytes = decodeAsBytes;
+
+  if (COMMON_JS) {
+    module.exports = exports;
+  } else {
+    root.base32 = exports;
+  }
+})();
+});
+
+const encoder = new TextEncoder();
+
+
+// ===========================================================================
+class WARCSerializer extends BaseAsyncIterReader
+{
+  static async serialize(record) {
+    let s = null;
+
+    if ((record.warcType === "revisit") ||
+        (record.warcPayloadDigest && record.warcBlockDigest)) {
+      s = new WARCSerializer(record);
+    } else {
+      s = new WARCEnsureDigestSerializer(record);
+    }
+
+    return await s.readFully();
+  }
+
+  constructor(record) {
+    super();
+    this.record = record;
+  }
+
+  async* [Symbol.asyncIterator]() {
+    const record = this.record;
+
+    yield* record.warcHeaders.iterSerialize(encoder);
+    yield CRLF;
+
+    if (record.httpHeaders) {
+      yield* record.httpHeaders.iterSerialize(encoder);
+      yield CRLF;
+    }
+    yield* record.reader;
+    yield CRLFCRLF;
+  }
+}
+
+
+// ===========================================================================
+class WARCEnsureDigestSerializer extends WARCSerializer
+{
+  async digestMessage(chunk) {
+    const hashBuffer = await crypto.subtle.digest("sha-1", chunk);
+    return "sha1:" + base32.encode(hashBuffer);
+  }
+
+  async* [Symbol.asyncIterator]() {
+    const httpHeadersBuff = encoder.encode(this.record.httpHeaders.toString());
+
+    const chunks = [];
+    let payloadSize = 0;
+    for await (const chunk of this.record) {
+      chunks.push(chunk);
+      payloadSize += chunk.length;
+    }
+
+    const payload = WARCSerializer.concatChunks(chunks, payloadSize);
+
+    const size = httpHeadersBuff.length + CRLF.length + payload.length;
+    const blockDigest = await this.digestMessage(WARCSerializer.concatChunks([httpHeadersBuff, CRLF, payload], size));
+    const payloadDigest = await this.digestMessage(payload);
+
+    this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
+    this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
+    this.record.warcHeaders.headers.set("Content-Length", size);
+
+    const warcHeadersBuff = encoder.encode(this.record.warcHeaders.toString());
+
+    yield warcHeadersBuff;
+    yield CRLF;
+
+    yield httpHeadersBuff;
+    yield CRLF;
+
+    yield payload;
+
+    yield CRLFCRLF;
   }
 }
 
@@ -4112,20 +4713,20 @@ class BaseIndexer
 {
   constructor(opts, out) {
     this.opts = opts;
-
-    /* istanbul ignore next */
-    this.out = out || process.stdout;
+    this.out = out;
   }
 
   write(result) {
     this.out.write(JSON.stringify(result) + "\n");
   }
 
-  writeRaw(result) {
-    this.out.write(result);
+  async run(files) {
+    for await (const result of this.iterIndex(files)) {
+      this.write(result);
+    }
   }
 
-  async run(files) {
+  async* iterIndex(files) {
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
     for (const { filename, reader } of files) {
@@ -4136,28 +4737,37 @@ class BaseIndexer
       const parser = new WARCParser(reader, params);
 
       for await (const record of parser) {
-        if (this.filterRecord && !this.filterRecord(record)) {
-          continue;
+        await record.skipFully();
+        const result = this.indexRecord(record, parser, filename);
+        if (result) {
+          yield result;
         }
-
-        const result = {};
-
-        const offset = parser.offset;
-        const length = await parser.recordLength();
-
-        const special = {offset, length, filename};
-
-        for (const field of this.fields) {
-          if (special[field] != undefined) {
-            result[field] = special[field];
-          } else {
-            this.setField(field, record, result);
-          }
-        }
-
-        this.write(result);
       }
     }
+
+  }
+
+  indexRecord(record, parser, filename) {
+    if (this.filterRecord && !this.filterRecord(record)) {
+      return null;
+    }
+
+    const result = {};
+
+    const offset = parser.offset;
+    const length = parser.recordLength;
+
+    const special = {offset, length, filename};
+
+    for (const field of this.fields) {
+      if (special[field] != undefined) {
+        result[field] = special[field];
+      } else {
+        this.setField(field, record, result);
+      }
+    }
+
+    return result;
   }
 
   setField(field, record, result) {
@@ -4190,7 +4800,7 @@ class BaseIndexer
 // ===========================================================================
 class Indexer extends BaseIndexer
 {
-  constructor(opts, out) {
+  constructor(opts = {}, out = null) {
     super(opts, out);
 
     if (!opts.fields) {
@@ -4207,10 +4817,6 @@ class Indexer extends BaseIndexer
         }
       }
     }
-
-    if (opts.format === "raw") {
-      this.write = this.writeRaw;
-    }
   }
 }
 
@@ -4223,7 +4829,7 @@ const DEFAULT_LEGACY_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,redir
 // ===========================================================================
 class CDXIndexer extends Indexer
 {
-  constructor(opts, out) {
+  constructor(opts = {}, out = null) {
     super(opts, out);
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
@@ -4236,10 +4842,6 @@ class CDXIndexer extends Indexer
 
       case "cdx":
         this.write = this.writeCDX11;
-        break;
-
-      case "raw":
-        this.write = this.writeRaw;
         break;
     }
   }
@@ -4333,4 +4935,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer };

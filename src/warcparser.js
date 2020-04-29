@@ -1,6 +1,6 @@
-import { StatusAndHeadersParser } from './statusandheaders';
+import { StatusAndHeaders, StatusAndHeadersParser } from './statusandheaders';
 import { WARCRecord } from './warcrecord';
-import { AsyncIterReader } from './readers';
+import { AsyncIterReader, LimitReader } from './readers';
 
 
 // ===========================================================================
@@ -11,7 +11,7 @@ class WARCParser
   }
 
   static iterRecords(source, options) {
-    return new WARCParser(source, options);
+    return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
   constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
@@ -40,6 +40,10 @@ class WARCParser
     }
   }
 
+  _initRecordReader(warcHeaders) {
+    return new LimitReader(this._reader, Number(warcHeaders.headers.get("Content-Length") || 0));
+  }
+
   async parse() {
     await this.readToNextRecord();
 
@@ -55,7 +59,7 @@ class WARCParser
 
     this._warcHeadersLength = this._reader.getReadOffset();
 
-    const record = new WARCRecord({warcHeaders, reader: this._reader});
+    const record = new WARCRecord({warcHeaders, reader: this._initRecordReader(warcHeaders)});
 
     this._atRecordBoundary = false;
     this._record = record;
@@ -96,9 +100,14 @@ class WARCParser
     this._record = null;
   }
 
-  async _addHttpHeaders(record, headersParser, reader) {
-    const httpHeaders = await headersParser.parse(reader, {headersClass: this._headersClass});
-    record._addHttpHeaders(httpHeaders, reader.getReadOffset() - this._warcHeadersLength);
+  async _addHttpHeaders(record, headersParser) {
+    const httpHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
+    record.httpHeaders = httpHeaders;
+
+    const headersLen = this._reader.getReadOffset() - this._warcHeadersLength;
+    if (record.reader.setLimitSkip) {
+      record.reader.setLimitSkip(record.warcContentLength - headersLen);
+    }
   }
 }
 

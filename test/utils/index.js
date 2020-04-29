@@ -2,8 +2,10 @@ import { Headers } from 'node-fetch';
 
 import { ReadableStream } from "web-streams-node";
 
+import { Crypto } from '@peculiar/webcrypto'
 
 global.Headers = Headers;
+global.crypto = new Crypto();
 
 const encoder = new TextEncoder("utf-8");
 
