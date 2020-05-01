@@ -225,7 +225,7 @@ com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit",
 
 The indexers can also be used programmatically, both in the browser and in Node with a custom writer.
 
-The indexer provide an async iterator which is used to provide the raw index data that is passed to write()
+The indexer provide an async iterator which yields the index data as an object instead of writing it anywhere.
 
 For example, the following snippet demonstrates a writer that logs all HTML files in a WARC:
 
