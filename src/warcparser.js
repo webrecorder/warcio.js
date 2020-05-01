@@ -6,6 +6,14 @@ import { AsyncIterReader } from './readers';
 // ===========================================================================
 class WARCParser
 {
+  static parse(source, options) {
+    return new WARCParser(source, options).parse();
+  }
+
+  static iterRecords(source, options) {
+    return new WARCParser(source, options);
+  }
+
   constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;
@@ -39,7 +47,7 @@ class WARCParser
 
     const headersParser = new StatusAndHeadersParser();
 
-    const warcHeaders = await headersParser.parse(this._reader, {headersClass: Headers});
+    const warcHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
 
     if (!warcHeaders) {
       return null;
@@ -74,8 +82,7 @@ class WARCParser
     return this._offset;
   }
 
-  async recordLength() {
-    const res = await this._record.skipFully();
+  get recordLength() {
     return this._reader.getRawLength(this._offset);
   }
 

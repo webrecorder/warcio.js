@@ -3667,6 +3667,10 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength) {
+    if (this.limit <= 0) {
+      return null;
+    }
+
     const result = await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
     this.limit -= result.length;
     return result;
@@ -3931,6 +3935,9 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength) {
+    if (this.consumed) {
+      throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+    }
     return this.contentReader.readlineRaw(maxLength);
   }
 
@@ -3940,7 +3947,14 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    yield* this.contentReader;
+    for await (const chunk of this.contentReader) {
+      yield chunk;
+      if (this.consumed) {
+        throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+      }
+    }
+
+    this.consumed = "content";
   }
 
   async skipFully() {
@@ -3993,6 +4007,14 @@ class WARCRecord extends BaseAsyncIterReader
 // ===========================================================================
 class WARCParser
 {
+  static parse(source, options) {
+    return new WARCParser(source, options).parse();
+  }
+
+  static iterRecords(source, options) {
+    return new WARCParser(source, options);
+  }
+
   constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
     this._offset = 0;
     this._warcHeadersLength = 0;

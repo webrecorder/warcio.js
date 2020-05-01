@@ -463,6 +463,10 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength) {
+    if (this.limit <= 0) {
+      return null;
+    }
+
     const result = await this.sourceIter.readlineRaw(maxLength ? Math.min(maxLength, this.limit) : this.limit);
     this.limit -= result.length;
     return result;

@@ -116,6 +116,9 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async readlineRaw(maxLength) {
+    if (this.consumed) {
+      throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+    }
     return this.contentReader.readlineRaw(maxLength);
   }
 
@@ -125,7 +128,14 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async* [Symbol.asyncIterator]() {
-    yield* this.contentReader;
+    for await (const chunk of this.contentReader) {
+      yield chunk;
+      if (this.consumed) {
+        throw new Error("Record already consumed.. Perhaps a promise was not awaited?");
+      }
+    }
+
+    this.consumed = "content";
   }
 
   async skipFully() {

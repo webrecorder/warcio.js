@@ -5,7 +5,7 @@ module.exports = require("./main.js");
 /* istanbul ignore next */
 if (typeof process !== 'undefined' && typeof global === 'object') {
   if (typeof(global.Headers) === 'undefined') {
-    global.Headers = require('@titelmedia/node-fetch').Headers;
+    global.Headers = require('node-fetch').Headers;
   }
 }
 
