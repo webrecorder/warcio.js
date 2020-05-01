@@ -21,13 +21,10 @@ function main(args, out) {
       'alias': 'fields',
       'describe': 'fields to include in index',
       'type': 'string'
-    }).
-    option('format', {
-      'describe': 'output format',
-      'choices': ['json', 'raw'],
-      'default': 'json'
     })
   }, async (args) => {
+    /* istanbul ignore next */
+    out = out || process.stdout;
     promise = new Indexer(args, out).run(loadStreams(args.filename));
   }).
 
@@ -45,10 +42,12 @@ function main(args, out) {
     }).
     option('format', {
       'describe': 'output format',
-      'choices': ['json', 'cdxj', 'cdx', 'raw'],
+      'choices': ['json', 'cdxj', 'cdx'],
       'default': 'cdxj'
     })
   }, async (args) => {
+    /* istanbul ignore next */
+    out = out || process.stdout;
     promise = new CDXIndexer(args, out).run(loadStreams(args.filename));
   }).
 

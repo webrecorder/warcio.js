@@ -8,20 +8,20 @@ class BaseIndexer
 {
   constructor(opts, out) {
     this.opts = opts;
-
-    /* istanbul ignore next */
-    this.out = out || process.stdout;
+    this.out = out;
   }
 
   write(result) {
     this.out.write(JSON.stringify(result) + "\n");
   }
 
-  writeRaw(result) {
-    this.out.write(result);
+  async run(files) {
+    for await (const result of this.iterIndex(files)) {
+      this.write(result);
+    }
   }
 
-  async run(files) {
+  async* iterIndex(files) {
     const params = {strictHeaders: true, parseHttp: this.parseHttp};
 
     for (const { filename, reader } of files) {
@@ -32,28 +32,37 @@ class BaseIndexer
       const parser = new WARCParser(reader, params);
 
       for await (const record of parser) {
-        if (this.filterRecord && !this.filterRecord(record)) {
-          continue;
+        await record.skipFully()
+        const result = this.indexRecord(record, parser, filename);
+        if (result) {
+          yield result;
         }
-
-        const result = {};
-
-        const offset = parser.offset;
-        const length = await parser.recordLength();
-
-        const special = {offset, length, filename};
-
-        for (const field of this.fields) {
-          if (special[field] != undefined) {
-            result[field] = special[field];
-          } else {
-            this.setField(field, record, result);
-          }
-        }
-
-        this.write(result);
       }
     }
+
+  }
+
+  indexRecord(record, parser, filename) {
+    if (this.filterRecord && !this.filterRecord(record)) {
+      return null;
+    }
+
+    const result = {};
+
+    const offset = parser.offset;
+    const length = parser.recordLength;
+
+    const special = {offset, length, filename};
+
+    for (const field of this.fields) {
+      if (special[field] != undefined) {
+        result[field] = special[field];
+      } else {
+        this.setField(field, record, result);
+      }
+    }
+
+    return result;
   }
 
   setField(field, record, result) {
@@ -86,7 +95,7 @@ class BaseIndexer
 // ===========================================================================
 class Indexer extends BaseIndexer
 {
-  constructor(opts, out) {
+  constructor(opts = {}, out = null) {
     super(opts, out);
 
     if (!opts.fields) {
@@ -103,10 +112,6 @@ class Indexer extends BaseIndexer
         }
       }
     }
-
-    if (opts.format === "raw") {
-      this.write = this.writeRaw;
-    }
   }
 }
 
@@ -119,7 +124,7 @@ const DEFAULT_LEGACY_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,redir
 // ===========================================================================
 class CDXIndexer extends Indexer
 {
-  constructor(opts, out) {
+  constructor(opts = {}, out = null) {
     super(opts, out);
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
@@ -132,10 +137,6 @@ class CDXIndexer extends Indexer
 
       case "cdx":
         this.write = this.writeCDX11;
-        break;
-
-      case "raw":
-        this.write = this.writeRaw;
         break;
 
       case "json":

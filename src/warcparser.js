@@ -82,8 +82,7 @@ class WARCParser
     return this._offset;
   }
 
-  async recordLength() {
-    const res = await this._record.skipFully();
+  get recordLength() {
     return this._reader.getRawLength(this._offset);
   }
 

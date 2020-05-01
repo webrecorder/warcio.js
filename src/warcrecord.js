@@ -2,7 +2,6 @@ import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from './readers';
 
 
 const decoder = new TextDecoder('utf-8');
-const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
 
 // ===========================================================================
@@ -79,31 +78,6 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     return this.payload;
-  }
-
-  async* iterSerialize(encoder) {
-    if (!encoder) {
-      encoder = new TextEncoder();
-    }
-
-    yield* this.warcHeaders.iterSerialize(encoder);
-
-    if (this.httpHeaders) {
-      yield* this.httpHeaders.iterSerialize(encoder);
-    }
-    yield* this.reader;
-    yield CRLFCRLF;
-  }
-
-  async toBuffer(encoder) {
-    const chunks = [];
-    let size = 0;
-    for await (const chunk of this.iterSerialize(encoder)) {
-      chunks.push(chunk);
-      size += chunk.length;
-    }
-
-    return WARCRecord.concatChunks(chunks, size);
   }
 
   get reader() {

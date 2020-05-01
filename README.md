@@ -55,6 +55,8 @@ readWARC('https://example.com/path/to/mywarc.warc');
 
 The `WARCParser()` constructor accepts any async iterator or object with a [ReadableStream.getReader()](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream/getReader) style `read()` method.
 
+A shorthand `for await (const record of WARCParser.iterRecords(reader))` can also be used when the parser object is not needed.
+
 
 ### Streaming WARCs in the Browser
 
@@ -223,7 +225,7 @@ com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit",
 
 The indexers can also be used programmatically, both in the browser and in Node with a custom writer.
 
-The `raw` format specifies for a raw CDX object to be passed to the `write()` function (otherwise a formatted json/cdxj/cdx string is passed in).
+The indexer provide an async iterator which is used to provide the raw index data that is passed to write()
 
 For example, the following snippet demonstrates a writer that logs all HTML files in a WARC:
 
@@ -234,15 +236,14 @@ import { CDXIndexer } from 'https://unpkg.com/warcio/dist/warcio.js';
 
 async function indexWARC(url) {
   const response = await fetch(url);
-  const indexer = new CDXIndexer({format: 'raw'}, {
-    write(cdx) {
-      if (cdx['mime'] === 'text/html') {
-        console.log(cdx['url'] + ' is an HTML page');
-      }
+
+  const files = [{reader: response.body, filename: url}];
+
+  for await (const cdx of CDXIndexer.iterIndex(files)) {
+    if (cdx['mime'] === 'text/html') {
+      console.log(cdx['url'] + ' is an HTML page');
     }
-  });
- 
-  await indexer.run([{reader: response.body, filename: url}]);
+  }
 }
 
 indexWARC('https://example.com/path/to/mywarc.warc');

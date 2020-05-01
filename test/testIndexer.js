@@ -105,13 +105,16 @@ test('test custom CDXIndexer', async t => {
   const path = require('path');
 
   const entries = [];
-  const indexer = new CDXIndexer({format: 'raw'}, {
-    write(cdx) {
-      entries.push({offset: cdx.offset, length: cdx.length});
-    }
-  });
+  const indexer = new CDXIndexer();
 
-  await indexer.run([{reader: fs.createReadStream(path.join(__dirname, 'data/example.warc.gz')), filename: 'example.warc.gz'}]);
+  const files = [{
+    reader: fs.createReadStream(path.join(__dirname, 'data/example.warc.gz')),
+    filename: 'example.warc.gz'
+  }];
+
+  for await (const cdx of indexer.iterIndex(files)) {
+    entries.push({offset: cdx.offset, length: cdx.length});
+  }
 
   t.deepEqual(entries, [
     { offset: 784, length: 1228 },
@@ -124,20 +127,32 @@ test('test custom Indexer', async t => {
   const path = require('path');
 
   const entries = [];
-  const indexer = new Indexer({format: 'raw', fields: 'warc-type,warc-target-uri'}, {
-    write(cdx) {
-      if (cdx['warc-type'] === "response" || cdx["warc-type"] === "request") {
-        entries.push(cdx);
-      }
-    }
-  });
+  const indexer = new Indexer({fields: 'warc-type,warc-target-uri'});
 
-  await indexer.run([{reader: fs.createReadStream(path.join(__dirname, 'data/example.warc.gz')), filename: 'example.warc.gz'}]);
+  const files = [{
+    reader: fs.createReadStream(path.join(__dirname, 'data/example.warc.gz')),
+    filename: 'example.warc.gz'
+  }];
+
+  for await (const cdx of indexer.iterIndex(files)) {
+    if (cdx['warc-type'] === "response" || cdx["warc-type"] === "request") {
+      entries.push(cdx);
+    }
+  }
 
   t.deepEqual(entries, [
     { "warc-type": "response", "warc-target-uri": "http://example.com/"},
     { "warc-type": "request", "warc-target-uri": "http://example.com/" },
     { "warc-type": "request", "warc-target-uri": "http://example.com/" }
   ]);
+
+  // default fields
+  for await (const cdx of new Indexer().iterIndex(files)) {
+    t.not(cdx.offset, undefined);
+  }
+
+
+
+
 });
 

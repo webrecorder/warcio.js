@@ -216,8 +216,6 @@ Content-Length: 0\r\n\
   t.is(record.httpHeaders, null);
 
   t.is(await record.contentText(), "");
-
-  t.is(decoder.decode(await record.toBuffer()), input);
 });
 
 
@@ -267,11 +265,6 @@ text\r\n\
   const record2 = await WARCParser.parse(getReader([input]), {keepHeadersCase: true});
   t.is(record2.warcHeaders.protocol, "WARC/1.0");
   t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
-
-  // serialize
-  const buff = await record2.toBuffer();
-  t.is(decoder.decode(buff), input);
-
 });
 
 
@@ -324,27 +317,6 @@ test('warc1.1 response and request, status checks', async t => {
   request = await parser.parse();
   t.is(request.httpHeaders.requestPath, "/domains/example");
   t.is(request.httpHeaders.method, "GET");
-
-});
-
-
-test('warc1.1 serialize records match', async t => {
-  const fs = require('fs');
-  const path = require('path');
-  const input = fs.readFileSync(path.join(__dirname, 'data', 'redirect.warc'), 'utf-8')
-
-  const serialized = [];
-  let size = 0;
-
-  const encoder = new TextEncoder("utf-8");
-
-  for await (const record of WARCParser.iterRecords(getReader([input]), {keepHeadersCase: true})) {
-    const chunk = await record.toBuffer(encoder);
-    serialized.push(chunk);
-    size += chunk.length;
-  }
-
-  t.is(decoder.decode(AsyncIterReader.concatChunks(serialized, size)), input);
 
 });
 
