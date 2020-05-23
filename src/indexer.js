@@ -39,6 +39,7 @@ class BaseIndexer
         }
       }
     }
+
   }
 
   indexRecord(record, parser, filename) {

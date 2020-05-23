@@ -1,15 +1,57 @@
 import { BaseAsyncIterReader, AsyncIterReader } from './readers';
-import { CRLF, CRLFCRLF } from './statusandheaders';
+import { StatusAndHeaders, CRLF, CRLFCRLF } from './statusandheaders';
 
 const decoder = new TextDecoder('utf-8');
 
 
+
+const defaultRecordCT = {
+  'warcinfo': 'application/warc-fields',
+  'response': 'application/http; msgtype=response',
+  'revisit': 'application/http; msgtype=response',
+  'request': 'application/http; msgtype=request',
+  'metadata': 'application/warc-fields',
+}
 
 
 
 // ===========================================================================
 class WARCRecord extends BaseAsyncIterReader
 {
+  static create({url, date, type, warcHeaders = {},
+                headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
+                warcVersion = 'WARC/1.0', keepHeadersCase = false} = {}, reader) {
+
+    warcHeaders = {...warcHeaders,
+      'WARC-Target-URI': url,
+      'WARC-Date': date,
+      'WARC-Type': type
+    }
+
+    warcHeaders = new StatusAndHeaders({
+      statusline: warcVersion,
+      headers: keepHeadersCase ? new Map(Object.entries(warcHeaders)) : new Headers(warcHeaders)
+    });
+
+    if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
+      warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
+    }
+
+    const record = new WARCRecord({warcHeaders, reader});
+
+    switch (type) {
+      case "response":
+      case "request":
+      case "revisit":
+        record.httpHeaders = new StatusAndHeaders({
+          statusline: httpVersion + " " + status + " " + statusText,
+          headers: keepHeadersCase ? new Map(Object.entries(headers)) : new Headers(headers)});
+        break;
+    }
+
+    return record;
+  }
+
   constructor({warcHeaders, reader}) {
     super();
 
@@ -73,26 +115,6 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     return this.payload;
-  }
-
-  async toBuffer() {
-    return await WARCRecord.readFully(this.iterSerialize());
-  }
-
-  async* iterSerialize(encoder) {
-    if (!encoder) {
-      encoder = new TextEncoder();
-    }
-
-    yield* this.warcHeaders.iterSerialize(encoder);
-    yield CRLF;
-
-    if (this.httpHeaders) {
-      yield* this.httpHeaders.iterSerialize(encoder);
-      yield CRLF;
-    }
-    yield* this.reader;
-    yield CRLFCRLF;
   }
 
   get reader() {
@@ -189,6 +211,10 @@ class WARCRecord extends BaseAsyncIterReader
 
   get warcPayloadDigest() {
     return this.warcHeaders.headers.get("WARC-Payload-Digest");
+  }
+
+  get warcBlockDigest() {
+    return this.warcHeaders.headers.get("WARC-Block-Digest");
   }
 
   get warcContentType() {

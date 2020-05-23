@@ -3,58 +3,15 @@ import { WARCRecord } from './warcrecord';
 import { AsyncIterReader, LimitReader } from './readers';
 
 
-const defaultRecordCT = {
-  'warcinfo': 'application/warc-fields',
-  'response': 'application/http; msgtype=response',
-  'revisit': 'application/http; msgtype=response',
-  'request': 'application/http; msgtype=request',
-  'metadata': 'application/warc-fields',
-}
-
-
 // ===========================================================================
 class WARCParser
 {
-  static create({url, date, type, warcHeaders = {},
-                headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
-                warcVersion = 'WARC/1.0'} = {}, reader) {
-
-    warcHeaders = {...warcHeaders,
-      'WARC-Target-URI': url,
-      'WARC-Date': date,
-      'WARC-Type': type
-    }
-
-    warcHeaders = new StatusAndHeaders({
-      statusline: warcVersion,
-      headers: new Headers(warcHeaders)
-    });
-
-    if (!warcHeaders.headers.get("content-type") && defaultRecordCT[type]) {
-      warcHeaders.headers.set("content-type", defaultRecordCT[type]);
-    }
-
-    const record = new WARCRecord({warcHeaders, reader});
-
-    switch (type) {
-      case "response":
-      case "request":
-      case "revisit":
-        record.httpHeaders = new StatusAndHeaders({
-          statusline: httpVersion + " " + status + " " + statusText,
-          headers: new Headers(headers)});
-        break;
-    }
-
-    return record;
-  }
-
- static parse(source, options) {
+  static parse(source, options) {
     return new WARCParser(source, options).parse();
   }
 
   static iterRecords(source, options) {
-    return new WARCParser(source, options);
+    return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
   constructor(source, {keepHeadersCase = false, parseHttp = true} = {}) {
@@ -84,7 +41,7 @@ class WARCParser
   }
 
   _initRecordReader(warcHeaders) {
-    return new LimitReader(this._reader, warcHeaders.headers.get("Content-Length"));
+    return new LimitReader(this._reader, Number(warcHeaders.headers.get("Content-Length") || 0));
   }
 
   async parse() {

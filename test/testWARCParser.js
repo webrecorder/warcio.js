@@ -2,7 +2,7 @@
 
 import test from 'ava';
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser } from '../main';
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from '../main';
 
 import { getReadableStream, getReader } from './utils';
 
@@ -217,7 +217,7 @@ Content-Length: 0\r\n\
 
   t.is(await record.contentText(), "");
 
-  t.is(decoder.decode(await record.toBuffer()), input);
+  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
 
 
@@ -269,7 +269,7 @@ text\r\n\
   t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
 
   // serialize
-  const buff = await record2.toBuffer();
+  const buff = await WARCSerializer.serialize(record2);
   t.is(decoder.decode(buff), input);
 
 });
@@ -339,7 +339,7 @@ test('warc1.1 serialize records match', async t => {
   const encoder = new TextEncoder("utf-8");
 
   for await (const record of WARCParser.iterRecords(getReader([input]), {keepHeadersCase: true})) {
-    const chunk = await record.toBuffer(encoder);
+    const chunk = await WARCSerializer.serialize(record, encoder);
     serialized.push(chunk);
     size += chunk.length;
   }
