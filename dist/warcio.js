@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function createCommonjsModule(fn, module) {
@@ -4666,207 +4664,48 @@ class WARCSerializer extends BaseAsyncIterReader
 
 
 // ===========================================================================
-class WARCEnsureDigestSerializer extends WARCSerializer
+class WARCEnsureDigestSerializerBuffer extends WARCSerializer
 {
-  constructor(record, signingKey = null) {
-    super(record);
-    this.payloadDigester = new DigestComputer("sha1");
-    this.blockDigester = new DigestComputer("sha1");
-
-    if (record.warcPayloadDigest) {
-      record.warcHeaders.headers.delete("WARC-Payload-Digest");
-    }
-
-    if (record.warcBlockDigest) {
-      record.warcHeaders.headers.delete("WARC-Block-Digest");
-    }
-
-    this.signer = signingKey ? new Signer(signingKey, 'sha256') : null;
+  async digestMessage(chunk) {
+    const hashBuffer = await crypto.subtle.digest("sha-1", chunk);
+    return "sha1:" + base32.encode(hashBuffer);
   }
 
   async* [Symbol.asyncIterator]() {
+    const httpHeadersBuff = encoder.encode(this.record.httpHeaders.toString());
+
     const chunks = [];
-
-    if (this.record.httpHeaders) {
-      for await (const chunk of this.blockDigester.updateIter(this.record.httpHeaders.iterSerialize(encoder))) {
-        chunks.push(chunk);
-      }
-      chunks.push(this.blockDigester.update(CRLF));
-    }
-
-    for await (const chunk of this.record.reader) {
-      this.payloadDigester.update(chunk);
-      this.blockDigester.update(chunk);
+    let payloadSize = 0;
+    for await (const chunk of this.record) {
       chunks.push(chunk);
+      payloadSize += chunk.length;
     }
 
-    this.record.warcHeaders.headers.set("WARC-Payload-Digest", this.payloadDigester.toString());
-    this.record.warcHeaders.headers.set("WARC-Block-Digest", this.blockDigester.toString());
-    this.record.warcHeaders.headers.set("Content-Length", this.blockDigester.size);
+    const payload = WARCSerializer.concatChunks(chunks, payloadSize);
 
-    let warcHeadersIter = this.record.warcHeaders.iterSerialize(encoder);
-    warcHeadersIter = this.signer ? this.signer.updateIter(warcHeadersIter) : warcHeadersIter;
-    yield *warcHeadersIter;
-    
-    if (this.signer) {
-      yield encoder.encode(`WARC-Signature: ${this.signer.toString()}\r\n`);
-    }
+    const size = httpHeadersBuff.length + CRLF.length + payload.length;
+    const blockDigest = await this.digestMessage(WARCSerializer.concatChunks([httpHeadersBuff, CRLF, payload], size));
+    const payloadDigest = await this.digestMessage(payload);
 
+    this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
+    this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
+    this.record.warcHeaders.headers.set("Content-Length", size);
+
+    const warcHeadersBuff = encoder.encode(this.record.warcHeaders.toString());
+
+    yield warcHeadersBuff;
     yield CRLF;
 
-    for (const chunk of chunks) {
-      yield chunk;
-    }
-
-    yield CRLFCRLF;
-  }
-}
-
-
-// ===========================================================================
-class DigestComputer
-{
-  constructor(hashType) {
-    this.hashType = hashType;
-    this.hash = crypto.createHash(hashType);
-    this.size = 0;
-  }
-
-  update(chunk) {
-    this.hash.update(chunk);
-    this.size += chunk.length;
-    return chunk;
-  }
-
-  async* updateIter(iter) {
-    for await (const chunk of iter) {
-      this.update(chunk);
-      yield chunk;
-    }
-  }
-
-  toString() {
-    return this.hashType + ':' + base32.encode(this.hash.digest());
-  }
-}
-
-
-// ===========================================================================
-class Signer
-{
-  constructor(privateKey, hashType) {
-    this.privateKey = privateKey;
-    this.hashType = hashType;
-    this.sign = crypto.createSign(hashType);
-  }
-
-  update(chunk) {
-    this.sign.update(chunk);
-    this.size += chunk.length;
-    return chunk;
-  }
-
-  async* updateIter(iter) {
-    for await (const chunk of iter) {
-      this.update(chunk);
-      yield chunk;
-    }
-  }
-
-  toString() {
-    return this.hashType + ':' + base32.encode(this.sign.sign(this.privateKey));
-  }
-}
-
-// ===========================================================================
-class SWARCSerializer extends WARCEnsureDigestSerializer
-{
-  async* [Symbol.asyncIterator](encoder) {
-    if (!encoder) {
-      encoder = new TextEncoder();
-    }
-
-    yield encoder.encode('S');
-
-    let warcHeadersIter = this.record.warcHeaders.iterSerialize(encoder);
-    warcHeadersIter = this.signer ? this.signer.updateIter(warcHeadersIter) : warcHeadersIter;
-    yield *warcHeadersIter;
-    
+    yield httpHeadersBuff;
     yield CRLF;
 
-    if (this.record.httpHeaders) {
-      yield* this.blockDigester.updateIter(this.record.httpHeaders.iterSerialize(encoder));
-      yield this.blockDigester.update(CRLF);
-    }
-
-    for await (const chunk of this.record.reader) {
-      yield encoder.encode(chunk.length + "");
-      yield CRLF;
-      this.payloadDigester.update(chunk);
-      this.blockDigester.update(chunk);
-      yield chunk;
-      yield CRLF;
-    }
-
-    yield encoder.encode("0");
-    yield CRLFCRLF;
-
-    //const signature = signer.toString();
-
-    yield encoder.encode(`TWARC/1.0\r\n`);
-
-    const trailer = encoder.encode(`\
-WARC-Payload-Digest: ${this.payloadDigester.toString()}\r\n\
-WARC-Block-Digest: ${this.blockDigester.toString()}\r\n\
-Content-Length: ${this.blockDigester.size}\r\n\
-`);
-
-    yield trailer;
-
-    if (this.signer) {
-      this.signer.update(trailer);
-      yield encoder.encode(`WARC-Signature: ${this.signer.toString()}\r\n`);
-    }
+    yield payload;
 
     yield CRLFCRLF;
   }
 }
 
-
-// ===========================================================================
-class SWARCParser extends WARCParser
-{
-  _initRecordReader(warcHeaders) {
-    return new SWARCReader(this._reader, this);
-  }
-}
-
-
-// ===========================================================================
-class SWARCReader extends BaseAsyncIterReader
-{
-  constructor(reader, parser) {
-    super();
-    this._origReader = reader;
-    this._parser = parser;
-    this._dechunkingReader = new AsyncIterReader(reader, null, true);
-  }
-
-  async* [Symbol.asyncIterator]() {
-    yield* this._dechunkingReader;
-
-    const trailersParser = new StatusAndHeadersParser();
-    const trailers = await trailersParser.parse(this._origReader);
-
-    if (this._parser._record) {
-      const warcHeaders = this._parser._record.warcHeaders;
-      for (const [name, value] of trailers.headers) {
-        warcHeaders.headers.append(name, value);
-      }
-      warcHeaders.statusline = warcHeaders.statusline.slice(1);
-    }
-  }
-}
+let WARCEnsureDigestSerializer = WARCEnsureDigestSerializerBuffer;
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
@@ -5098,4 +4937,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, DigestComputer, Indexer, LimitReader, SWARCParser, SWARCReader, SWARCSerializer, Signer, StatusAndHeaders, StatusAndHeadersParser, WARCEnsureDigestSerializer, WARCParser, WARCRecord, WARCSerializer };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer };

@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import base32 from 'hi-base32';
 
 import { BaseAsyncIterReader } from './readers';
@@ -46,119 +45,50 @@ class WARCSerializer extends BaseAsyncIterReader
 
 
 // ===========================================================================
-class WARCEnsureDigestSerializer extends WARCSerializer
+class WARCEnsureDigestSerializerBuffer extends WARCSerializer
 {
-  constructor(record, signingKey = null) {
-    super(record);
-    this.payloadDigester = new DigestComputer("sha1");
-    this.blockDigester = new DigestComputer("sha1");
-
-    if (record.warcPayloadDigest) {
-      record.warcHeaders.headers.delete("WARC-Payload-Digest");
-    }
-
-    if (record.warcBlockDigest) {
-      record.warcHeaders.headers.delete("WARC-Block-Digest");
-    }
-
-    this.signer = signingKey ? new Signer(signingKey, 'sha256') : null;
+  async digestMessage(chunk) {
+    const hashBuffer = await crypto.subtle.digest("sha-1", chunk);
+    return "sha1:" + base32.encode(hashBuffer);
   }
 
   async* [Symbol.asyncIterator]() {
+    const httpHeadersBuff = encoder.encode(this.record.httpHeaders.toString());
+
     const chunks = [];
-
-    if (this.record.httpHeaders) {
-      for await (const chunk of this.blockDigester.updateIter(this.record.httpHeaders.iterSerialize(encoder))) {
-        chunks.push(chunk);
-      }
-      chunks.push(this.blockDigester.update(CRLF));
-    }
-
-    for await (const chunk of this.record.reader) {
-      this.payloadDigester.update(chunk);
-      this.blockDigester.update(chunk);
+    let payloadSize = 0;
+    for await (const chunk of this.record) {
       chunks.push(chunk);
+      payloadSize += chunk.length;
     }
 
-    this.record.warcHeaders.headers.set("WARC-Payload-Digest", this.payloadDigester.toString());
-    this.record.warcHeaders.headers.set("WARC-Block-Digest", this.blockDigester.toString());
-    this.record.warcHeaders.headers.set("Content-Length", this.blockDigester.size);
+    const payload = WARCSerializer.concatChunks(chunks, payloadSize);
 
-    let warcHeadersIter = this.record.warcHeaders.iterSerialize(encoder);
-    warcHeadersIter = this.signer ? this.signer.updateIter(warcHeadersIter) : warcHeadersIter;
-    yield *warcHeadersIter;
-    
-    if (this.signer) {
-      yield encoder.encode(`WARC-Signature: ${this.signer.toString()}\r\n`);
-    }
+    const size = httpHeadersBuff.length + CRLF.length + payload.length;
+    const blockDigest = await this.digestMessage(WARCSerializer.concatChunks([httpHeadersBuff, CRLF, payload], size));
+    const payloadDigest = await this.digestMessage(payload);
 
+    this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
+    this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
+    this.record.warcHeaders.headers.set("Content-Length", size);
+
+    const warcHeadersBuff = encoder.encode(this.record.warcHeaders.toString());
+
+    yield warcHeadersBuff;
     yield CRLF;
 
-    for (const chunk of chunks) {
-      yield chunk;
-    }
+    yield httpHeadersBuff;
+    yield CRLF;
+
+    yield payload;
 
     yield CRLFCRLF;
   }
 }
 
-
-// ===========================================================================
-class DigestComputer
-{
-  constructor(hashType) {
-    this.hashType = hashType;
-    this.hash = crypto.createHash(hashType);
-    this.size = 0;
-  }
-
-  update(chunk) {
-    this.hash.update(chunk);
-    this.size += chunk.length;
-    return chunk;
-  }
-
-  async* updateIter(iter) {
-    for await (const chunk of iter) {
-      this.update(chunk);
-      yield chunk;
-    }
-  }
-
-  toString() {
-    return this.hashType + ':' + base32.encode(this.hash.digest());
-  }
-}
+let WARCEnsureDigestSerializer = WARCEnsureDigestSerializerBuffer;
 
 
-// ===========================================================================
-class Signer
-{
-  constructor(privateKey, hashType) {
-    this.privateKey = privateKey;
-    this.hashType = hashType;
-    this.sign = crypto.createSign(hashType);
-  }
-
-  update(chunk) {
-    this.sign.update(chunk);
-    this.size += chunk.length;
-    return chunk;
-  }
-
-  async* updateIter(iter) {
-    for await (const chunk of iter) {
-      this.update(chunk);
-      yield chunk;
-    }
-  }
-
-  toString() {
-    return this.hashType + ':' + base32.encode(this.sign.sign(this.privateKey));
-  }
-}
-
-
-export { WARCSerializer, WARCEnsureDigestSerializer, DigestComputer, Signer };
+export { WARCSerializer, WARCEnsureDigestSerializerBuffer, WARCEnsureDigestSerializer };
 
 
