@@ -1,5 +1,5 @@
 import base32 from 'hi-base32';
-import { Deflate } from 'pako';
+import { Deflate } from 'pako/lib/deflate';
 
 import { BaseAsyncIterReader } from './readers';
 import { CRLF, CRLFCRLF } from './statusandheaders';

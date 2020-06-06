@@ -15,6 +15,6 @@ export default {
       format: 'esm',
     }
   ],
-  plugins: [commonjs(), resolve()]
+  plugins: [commonjs(), resolve({ browser: true })]
 };
 
