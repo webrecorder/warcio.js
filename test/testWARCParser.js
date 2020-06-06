@@ -217,6 +217,8 @@ Content-Length: 0\r\n\
 
   t.is(await record.contentText(), "");
 
+  t.deepEqual(record.payload, new Uint8Array([]));
+
   t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
 

@@ -1,9 +1,15 @@
 import { BaseAsyncIterReader, AsyncIterReader } from './readers';
 import { StatusAndHeaders, CRLF, CRLFCRLF } from './statusandheaders';
+import { v4 as uuid4 } from 'uuid';
 
 const decoder = new TextDecoder('utf-8');
+const encoder = new TextEncoder('utf-8');
 
+const WARC_1_1 = "WARC/1.1";
+const WARC_1_0 = "WARC/1.0";
 
+const REVISIT_PROFILE_1_0 = "http://netpreserve.org/warc/1.0/revisit/identical-payload-digest";
+const REVISIT_PROFILE_1_1 = "http://netpreserve.org/warc/1.1/revisit/identical-payload-digest";
 
 const defaultRecordCT = {
   'warcinfo': 'application/warc-fields',
@@ -11,27 +17,59 @@ const defaultRecordCT = {
   'revisit': 'application/http; msgtype=response',
   'request': 'application/http; msgtype=request',
   'metadata': 'application/warc-fields',
-}
-
+};
 
 
 // ===========================================================================
 class WARCRecord extends BaseAsyncIterReader
 {
-  static create({url, date, type, warcHeaders = {},
+  static create({url, date, type, warcHeaders = {}, filename = "",
                 headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
-                warcVersion = 'WARC/1.0', keepHeadersCase = false} = {}, reader) {
+                warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
-    warcHeaders = {...warcHeaders,
-      'WARC-Target-URI': url,
-      'WARC-Date': date,
-      'WARC-Type': type
+    function checkDate(d) {
+      if (warcVersion === WARC_1_0) {
+        d = d.split(".")[0];
+        if (d.charAt(date.length - 1) != "Z") {
+          d += "Z";
+        }
+      }
+      return d;
+    }
+
+    if (!date) {
+      date = new Date().toISOString();
+    }
+
+    date = checkDate(date);
+
+    warcHeaders = {...warcHeaders};
+    if (type === "warcinfo") {
+      if (filename) {
+        warcHeaders['WARC-Filename'] = filename;
+      }
+
+    } else {
+      warcHeaders["WARC-Target-URI"] = url;
+    }
+
+    warcHeaders['WARC-Date'] = date;
+    warcHeaders['WARC-Type'] = type;
+
+    if (type === "revisit") {
+      warcHeaders["WARC-Profile"] = warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0;
+      warcHeaders["WARC-Refers-To-Target-URI"] = refersToUrl;
+      warcHeaders["WARC-Refers-To-Date"] = checkDate(refersToDate);
     }
 
     warcHeaders = new StatusAndHeaders({
       statusline: warcVersion,
       headers: keepHeadersCase ? new Map(Object.entries(warcHeaders)) : new Headers(warcHeaders)
     });
+
+    if (!warcHeaders.headers.get("WARC-Record-ID")) {
+      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuid4()}>`);
+    }
 
     if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
       warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
@@ -50,6 +88,18 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     return record;
+  }
+
+  static createWARCInfo(opts = {}, info) {
+    async function* genInfo() {
+      for (const [name, value] of Object.entries(info)) {
+        yield encoder.encode(`${name}: ${value}\r\n`);
+      }
+    }
+
+    opts.type = "warcinfo";
+
+    return WARCRecord.create(opts, genInfo());
   }
 
   constructor({warcHeaders, reader}) {
@@ -110,7 +160,7 @@ class WARCRecord extends BaseAsyncIterReader
       this.payload = await super.readFully();
       this.consumed = "content";
     } else {
-      this.payload = await this._reader.readFully();
+      this.payload = await WARCRecord.readFully(this._reader);
       this.consumed = "raw";
     }
 
