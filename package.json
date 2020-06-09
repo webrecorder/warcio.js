@@ -8,13 +8,13 @@
   "bin": {
     "warcio.js": "./cli.js"
   },
-  "homepage": "https://github.com/ikreymer/warcio.js#readme",
+  "homepage": "https://github.com/webrecorder/warcio.js#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ikreymer/warcio.js.git"
+    "url": "https://github.com/webrecorder/warcio.js.git"
   },
   "bugs": {
-    "url": "https://github.com/ikreymer/warcio.js/issues"
+    "url": "https://github.com/webrecorder/warcio.js/issues"
   },
   "keywords": [
     "WARC",

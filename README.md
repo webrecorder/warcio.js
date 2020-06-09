@@ -4,8 +4,8 @@ Streaming web archive (WARC) file support for modern browsers and Node.
 
 This package represents an approxipate port Javascript port of the Python [warcio](https://github.com/webrecorder/warcio) module.
 
-[![Build Status](https://travis-ci.com/ikreymer/warcio.js.svg?branch=master)](https://travis-ci.com/ikreymer/warcio.js)
-[![codecov](https://codecov.io/gh/ikreymer/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/ikreymer/warcio.js)
+[![Build Status](https://travis-ci.com/webrecorder/warcio.js.svg?branch=master)](https://travis-ci.com/webrecorder/warcio.js)
+[![codecov](https://codecov.io/gh/webrecorder/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/webrecorder/warcio.js)
 
 
 ## Browser Usage 
@@ -291,7 +291,7 @@ Passing in `WARCSerializer.serialize({gzip: true})` will create a GZIP compresse
 
 The payload can be provided as an async iterator. The `WARC-Payload-Digest` and `WARC-Block-Digest` are automatically computed if not provided in the `warcHeaders`.
 
-(Note that at this type, computing the digest requires buffering the payload fully, due to limitation of the browser digest message APIs).
+(Note that at this time, computing the digest requires buffering the payload fully, due to limitation of `crypto.subtle.digest()` apis in requiring a full buffer).
 
 
 <details>
@@ -346,12 +346,12 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
 
 This library is still new and some functionality is 'not yet implemented' when compared to python `warcio` including:
 
-- ~~Writing WARC files [#2](https://github.com/ikreymer/warcio.js/issues/2)~~ Implemented!
-- ~~Chunked Payload Decoding [#3](https://github.com/ikreymer/warcio.js/issues/3)~~ Implemented!
-- Brotli Payload Decoding [#4](https://github.com/ikreymer/warcio.js/issues/4)
-- Reading ARC files [#5](https://github.com/ikreymer/warcio.js/issues/5)
-- ~~Digest computation [#6](https://github.com/ikreymer/warcio.js/issues/6)~~ Implemented!
-- URL canonicalization [#7](https://github.com/ikreymer/warcio.js/issues/7)
+- ~~Writing WARC files [#2](https://github.com/webrecorder/warcio.js/issues/2)~~ Implemented!
+- ~~Chunked Payload Decoding [#3](https://github.com/webrecorder/warcio.js/issues/3)~~ Implemented!
+- Brotli Payload Decoding [#4](https://github.com/webrecorder/warcio.js/issues/4)
+- Reading ARC files [#5](https://github.com/webrecorder/warcio.js/issues/5)
+- ~~Digest computation [#6](https://github.com/webrecorder/warcio.js/issues/6)~~ Implemented!
+- URL canonicalization [#7](https://github.com/webrecorder/warcio.js/issues/7)
 
 They should eventually be added in future versions. See the referenced issues to track progress on each of these items.
 
