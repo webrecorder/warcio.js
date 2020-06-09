@@ -4,6 +4,14 @@ function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
 
+function getCjsExportFromNamespace (n) {
+	return n && n['default'] || n;
+}
+
+function commonjsRequire () {
+	throw new Error('Dynamic requires are not currently supported by @rollup/plugin-commonjs');
+}
+
 var common = createCommonjsModule(function (module, exports) {
 
 
@@ -3844,63 +3852,125 @@ function splitRemainder(str, sep, limit) {
   return newParts;
 }
 
-// Unique ID creation requires a high quality random # generator. In the browser we therefore
-// require the crypto API and do not support built-in fallback to lower quality random number
-// generators (like Math.random()).
-// getRandomValues needs to be invoked in a context where "this" is a Crypto implementation. Also,
-// find the complete implementation of crypto (msCrypto) on IE11.
-var getRandomValues = typeof crypto !== 'undefined' && crypto.getRandomValues && crypto.getRandomValues.bind(crypto) || typeof msCrypto !== 'undefined' && typeof msCrypto.getRandomValues === 'function' && msCrypto.getRandomValues.bind(msCrypto);
-var rnds8 = new Uint8Array(16);
-function rng() {
-  if (!getRandomValues) {
-    throw new Error('crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported');
+var _nodeResolve_empty = {};
+
+var _nodeResolve_empty$1 = /*#__PURE__*/Object.freeze({
+	__proto__: null,
+	'default': _nodeResolve_empty
+});
+
+var require$$0 = getCjsExportFromNamespace(_nodeResolve_empty$1);
+
+var uuidRandom = createCommonjsModule(function (module) {
+
+(function(){
+
+  var
+    buf,
+    bufIdx = 0,
+    hexBytes = [],
+    i
+  ;
+
+  // Pre-calculate toString(16) for speed
+  for (i = 0; i < 256; i++) {
+    hexBytes[i] = (i + 0x100).toString(16).substr(1);
   }
 
-  return getRandomValues(rnds8);
-}
+  // Buffer random numbers for speed
+  // Reduce memory usage by decreasing this number (min 16)
+  // or improve speed by increasing this number (try 16384)
+  uuid.BUFFER_SIZE = 4096;
 
-/**
- * Convert array of 16 byte values to UUID string format of the form:
- * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
- */
-var byteToHex = [];
+  // Binary uuids
+  uuid.bin = uuidBin;
 
-for (var i = 0; i < 256; ++i) {
-  byteToHex.push((i + 0x100).toString(16).substr(1));
-}
+  // Clear buffer
+  uuid.clearBuffer = function() {
+    buf = null;
+    bufIdx = 0;
+  };
 
-function bytesToUuid(buf, offset) {
-  var i = offset || 0;
-  var bth = byteToHex; // Note: Be careful editing this code!  It's been tuned for performance
-  // and works in ways you may not expect. See https://github.com/uuidjs/uuid/pull/434
-
-  return (bth[buf[i + 0]] + bth[buf[i + 1]] + bth[buf[i + 2]] + bth[buf[i + 3]] + '-' + bth[buf[i + 4]] + bth[buf[i + 5]] + '-' + bth[buf[i + 6]] + bth[buf[i + 7]] + '-' + bth[buf[i + 8]] + bth[buf[i + 9]] + '-' + bth[buf[i + 10]] + bth[buf[i + 11]] + bth[buf[i + 12]] + bth[buf[i + 13]] + bth[buf[i + 14]] + bth[buf[i + 15]]).toLowerCase();
-}
-
-function v4(options, buf, offset) {
-  if (typeof options === 'string') {
-    buf = options === 'binary' ? new Uint8Array(16) : null;
-    options = null;
-  }
-
-  options = options || {};
-  var rnds = options.random || (options.rng || rng)(); // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
-
-  rnds[6] = rnds[6] & 0x0f | 0x40;
-  rnds[8] = rnds[8] & 0x3f | 0x80; // Copy bytes to buffer, if provided
-
-  if (buf) {
-    var start = offset || 0;
-
-    for (var i = 0; i < 16; ++i) {
-      buf[start + i] = rnds[i];
+  // Test for uuid
+  uuid.test = function(uuid) {
+    if (typeof uuid === 'string') {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(uuid);
     }
+    return false;
+  };
 
-    return buf;
+  // Node & Browser support
+  var crypt0;
+  if (typeof crypto !== 'undefined') {
+    crypt0 = crypto;
+  } else if( (typeof window !== 'undefined') && (typeof window.msCrypto !== 'undefined')) {
+    crypt0 = window.msCrypto; // IE11
   }
 
-  return bytesToUuid(rnds);
-}
+  if ( (typeof commonjsRequire === 'function')) {
+    crypt0 = crypt0 || require$$0;
+    module.exports = uuid;
+  } else if (typeof window !== 'undefined') {
+    window.uuid = uuid;
+  }
+
+  // Use best available PRNG
+  // Also expose this so you can override it.
+  uuid.randomBytes = (function(){
+    if (crypt0) {
+      if (crypt0.randomBytes) {
+        return crypt0.randomBytes;
+      }
+      if (crypt0.getRandomValues) {
+        return function(n) {
+          var bytes = new Uint8Array(n);
+          crypt0.getRandomValues(bytes);
+          return bytes;
+        };
+      }
+    }
+    return function(n) {
+      var i, r = [];
+      for (i = 0; i < n; i++) {
+        r.push(Math.floor(Math.random() * 256));
+      }
+      return r;
+    };
+  })();
+
+  // Buffer some random bytes for speed
+  function randomBytesBuffered(n) {
+    if (!buf || ((bufIdx + n) > uuid.BUFFER_SIZE)) {
+      bufIdx = 0;
+      buf = uuid.randomBytes(uuid.BUFFER_SIZE);
+    }
+    return buf.slice(bufIdx, bufIdx += n);
+  }
+
+  // uuid.bin
+  function uuidBin() {
+    var b = randomBytesBuffered(16);
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    return b;
+  }
+
+  // String UUIDv4 (Random)
+  function uuid() {
+    var b = uuidBin();
+    return hexBytes[b[0]] + hexBytes[b[1]] +
+      hexBytes[b[2]] + hexBytes[b[3]] + '-' +
+      hexBytes[b[4]] + hexBytes[b[5]] + '-' +
+      hexBytes[b[6]] + hexBytes[b[7]] + '-' +
+      hexBytes[b[8]] + hexBytes[b[9]] + '-' +
+      hexBytes[b[10]] + hexBytes[b[11]] +
+      hexBytes[b[12]] + hexBytes[b[13]] +
+      hexBytes[b[14]] + hexBytes[b[15]]
+    ;
+  }
+
+})();
+});
 
 const decoder$1 = new TextDecoder('utf-8');
 const encoder = new TextEncoder('utf-8');
@@ -3924,7 +3994,7 @@ const defaultRecordCT = {
 class WARCRecord extends BaseAsyncIterReader
 {
   static create({url, date, type, warcHeaders = {}, filename = "",
-                headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
+                httpHeaders = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
                 warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
     function checkDate(d) {
@@ -3968,7 +4038,7 @@ class WARCRecord extends BaseAsyncIterReader
     });
 
     if (!warcHeaders.headers.get("WARC-Record-ID")) {
-      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${v4()}>`);
+      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuidRandom()}>`);
     }
 
     if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
@@ -3983,7 +4053,7 @@ class WARCRecord extends BaseAsyncIterReader
       case "revisit":
         record.httpHeaders = new StatusAndHeaders({
           statusline: httpVersion + " " + status + " " + statusText,
-          headers: keepHeadersCase ? new Map(Object.entries(headers)) : new Headers(headers)});
+          headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
         break;
     }
 

@@ -72,7 +72,7 @@ test('compute digest, create record', async t => {
   const date = "2000-01-01T00:00:00Z";
   const type = "response";
   const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
-  const headers = {
+  const httpHeaders = {
       "Custom-Header": "somevalue",
       "Content-Type": 'text/plain; charset="UTF-8"'
   };
@@ -80,7 +80,7 @@ test('compute digest, create record', async t => {
   const keepHeadersCase = true;
 
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, headers, keepHeadersCase}, reader());
+      url, date, type, warcHeaders, httpHeaders, keepHeadersCase}, reader());
 
   t.is(record.warcType, "response");
 
@@ -106,6 +106,25 @@ text\r\n\r\n`);
 
 });
 
+test('test auto record id, current date', async t => {
+  async function* payload() {
+    yield encoder.encode('some text');
+  }
+
+  const url = "urn:custom:http://example.com/";
+  const type = "resource";
+  const warcHeaders = {"Content-Type": "text/plain"};
+
+  const record = await WARCRecord.create({url, type, warcHeaders}, payload());
+
+  t.is(record.warcContentType, "text/plain");
+  t.not(record.warcDate, null);
+  t.not(record.warcHeader("WARC-Record-ID", null));
+  t.not(record.warcPayloadDigest, null);
+  t.is(record.warcPayloadDigest, record.warcBlockDigest);
+
+});
+
 
 
 test('compute digest, create record, gzipped', async t => {
@@ -120,15 +139,13 @@ test('compute digest, create record, gzipped', async t => {
   const date = "2000-01-01T00:00:00Z";
   const type = "response";
   const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
-  const headers = {
+  const httpHeaders = {
       "Custom-Header": "somevalue",
       "Content-Type": 'text/plain; charset="UTF-8"'
   };
 
-  const keepHeadersCase = true;
-
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, headers, keepHeadersCase}, reader());
+      url, date, type, warcHeaders, httpHeaders}, reader());
 
   t.is(record.warcType, "response");
 

@@ -1,6 +1,6 @@
 require = require("esm")(module);
 module.exports = {
-  ...require("./main.js"), ...require('./streamserializers.js')
+  ...require("./main.js")
 };
 
 // ensure global Headers object is set for node

@@ -1,6 +1,6 @@
 import { BaseAsyncIterReader, AsyncIterReader } from './readers';
 import { StatusAndHeaders, CRLF, CRLFCRLF } from './statusandheaders';
-import { v4 as uuid4 } from 'uuid';
+import uuid from 'uuid-random';
 
 const decoder = new TextDecoder('utf-8');
 const encoder = new TextEncoder('utf-8');
@@ -24,7 +24,7 @@ const defaultRecordCT = {
 class WARCRecord extends BaseAsyncIterReader
 {
   static create({url, date, type, warcHeaders = {}, filename = "",
-                headers = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
+                httpHeaders = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
                 warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
     function checkDate(d) {
@@ -68,7 +68,7 @@ class WARCRecord extends BaseAsyncIterReader
     });
 
     if (!warcHeaders.headers.get("WARC-Record-ID")) {
-      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuid4()}>`);
+      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuid()}>`);
     }
 
     if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
@@ -83,7 +83,7 @@ class WARCRecord extends BaseAsyncIterReader
       case "revisit":
         record.httpHeaders = new StatusAndHeaders({
           statusline: httpVersion + " " + status + " " + statusText,
-          headers: keepHeadersCase ? new Map(Object.entries(headers)) : new Headers(headers)});
+          headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
         break;
     }
 
