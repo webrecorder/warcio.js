@@ -1,3 +1,8 @@
+/**
+ * This file is part of Webrecorder warcio.js, released under the MIT license.
+ * See https://github.com/webrecorder/warcio.js for more info. Copyright (C) 2020, Webrecorder Software
+ */
+
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function createCommonjsModule(fn, module) {

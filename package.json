@@ -65,6 +65,7 @@
     "codecov": "^3.6.5",
     "nyc": "^15.0.1",
     "rollup": "^2.6.1",
+    "rollup-plugin-license": "^2.1.0",
     "rollup-plugin-terser": "^5.3.0",
     "stream-buffers": "^3.0.2",
     "web-streams-node": "^0.4.0"
