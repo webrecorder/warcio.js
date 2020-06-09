@@ -45,6 +45,20 @@ class BaseAsyncIterReader
     return [chunk.slice(0, inx), chunk.slice(inx)];
   }
 
+  static async readFully(iter) {
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of iter) {
+      chunks.push(chunk);
+      size += chunk.byteLength;
+    }
+
+    return BaseAsyncIterReader.concatChunks(chunks, size);
+  }
+
+
+
   getReadableStream() {
     const streamIter = this[Symbol.asyncIterator]();
 
@@ -62,16 +76,8 @@ class BaseAsyncIterReader
     });
   }
 
-  async readFully() {
-    const chunks = [];
-    let size = 0;
-
-    for await (const chunk of this) {
-      chunks.push(chunk);
-      size += chunk.byteLength;
-    }
-
-    return BaseAsyncIterReader.concatChunks(chunks, size);
+  readFully() {
+    return BaseAsyncIterReader.readFully(this);
   }
 
   async readline(maxLength = 0) {
@@ -110,10 +116,10 @@ class AsyncIterReader extends BaseAsyncIterReader {
       }
     }
 
-    this._sourceIter = streamOrIter[Symbol.asyncIterator]();
-
     if (dechunk) {
-      this._sourceIter = this.dechunk(this._sourceIter);
+      this._sourceIter = this.dechunk(streamOrIter);
+    } else {
+      this._sourceIter = streamOrIter[Symbol.asyncIterator]();
     }
 
     this.lastValue = null;
@@ -134,7 +140,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   async* dechunk(source) {
-    const reader = new AsyncIterReader(source, null);
+    const reader = (source instanceof AsyncIterReader) ? source : new AsyncIterReader(source, null);
 
     let size = -1;
     let first = true;
@@ -180,8 +186,12 @@ class AsyncIterReader extends BaseAsyncIterReader {
         break;
 
       } else {
-        yield chunk;
         first = false;
+        if (!chunk || size === 0) {
+          return;
+        } else {
+          yield chunk;
+        }
       }
     }
 

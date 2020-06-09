@@ -11,8 +11,12 @@ class BaseIndexer
     this.out = out;
   }
 
+  serialize(result) {
+    return JSON.stringify(result) + "\n";
+  }
+
   write(result) {
-    this.out.write(JSON.stringify(result) + "\n");
+    this.out.write(this.serialize(result));
   }
 
   async run(files) {
@@ -39,7 +43,6 @@ class BaseIndexer
         }
       }
     }
-
   }
 
   indexRecord(record, parser, filename) {
@@ -132,11 +135,11 @@ class CDXIndexer extends Indexer
 
     switch (opts.format) {
       case "cdxj":
-        this.write = this.writeCDXJ;
+        this.serialize = this.serializeCDXJ;
         break;
 
       case "cdx":
-        this.write = this.writeCDX11;
+        this.serialize = this.serializeCDX11;
         break;
 
       case "json":
@@ -159,22 +162,22 @@ class CDXIndexer extends Indexer
     return true;
   }
 
-  writeCDXJ(result) {
+  serializeCDXJ(result) {
     const { urlkey, timestamp } = result;
     delete result.urlkey;
     delete result.timestamp;
 
-    this.out.write(`${urlkey} ${timestamp} ${JSON.stringify(result)}\n`);
+    return `${urlkey} ${timestamp} ${JSON.stringify(result)}\n`;
   }
 
-  writeCDX11(result) {
+  serializeCDX11(result) {
     const value = [];
 
     for (const field of DEFAULT_LEGACY_CDX_FIELDS) {
       value.push(result[field] != undefined ? result[field] : "-");
     }
 
-    this.out.write(value.join(" ") + "\n");
+    return value.join(" ") + "\n";
   }
 
   getField(field, record) {

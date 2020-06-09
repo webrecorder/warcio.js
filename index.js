@@ -1,5 +1,7 @@
 require = require("esm")(module);
-module.exports = require("./main.js");
+module.exports = {
+  ...require("./main.js")
+};
 
 // ensure global Headers object is set for node
 /* istanbul ignore next */
