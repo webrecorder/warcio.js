@@ -259,7 +259,7 @@ The indexer provide an async iterator which yields the index data as an object i
 For example, the following snippet demonstrates a writer that logs all HTML files in a WARC:
 
 <details>
-  <summary>Using CDXINdexer:</summary>
+  <summary>Using CDXIndexer programmatically:</summary>
 
   ```html
   <script type="module">
@@ -295,7 +295,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
 
 
 <details>
-  <summary>An following example should work in the browser</summary>
+  <summary>An example of generating WARCs in the browser:</summary>
 
   ```html
   <script type="module">
