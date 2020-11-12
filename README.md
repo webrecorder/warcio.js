@@ -267,10 +267,11 @@ For example, the following snippet demonstrates a writer that logs all HTML file
 
   async function indexWARC(url) {
     const response = await fetch(url);
+    const indexer = new CDXIndexer()
 
     const files = [{reader: response.body, filename: url}];
 
-    for await (const cdx of CDXIndexer.iterIndex(files)) {
+    for await (const cdx of indexer.iterIndex(files)) {
       if (cdx['mime'] === 'text/html') {
         console.log(cdx['url'] + ' is an HTML page');
       }
