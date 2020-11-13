@@ -4050,6 +4050,10 @@ class WARCRecord extends BaseAsyncIterReader
       warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
     }
 
+    if (!reader) {
+      async function* emptyReader() {}      reader = emptyReader();
+    }
+
     const record = new WARCRecord({warcHeaders, reader});
 
     switch (type) {
