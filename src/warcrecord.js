@@ -24,7 +24,7 @@ const defaultRecordCT = {
 class WARCRecord extends BaseAsyncIterReader
 {
   static create({url, date, type, warcHeaders = {}, filename = "",
-                httpHeaders = {}, status = '200', statusText = 'OK', httpVersion='HTTP/1.1',
+                httpHeaders = {}, statusline = "HTTP/1.1 200 OK",
                 warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
     function checkDate(d) {
@@ -75,6 +75,11 @@ class WARCRecord extends BaseAsyncIterReader
       warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
     }
 
+    if (!reader) {
+      async function* emptyReader() {};
+      reader = emptyReader();
+    }
+
     const record = new WARCRecord({warcHeaders, reader});
 
     switch (type) {
@@ -82,7 +87,7 @@ class WARCRecord extends BaseAsyncIterReader
       case "request":
       case "revisit":
         record.httpHeaders = new StatusAndHeaders({
-          statusline: httpVersion + " " + status + " " + statusText,
+          statusline,
           headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
         break;
     }

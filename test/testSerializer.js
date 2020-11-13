@@ -144,8 +144,10 @@ test('compute digest, create record, gzipped', async t => {
       "Content-Type": 'text/plain; charset="UTF-8"'
   };
 
+  const statusline = "HTTP/1.1 404 Not Found";
+
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, httpHeaders}, reader());
+      url, date, type, warcHeaders, httpHeaders, statusline}, reader());
 
   t.is(record.warcType, "response");
 
@@ -160,10 +162,10 @@ WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: response\r\n\
 Content-Type: application/http; msgtype=response\r\n\
 WARC-Payload-Digest: sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
-WARC-Block-Digest: sha-256:e482022d39cd75c9dda382678f9122864883d22359d4f64804cb0c263fe8065f\r\n\
-Content-Length: 97\r\n\
+WARC-Block-Digest: sha-256:9b5a9b1d4a0263075b50a47dc2326320f6083f3800ddf7ae079ebbb661b3ffc9\r\n\
+Content-Length: 104\r\n\
 \r\n\
-HTTP/1.1 200 OK\r\n\
+HTTP/1.1 404 Not Found\r\n\
 Custom-Header: somevalue\r\n\
 Content-Type: text/plain; charset="UTF-8"\r\n\
 \r\n\
@@ -171,6 +173,47 @@ some\n\
 text\r\n\r\n`);
 
 });
+
+
+test('create request record', async t => {
+  const url = "http://example.com/";
+  const date = "2000-01-01T00:00:00Z";
+  const type = "request";
+  const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
+  const httpHeaders = {
+      "Accept": "*/*",
+  };
+
+  const statusline = "GET /file HTTP/1.1";
+
+  const record = await WARCRecord.create({
+      url, date, type, warcHeaders, httpHeaders, statusline});
+
+  t.is(record.warcType, "request");
+
+  const gzipped = await WARCSerializer.serialize(record, {gzip: true});
+  const res = decoder.decode(inflate(gzipped));
+
+  t.is(res, `\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha-256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha-256:bae4ef8a0c1f20864d3cf60e7bba15c5f1b8d15fd6d18bdfffcd41ab57d9b1dc\r\n\
+Content-Length: 35\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Accept: */*\r\n\
+\r\n\
+\r\n\
+\r\n\
+`);
+
+});
+
 
 
 test('create warcinfo', async t => {
