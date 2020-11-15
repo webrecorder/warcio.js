@@ -302,7 +302,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
   <script type="module">
     import { WARCRecord, WARCSerializer } from 'https://unpkg.com/warcio/dist/warcio.js';
 
-    async function main () {
+    async function main() {
 
       // First, create a warcinfo record
       const warcVersion = "WARC/1.1";
@@ -340,6 +340,53 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
 
     main();
   </script>
+  ```
+</details>
+
+
+<details>
+  <summary>An example of generating WARCs in Node:</summary>
+
+  ```javascript
+    const { WARCRecord, WARCSerializer } = require("warcio");
+
+    async function main() {
+
+      // First, create a warcinfo record
+      const warcVersion = "WARC/1.1";
+
+      const info = {
+        "software": "warcio.js in node"
+      }
+      const filename = "sample.warc";
+
+      const warcinfo = await WARCRecord.createWARCInfo({filename, warcVersion}, info);
+
+      const serializedWARCInfo = await WARCSerializer.serialize(warcinfo);
+
+      // Create a sample response
+      const url = "http://example.com/";
+      const date = "2000-01-01T00:00:00Z";
+      const type = "response";
+      const headers = {
+          "Custom-Header": "somevalue",
+          "Content-Type": 'text/plain; charset="UTF-8"'
+      };
+
+      async function* content() {
+        // content should be a Uint8Array, so encoding if emitting astring
+        yield new TextEncoder().encode('sample content\n');
+      }
+
+      const record = await WARCRecord.create({url, date, type, warcVersion, headers}, content());
+
+      const serializedRecord = await WARCSerializer.serialize(record);
+
+      console.log(new TextDecoder().decode(serializedWARCInfo));
+      console.log(new TextDecoder().decode(serializedRecord));
+    }
+
+    main();
   ```
 </details>
 

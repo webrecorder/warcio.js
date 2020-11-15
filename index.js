@@ -9,5 +9,9 @@ if (typeof process !== 'undefined' && typeof global === 'object') {
   if (typeof(global.Headers) === 'undefined') {
     global.Headers = require('node-fetch').Headers;
   }
+  if (typeof(global.Crypto) === 'undefined') {
+    const { Crypto } = require('@peculiar/webcrypto');
+    global.crypto = new Crypto();
+  }
 }
 
