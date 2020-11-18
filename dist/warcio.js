@@ -3798,8 +3798,8 @@ class StatusAndHeadersParser {
     return first === " " || first === "\t";
   }
 
-  async parse(reader, {headersClass = Map} = {}) {
-    const fullStatusLine = await reader.readline();
+  async parse(reader, {headersClass = Map, firstLine} = {}) {
+    const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
     if (!fullStatusLine) {
       return null;
@@ -4281,15 +4281,40 @@ class WARCParser
 
     this._reader = source;
     this._record = null;
-
   }
 
   async readToNextRecord() {
+    let nextline = "";
+
     if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
-      await this._reader.readSize(4, true);
-      this._atRecordBoundary = true;
+
+      nextline = await this._reader.readline();
+
+      const lineLen = nextline.trim().length;
+
+      if (lineLen) {
+        console.warn(`Content-Length Too Small: Record not followed by newline, \
+Remainder Length: ${lineLen}, \
+Offset: ${this._reader.getRawOffset() - nextline.length}`);
+      }
+
+      if (this._reader.compressed) {
+        await this._reader.readSize(2, true);
+        nextline = "";
+      } else {
+
+        nextline = await this._reader.readline();
+
+        // consume remaining new lines
+        while (nextline.length === 2) {
+          nextline = await this._reader.readline();
+        }
+      }
     }
+
+    this._atRecordBoundary = true;
+    return nextline;
   }
 
   _initRecordReader(warcHeaders) {
@@ -4297,13 +4322,13 @@ class WARCParser
   }
 
   async parse() {
-    await this.readToNextRecord();
+    const firstLine = await this.readToNextRecord();
 
-    this._offset = this._reader.getRawOffset();
+    this._offset = this._reader.getRawOffset() - firstLine.length;
 
     const headersParser = new StatusAndHeadersParser();
 
-    const warcHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
+    const warcHeaders = await headersParser.parse(this._reader, {firstLine, headersClass: this._headersClass});
 
     if (!warcHeaders) {
       return null;
@@ -8556,6 +8581,9 @@ class CDXIndexer extends Indexer
   getSurt(url) {
     try {
       const urlObj = new URL(url);
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return url;
+      }
 
       const hostParts = urlObj.hostname.split(".").reverse();
       let surt = hostParts.join(",");

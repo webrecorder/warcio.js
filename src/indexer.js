@@ -223,6 +223,9 @@ class CDXIndexer extends Indexer
   getSurt(url) {
     try {
       const urlObj = new URL(url);
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return url;
+      }
 
       const hostParts = urlObj.hostname.split(".").reverse();
       let surt = hostParts.join(",");

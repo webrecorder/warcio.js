@@ -29,15 +29,41 @@ class WARCParser
 
     this._reader = source;
     this._record = null;
-
   }
 
   async readToNextRecord() {
+    let nextline = "";
+
     if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
-      await this._reader.readSize(4, true);
-      this._atRecordBoundary = true;
+
+      nextline = await this._reader.readline();
+
+      const lineLen = nextline.trim().length;
+
+      if (lineLen) {
+        console.warn(`Content-Length Too Small: Record not followed by newline, \
+Remainder Length: ${lineLen}, \
+Offset: ${this._reader.getRawOffset() - nextline.length}`);
+      }
+
+      if (this._reader.compressed) {
+        await this._reader.readSize(2, true);
+        nextline = "";
+      } else {
+        let count = 0;
+
+        nextline = await this._reader.readline();
+
+        // consume remaining new lines
+        while (nextline.length === 2) {
+          nextline = await this._reader.readline();
+        }
+      }
     }
+
+    this._atRecordBoundary = true;
+    return nextline;
   }
 
   _initRecordReader(warcHeaders) {
@@ -45,13 +71,13 @@ class WARCParser
   }
 
   async parse() {
-    await this.readToNextRecord();
+    const firstLine = await this.readToNextRecord();
 
-    this._offset = this._reader.getRawOffset();
+    this._offset = this._reader.getRawOffset() - firstLine.length;
 
     const headersParser = new StatusAndHeadersParser();
 
-    const warcHeaders = await headersParser.parse(this._reader, {headersClass: this._headersClass});
+    const warcHeaders = await headersParser.parse(this._reader, {firstLine, headersClass: this._headersClass});
 
     if (!warcHeaders) {
       return null;

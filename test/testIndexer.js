@@ -77,6 +77,15 @@ com,example)/ 20170306040206 http://example.com/ text/html 200 G7HRM7BGOKSKMSXZA
 com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 942 3370 example.warc
 `);
 
+test('cdx11 warc bad lengths', index,
+  ['cdx-index', './test/data/example-bad-length.warc', '--format', 'cdx'],
+  `\
+com,example)/ 20170306040206 http://example.com/ text/html 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 1364 1197 example-bad-length.warc
+com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 944 3370 example-bad-length.warc
+`);
+
+
+
 
 test('cdx json warc.gz all', index,
   ['cdx-index', './test/data/example.warc.gz', '--format', 'json', '--all'],

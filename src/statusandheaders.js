@@ -83,8 +83,8 @@ class StatusAndHeadersParser {
     return first === " " || first === "\t";
   }
 
-  async parse(reader, {headersClass = Map} = {}) {
-    const fullStatusLine = await reader.readline();
+  async parse(reader, {headersClass = Map, firstLine} = {}) {
+    const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
     if (!fullStatusLine) {
       return null;
