@@ -4,9 +4,9 @@ import test from 'ava';
 
 import pako from 'pako';
 
-import { LimitReader, AsyncIterReader } from '../main';
-
 import { getReader } from './utils';
+
+import { LimitReader, AsyncIterReader } from '../main';
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");

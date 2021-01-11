@@ -8,6 +8,7 @@ import './utils';
 import { WARCRecord, WARCParser, AsyncIterReader, StatusAndHeaders, WARCSerializer } from '../main';
 
 import { inflate } from 'pako';
+import { Deflate } from 'pako/lib/deflate';
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
@@ -126,8 +127,7 @@ test('test auto record id, current date', async t => {
 });
 
 
-
-test('compute digest, create record, gzipped', async t => {
+const createRecordGzipped = async (t) => {
 
   async function* reader() {
     yield encoder.encode('so');
@@ -172,7 +172,10 @@ Content-Type: text/plain; charset="UTF-8"\r\n\
 some\n\
 text\r\n\r\n`);
 
-});
+};
+
+
+test('compute digest, create record, gzipped', createRecordGzipped);
 
 
 test('create request record', async t => {
@@ -295,3 +298,42 @@ HTTP/1.1 200 OK\r\n\
 \r\n`);
 
 });
+
+
+test('create record, gzipped, streaming', async t => {
+  const { TransformStream } = require('web-streams-node');
+
+  class CompressionStream extends TransformStream
+  {
+    constructor(format) {
+      const deflater = new Deflate({gzip: format === "gzip"});
+      let last = null;
+
+      super({
+        transform(chunk, controller) {
+          if (last && last.length > 0) {
+            deflater.push(last);
+          }
+          last = chunk;
+
+          while (deflater.chunks.length) {
+            controller.enqueue(deflater.chunks.shift());
+          }
+        },
+
+        flush(controller) {
+          deflater.push(last, true);
+          controller.enqueue(deflater.result);
+        }
+      });
+    }
+  }
+
+  global.CompressionStream = CompressionStream;
+
+  await createRecordGzipped(t);
+
+
+});
+
+

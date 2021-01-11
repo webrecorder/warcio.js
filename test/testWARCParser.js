@@ -2,10 +2,9 @@
 
 import test from 'ava';
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from '../main';
-
 import { getReadableStream, getReader } from './utils';
 
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from '../main';
 
 const decoder = new TextDecoder("utf-8");
 

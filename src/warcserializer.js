@@ -44,6 +44,20 @@ class WARCSerializer extends BaseAsyncIterReader
       return;
     }
 
+    let cs = null;
+
+    try {
+      cs = new CompressionStream("gzip");
+    } catch (e) {  }
+
+    if (cs) {
+      yield* this.streamCompress(cs);
+    } else {
+      yield* this.pakoCompress();
+    }
+  }
+
+  async* pakoCompress() {
     const deflater = new Deflate({gzip: true});
 
     let lastChunk = null;
@@ -61,6 +75,31 @@ class WARCSerializer extends BaseAsyncIterReader
 
     deflater.push(lastChunk, true);
     yield deflater.result;
+  }
+
+  async* streamCompress(cs) {
+    const recordIter = this.generateRecord();
+
+    const source = new ReadableStream({
+      async pull(controller) {
+        const res = await recordIter.next();
+        if (!res.done) {
+          controller.enqueue(res.value);
+        } else {
+          controller.close();
+        }
+      }
+    });
+
+    source.pipeThrough(cs);
+
+    let res = null;
+
+    const reader = cs.readable.getReader();
+
+    while ((res = await reader.read()) && !res.done) {
+      yield res.value;
+    }
   }
 
   async digestMessage(chunk) {
