@@ -2,6 +2,8 @@ import { WARCParser } from './warcparser';
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
+import { postToGetUrl, getSurt } from './utils';
+
 
 // ===========================================================================
 class BaseIndexer
@@ -35,12 +37,16 @@ class BaseIndexer
 
       const parser = new WARCParser(reader, params);
 
-      for await (const record of parser) {
-        await record.skipFully()
-        const result = this.indexRecord(record, parser, filename);
-        if (result) {
-          yield result;
-        }
+      yield* this.iterRecords(parser, filename);
+    }
+  }
+
+  async* iterRecords(parser, filename) {
+    for await (const record of parser) {
+      await record.skipFully()
+      const result = this.indexRecord(record, parser, filename);
+      if (result) {
+        yield result;
       }
     }
   }
@@ -132,6 +138,7 @@ class CDXIndexer extends Indexer
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
+    this._lastRecord = null;
 
     switch (opts.format) {
       case "cdxj":
@@ -149,6 +156,23 @@ class CDXIndexer extends Indexer
     }
   }
 
+  async* iterRecords(parser, filename) {
+    this._lastRecord = null;
+
+    for await (const record of parser) {
+      await record.readFully()
+      const result = this.indexRecord(record, parser, filename);
+      if (result) {
+        yield result;
+      }
+    }
+
+    const result = this.indexRecord(null, parser, filename);
+    if (result) {
+      yield result;
+    }
+  }
+
   filterRecord(record) {
     if (this.includeAll) {
       return true;
@@ -160,6 +184,78 @@ class CDXIndexer extends Indexer
     }
 
     return true;
+  }
+
+  indexRecord(record, parser, filename) {
+    if (this.includeAll) {
+      if (!record) {
+        return;
+      }
+      return super.indexRecord(record, parser, filename);
+    }
+
+    const lastRecord = this._lastRecord;
+
+    if (record) {
+      record._offset = parser.offset;
+      record._length = parser.recordLength;
+    }
+
+    if (!lastRecord) {
+      this._lastRecord = record;
+      return null;
+    }
+
+    if (!record || lastRecord.warcTargetURI != record.warcTargetURI) {
+      this._lastRecord = record;
+      return this.indexRecordPair(lastRecord, null, parser, filename);
+    }
+
+    if (record.warcType === "request" && lastRecord.warcType === "response") {
+      this._lastRecord = null;
+      return this.indexRecordPair(lastRecord, record, parser, filename);
+    } else if (record.warcType === "response" && lastRecord.warcType === "request") {
+      this._lastRecord = null;
+      return this.indexRecordPair(record, lastRecord, parser, filename);
+    } else {
+      this._lastRecord = record;
+      return this.indexRecordPair(lastRecord, null, parser, filename);
+    }
+  }
+
+  indexRecordPair(record, reqRecord, parser, filename) {
+    let method;
+    let requestBody;
+
+    if (reqRecord && reqRecord.httpHeaders.method !== "GET") {
+      const request = {
+        url: record.warcTargetURI,
+        method: reqRecord.httpHeaders.method,
+        headers: reqRecord.httpHeaders.headers,
+        postData: reqRecord.payload,
+      };
+
+      method = request.method;
+
+      if (postToGetUrl(request)) {
+        //record.warcHeaders.headers.set("WARC-Target-URI", request.url);
+        requestBody = request.url.slice(record.warcTargetURI.length);
+        record.updatedURL = request.url;
+      }
+    }
+
+    const res = super.indexRecord(record, parser, filename);
+    if (res && record) {
+      res.offset = record._offset;
+      res.length = record._length;
+    }
+    if (method) {
+      res.method = method;
+    }
+    if (requestBody) {
+      res.requestBody = requestBody;
+    }
+    return res;
   }
 
   serializeCDXJ(result) {
@@ -185,7 +281,7 @@ class CDXIndexer extends Indexer
 
     switch (field) {
       case "urlkey":
-        return this.getSurt(record.warcTargetURI);
+        return getSurt(record.updatedURL ? record.updatedURL : record.warcTargetURI);
 
       case "timestamp":
         value = record.warcDate;
@@ -217,26 +313,6 @@ class CDXIndexer extends Indexer
       case "digest":
         value = record.warcPayloadDigest;
         return value ? value.split(":", 2)[1] : null;
-    }
-  }
-
-  getSurt(url) {
-    try {
-      const urlObj = new URL(url);
-      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
-        return url;
-      }
-
-      const hostParts = urlObj.hostname.split(".").reverse();
-      let surt = hostParts.join(",");
-      if (urlObj.port) {
-        surt += ":" + urlObj.port;
-      }
-      surt += ")";
-      surt += urlObj.pathname;
-      return surt.toLowerCase();
-    } catch (e) {
-      return url;
     }
   }
 }
