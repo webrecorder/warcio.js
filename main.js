@@ -10,3 +10,5 @@ export { WARCSerializer } from './src/warcserializer';
 export { WARCRecord } from './src/warcrecord';
 
 export { Indexer, CDXIndexer } from './src/indexer';
+
+export { postToGetUrl, getSurt } from './src/utils';

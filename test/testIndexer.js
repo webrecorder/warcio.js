@@ -98,6 +98,25 @@ test('cdx json warc.gz all', index,
 {"urlkey":"com,example)/","timestamp":"20170306040348","url":"http://example.com/","digest":"3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ","length":609,"offset":3207,"filename":"example.warc.gz"}
 `);
 
+
+test('post append', index,
+  ['cdx-index', './test/data/post-test.warc.gz'],
+  `\
+org,httpbin)/post 20140610000859 {"url":"http://httpbin.org/post","mime":"application/json","status":200,"digest":"M532K5WS4GY2H4OVZO6HRPOP47A7KDWU","length":720,"offset":0,"filename":"post-test.warc.gz","method":"POST","requestBody":"?__wb_method=POST&foo=bar&test=abc"}
+org,httpbin)/post 20140610001151 {"url":"http://httpbin.org/post","mime":"application/json","status":200,"digest":"M7YCTM7HS3YKYQTAWQVMQSQZBNEOXGU2","length":723,"offset":1196,"filename":"post-test.warc.gz","method":"POST","requestBody":"?__wb_method=POST&A=1&B=[]&C=3"}
+org,httpbin)/post?foo=bar 20140610001255 {"url":"http://httpbin.org/post?foo=bar","mime":"application/json","status":200,"digest":"B6E5P6JUZI6UPDTNO4L2BCHMGLTNCUAJ","length":723,"offset":2395,"filename":"post-test.warc.gz","method":"POST","requestBody":"&__wb_method=POST&data=^"}
+`);
+
+
+test('post append 2', index,
+  ['cdx-index', './test/data/post-test-more.warc'],
+ `\
+org,httpbin)/post 20200809195334 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"7AWVEIPQMCA4KTCNDXWSZ465FITB7LSK","length":688,"offset":0,"filename":"post-test-more.warc","method":"POST","requestBody":"?__wb_method=POST&test=some+data&another=more%5Edata"}
+org,httpbin)/post 20200809195334 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"BYOQWRSQFW3A5SNUBDSASHFLXGL4FNGB","length":655,"offset":1227,"filename":"post-test-more.warc","method":"POST","requestBody":"?__wb_method=POST&a=json-data"}
+org,httpbin)/post 20200810055049 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"34LEADQD3MOBQ42FCO2WA5TUSEL5QOKP","length":628,"offset":2338,"filename":"post-test-more.warc","method":"POST"}
+`);
+
+
 test('cdx resource', index,
   ['cdx-index', './test/data/example-resource.warc.gz'],
   `\
