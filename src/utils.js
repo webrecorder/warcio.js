@@ -25,7 +25,7 @@ function getSurt(url) {
 }
 
 function postToGetUrl(request) {
-  const {url, method, headers, postData} = request;
+  let {url, method, headers, postData} = request;
 
   if (method === "GET") {
     return false;
@@ -34,6 +34,10 @@ function postToGetUrl(request) {
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
   let query = null;
+
+  if (postData instanceof Uint8Array) {
+    postData = new TextDecoder().decode(postData);
+  }
 
   switch (requestMime) {
     case "application/x-www-form-urlencoded":
@@ -64,10 +68,6 @@ function postToGetUrl(request) {
 }
 
 function jsonToQueryString(json) {
-  if (json instanceof Uint8Array) {
-    json = new TextDecoder().decode(json);
-  }
-
   if (typeof(json) === "string") {
     try {
       json = JSON.parse(json);

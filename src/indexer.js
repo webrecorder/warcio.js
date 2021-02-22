@@ -238,14 +238,12 @@ class CDXIndexer extends Indexer
       method = request.method;
 
       if (postToGetUrl(request)) {
-        //record.warcHeaders.headers.set("WARC-Target-URI", request.url);
         requestBody = request.url.slice(record.warcTargetURI.length);
-        record.updatedURL = request.url;
       }
     }
 
     const res = super.indexRecord(record, parser, filename);
-    if (res && record) {
+    if (res && record && record._offset !== undefined) {
       res.offset = record._offset;
       res.length = record._length;
     }
