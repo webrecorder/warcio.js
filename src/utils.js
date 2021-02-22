@@ -33,24 +33,27 @@ function postToGetUrl(request) {
 
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
-  let query = null;
-
-  if (postData instanceof Uint8Array) {
-    postData = new TextDecoder().decode(postData);
+  function decodeIfNeeded(postData) {
+    if (postData instanceof Uint8Array) {
+      postData = new TextDecoder().decode(postData);
+    }
+    return postData;
   }
+
+  let query = null;
 
   switch (requestMime) {
     case "application/x-www-form-urlencoded":
-      query = postData;
+      query = decodeIfNeeded(postData);
       break;
 
     case "text/plain":
     case "application/json":
-      query = jsonToQueryString(postData);
+      query = jsonToQueryString(decodeIfNeeded(postData));
       break;
 
     case "multipart/form-data":
-      query = mfdToQueryString(postData, headers.get("content-type"));
+      query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
       break;
 
     default:
