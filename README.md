@@ -4,7 +4,7 @@ Streaming web archive (WARC) file support for modern browsers and Node.
 
 This package represents an approxipate port Javascript port of the Python [warcio](https://github.com/webrecorder/warcio) module.
 
-[![Build Status](https://travis-ci.com/webrecorder/warcio.js.svg?branch=master)](https://travis-ci.com/webrecorder/warcio.js)
+[![Node.js CI](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml/badge.svg)](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/gh/webrecorder/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/webrecorder/warcio.js)
 
 

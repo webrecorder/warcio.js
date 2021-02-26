@@ -61,13 +61,23 @@ function postToGetUrl(request) {
   }
 
   if (query)  {
-    const start = (url.indexOf("?") > 0 ? "&" : "?");
-    request.url += `${start}__wb_method=${method}&${query}`;
+    request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
+    request.requestBody = query;
     return true;
   }
 
   return false;
+}
+
+function appendRequestQuery(url, query, method) {
+  if (!method) {
+    return url;
+  }
+
+  const start = (url.indexOf("?") > 0 ? "&" : "?");
+
+  return `${url}${start}__wb_method=${method}&${query}`;
 }
 
 function jsonToQueryString(json) {
@@ -117,4 +127,4 @@ function mfdToQueryString(mfd, contentType) {
   return params.toString();
 }
 
-export { postToGetUrl, getSurt };
+export { postToGetUrl, getSurt, appendRequestQuery };
