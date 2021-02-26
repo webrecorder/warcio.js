@@ -2,7 +2,7 @@ import { WARCParser } from './warcparser';
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
-import { postToGetUrl, getSurt } from './utils';
+import { postToGetUrl, getSurt, appendRequestQuery } from './utils';
 
 
 // ===========================================================================
@@ -238,7 +238,9 @@ class CDXIndexer extends Indexer
       method = request.method;
 
       if (postToGetUrl(request)) {
-        requestBody = request.url.slice(record.warcTargetURI.length);
+        requestBody = request.requestBody;
+        record.method = method;
+        record.requestBody = requestBody;
       }
     }
 
@@ -279,7 +281,7 @@ class CDXIndexer extends Indexer
 
     switch (field) {
       case "urlkey":
-        return getSurt(record.updatedURL ? record.updatedURL : record.warcTargetURI);
+        return getSurt(appendRequestQuery(record.warcTargetURI, record.requestBody, record.method));
 
       case "timestamp":
         value = record.warcDate;
