@@ -8464,13 +8464,23 @@ function postToGetUrl(request) {
   }
 
   if (query)  {
-    const start = (url.indexOf("?") > 0 ? "&" : "?");
-    request.url += `${start}__wb_method=${method}&${query}`;
+    request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
+    request.requestBody = query;
     return true;
   }
 
   return false;
+}
+
+function appendRequestQuery(url, query, method) {
+  if (!method) {
+    return url;
+  }
+
+  const start = (url.indexOf("?") > 0 ? "&" : "?");
+
+  return `${url}${start}__wb_method=${method}&${query}`;
 }
 
 function jsonToQueryString(json) {
@@ -8656,6 +8666,7 @@ class CDXIndexer extends Indexer
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
+    this.noSurt = !!opts.noSurt;
     this._lastRecord = null;
 
     switch (opts.format) {
@@ -8739,10 +8750,11 @@ class CDXIndexer extends Indexer
   indexRecordPair(record, reqRecord, parser, filename) {
     let method;
     let requestBody;
+    let url = record.warcTargetURI;
 
     if (reqRecord && reqRecord.httpHeaders.method !== "GET") {
       const request = {
-        url: record.warcTargetURI,
+        url,
         method: reqRecord.httpHeaders.method,
         headers: reqRecord.httpHeaders.headers,
         postData: reqRecord.payload,
@@ -8751,9 +8763,14 @@ class CDXIndexer extends Indexer
       method = request.method;
 
       if (postToGetUrl(request)) {
-        requestBody = request.url.slice(record.warcTargetURI.length);
+        requestBody = request.requestBody;
+        record.method = method;
+        record.requestBody = requestBody;
+        url = request.url;
       }
     }
+
+    record._urlkey = url;
 
     const res = super.indexRecord(record, parser, filename);
     if (res && record && record._offset !== undefined) {
@@ -8766,6 +8783,7 @@ class CDXIndexer extends Indexer
     if (requestBody) {
       res.requestBody = requestBody;
     }
+
     return res;
   }
 
@@ -8792,7 +8810,8 @@ class CDXIndexer extends Indexer
 
     switch (field) {
       case "urlkey":
-        return getSurt(record.updatedURL ? record.updatedURL : record.warcTargetURI);
+        value = record._urlkey ? record._urlkey : record.warcTargetURI;
+        return this.noSurt ? value : getSurt(value);
 
       case "timestamp":
         value = record.warcDate;
@@ -8828,4 +8847,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, getSurt, postToGetUrl };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, getSurt, postToGetUrl };

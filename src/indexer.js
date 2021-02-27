@@ -2,7 +2,7 @@ import { WARCParser } from './warcparser';
 
 const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
 
-import { postToGetUrl, getSurt, appendRequestQuery } from './utils';
+import { postToGetUrl, getSurt } from './utils';
 
 
 // ===========================================================================
@@ -138,6 +138,7 @@ class CDXIndexer extends Indexer
     this.includeAll = opts.all;
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
+    this.noSurt = !!opts.noSurt;
     this._lastRecord = null;
 
     switch (opts.format) {
@@ -226,10 +227,11 @@ class CDXIndexer extends Indexer
   indexRecordPair(record, reqRecord, parser, filename) {
     let method;
     let requestBody;
+    let url = record.warcTargetURI;
 
     if (reqRecord && reqRecord.httpHeaders.method !== "GET") {
       const request = {
-        url: record.warcTargetURI,
+        url,
         method: reqRecord.httpHeaders.method,
         headers: reqRecord.httpHeaders.headers,
         postData: reqRecord.payload,
@@ -241,8 +243,11 @@ class CDXIndexer extends Indexer
         requestBody = request.requestBody;
         record.method = method;
         record.requestBody = requestBody;
+        url = request.url;
       }
     }
+
+    record._urlkey = url;
 
     const res = super.indexRecord(record, parser, filename);
     if (res && record && record._offset !== undefined) {
@@ -255,6 +260,7 @@ class CDXIndexer extends Indexer
     if (requestBody) {
       res.requestBody = requestBody;
     }
+
     return res;
   }
 
@@ -281,7 +287,8 @@ class CDXIndexer extends Indexer
 
     switch (field) {
       case "urlkey":
-        return getSurt(appendRequestQuery(record.warcTargetURI, record.requestBody, record.method));
+        value = record._urlkey ? record._urlkey : record.warcTargetURI;
+        return this.noSurt ? value : getSurt(value);
 
       case "timestamp":
         value = record.warcDate;

@@ -44,6 +44,10 @@ function main(args, out) {
       'describe': 'output format',
       'choices': ['json', 'cdxj', 'cdx'],
       'default': 'cdxj'
+    }).
+    option('noSurt', {
+      'describe': 'Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)',
+      'type': 'boolean',
     })
   }, async (args) => {
     /* istanbul ignore next */
