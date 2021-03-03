@@ -457,7 +457,9 @@ class LimitReader extends BaseAsyncIterReader
         const [first, remainder] = LimitReader.splitChunk(chunk, this.limit);
         chunk = first;
 
-        this.sourceIter._unread(remainder);
+        if (this.sourceIter._unread) {
+          this.sourceIter._unread(remainder);
+        }
       }
 
       if (chunk.length) {
