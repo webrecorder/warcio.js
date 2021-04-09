@@ -126,6 +126,26 @@ test('test auto record id, current date', async t => {
 
 });
 
+test('test default content-type for resource', async t => {
+  async function* payload() {
+    yield encoder.encode('some text');
+  }
+
+  const url = "urn:custom:http://example.com/";
+  const type = "resource";
+  const warcHeaders = {};
+
+  const record = await WARCRecord.create({url, type, warcHeaders}, payload());
+
+  t.is(record.warcContentType, "application/octet-stream");
+  t.not(record.warcDate, null);
+  t.not(record.warcHeader("WARC-Record-ID", null));
+  t.not(record.warcPayloadDigest, null);
+  t.is(record.warcPayloadDigest, record.warcBlockDigest);
+
+});
+
+
 
 const createRecordGzipped = async (t) => {
 

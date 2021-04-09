@@ -71,8 +71,8 @@ class WARCRecord extends BaseAsyncIterReader
       warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuid()}>`);
     }
 
-    if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
-      warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
+    if (!warcHeaders.headers.get("Content-Type")) {
+      warcHeaders.headers.set("Content-Type", defaultRecordCT[type] || "application/octet-stream");
     }
 
     if (!reader) {
