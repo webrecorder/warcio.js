@@ -1,10 +1,11 @@
+/*eslint-env node */
 "use strict";
 
-import test from 'ava';
+import test from "ava";
 
-import { getReadableStream, getReader } from './utils';
+import { getReadableStream, getReader } from "./utils";
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from '../main';
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../main";
 
 const decoder = new TextDecoder("utf-8");
 
@@ -22,8 +23,8 @@ async function readSH(t, input, expected) {
 // ===========================================================================
 // ===========================================================================
 // Tests
-test('StatusAndHeaders test 1', readSH,
-  `\
+test("StatusAndHeaders test 1", readSH,
+  "\
 HTTP/1.0 200 OK\r\n\
 Content-Type: ABC\r\n\
 HTTP/1.0 200 OK\r\n\
@@ -31,7 +32,7 @@ Some: Value\r\n\
 Multi-Line: Value1\r\n\
     Also This\r\n\
 \r\n\
-Body`,
+Body",
 
   `\
 HTTP/1.0 200 OK\r
@@ -40,15 +41,15 @@ Some: Value\r
 Multi-Line: Value1    Also This\r
 `);
 
-test('StatusAndHeaders test 2', readSH,
-  `\
+test("StatusAndHeaders test 2", readSH,
+  "\
 HTTP/1.0 204 Empty\r\n\
 Content-Type: Value\r\n\
 %Invalid%\r\n\
 \tMultiline\r\n\
 Content-Length: 0\r\n\
 Bad: multi\nline\r\n\
-\r\n`,
+\r\n",
 
   `HTTP/1.0 204 Empty\r
 Content-Type: Value\r
@@ -57,16 +58,16 @@ Bad: multi\r
 `);
 
 
-test('StatusAndHeaders test empty', async t => {
+test("StatusAndHeaders test empty", async t => {
   const parser = new StatusAndHeadersParser();
-  const result = await parser.parse(new AsyncIterReader(getReader(['\r\n\r\n'])));
+  const result = await parser.parse(new AsyncIterReader(getReader(["\r\n\r\n"])));
 
   t.is(result, null);
 });
 
 
-test('Load WARC Records', async t => {
-  const input = `\
+test("Load WARC Records", async t => {
+  const input = "\
 WARC/1.0\r\n\
 WARC-Type: warcinfo\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -77,7 +78,7 @@ Content-Length: 86\r\n\
 \r\n\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
-json-metadata: {"foo": "bar"}\r\n\
+json-metadata: {\"foo\": \"bar\"}\r\n\
 \r\n\
 \r\n\
 WARC/1.0\r\n\
@@ -91,7 +92,7 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 97\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
@@ -108,15 +109,15 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 268\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
-Content-Disposition: attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
+Content-Disposition: attachment; filename*=UTF-8''%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
 Custom-Header: somevalue\r\n\
 Unicode-Header: %F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F\r\n\
 \r\n\
 more\n\
 text\r\n\
 \r\n\
-`
+";
 
   let reader = new AsyncIterReader(getReader([input]));
 
@@ -134,11 +135,11 @@ text\r\n\
     warcinfo += line;
   }
 
-  t.is(warcinfo, `\
+  t.is(warcinfo, "\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
-json-metadata: {"foo": "bar"}\r\n\
-`);
+json-metadata: {\"foo\": \"bar\"}\r\n\
+");
 
   const record = await parser.parse();
 
@@ -157,6 +158,8 @@ json-metadata: {"foo": "bar"}\r\n\
 
   // iterate should return null
   let count = 0;
+
+  // eslint-disable-next-line no-unused-vars
   for await (const chunk of record) {
     count++;
   }
@@ -165,7 +168,7 @@ json-metadata: {"foo": "bar"}\r\n\
 
   // reread via getReadableStream
   parser = new WARCParser(getReader([input]));
-  const record3 = await parser.parse();
+  await parser.parse();
   const record4 = await parser.parse();
   const reader2 = new AsyncIterReader(record4.getReadableStream().getReader());
   t.is(decoder.decode(await reader2.readFully()), "some\ntext");
@@ -178,8 +181,8 @@ json-metadata: {"foo": "bar"}\r\n\
 });
 
 
-test('Load revisit 1', async t => {
-  const input = `\
+test("Load revisit 1", async t => {
+  const input = "\
 WARC/1.0\r\n\
 WARC-Type: revisit\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -195,21 +198,21 @@ Content-Length: 0\r\n\
 \r\n\
 \r\n\
 \r\n\
-`;
+";
 
   const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
 
   const record = await parser.parse();
 
   t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(record.warcHeader('WARC-Record-ID'), '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>');
+  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
   t.is(record.warcType, "revisit");
-  t.is(record.warcTargetURI, 'http://example.com/');
-  t.is(record.warcDate, '2000-01-01T00:00:00Z');
-  t.is(record.warcRefersToTargetURI, 'http://example.com/foo');
-  t.is(record.warcRefersToDate, '1999-01-01T00:00:00Z');
-  t.is(record.warcPayloadDigest, 'sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O');
-  t.is(record.warcContentType, 'application/http; msgtype=response');
+  t.is(record.warcTargetURI, "http://example.com/");
+  t.is(record.warcDate, "2000-01-01T00:00:00Z");
+  t.is(record.warcRefersToTargetURI, "http://example.com/foo");
+  t.is(record.warcRefersToDate, "1999-01-01T00:00:00Z");
+  t.is(record.warcPayloadDigest, "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O");
+  t.is(record.warcContentType, "application/http; msgtype=response");
   t.is(record.warcContentLength, 0);
 
   t.is(record.httpHeaders, null);
@@ -223,8 +226,8 @@ Content-Length: 0\r\n\
 
 
 
-test('No parse http, record headers only', async t => {
-  const input = `\
+test("No parse http, record headers only", async t => {
+  const input = "\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -236,15 +239,15 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 268\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
-Content-Disposition: attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
+Content-Disposition: attachment; filename*=UTF-8''%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
 Custom-Header: somevalue\r\n\
 Unicode-Header: %F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F\r\n\
 \r\n\
 more\n\
 text\r\n\
 \r\n\
-`
+";
 
   const parser = new WARCParser(getReader([input]), {parseHttp: false});
   
@@ -258,7 +261,7 @@ text\r\n\
   t.is(record.getResponseInfo(), null);
 
   const statusline = "HTTP/1.0 200 OK\r\n";
-  t.is(await record.reader.readline(), statusline)
+  t.is(await record.reader.readline(), statusline);
 
   for await (const chunk of record) {
     t.is(chunk.length, 268 - statusline.length);
@@ -276,10 +279,10 @@ text\r\n\
 });
 
 
-test('warc1.1 response and request, status checks', async t => {
-  const fs = require('fs');
-  const path = require('path');
-  const input = fs.readFileSync(path.join(__dirname, 'data', 'redirect.warc'), 'utf-8')
+test("warc1.1 response and request, status checks", async t => {
+  const fs = require("fs");
+  const path = require("path");
+  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
 
   let parser = new WARCParser(getReader([input]));
   let response;
@@ -329,10 +332,10 @@ test('warc1.1 response and request, status checks', async t => {
 });
 
 
-test('warc1.1 serialize records match', async t => {
-  const fs = require('fs');
-  const path = require('path');
-  const input = fs.readFileSync(path.join(__dirname, 'data', 'redirect.warc'), 'utf-8')
+test("warc1.1 serialize records match", async t => {
+  const fs = require("fs");
+  const path = require("path");
+  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
 
   const serialized = [];
   let size = 0;
@@ -350,10 +353,10 @@ test('warc1.1 serialize records match', async t => {
 });
 
 
-test('chunked warc read', async t => {
-  const fs = require('fs');
-  const path = require('path');
-  const input = fs.createReadStream(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'));
+test("chunked warc read", async t => {
+  const fs = require("fs");
+  const path = require("path");
+  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
 
   const parser = new WARCParser(input);
 
@@ -377,10 +380,10 @@ test('chunked warc read', async t => {
 
 }); 
 
-test('no await catch errors', async t => {
-  const fs = require('fs');
-  const path = require('path');
-  const input = fs.createReadStream(path.join(__dirname, 'data', 'example-iana.org-chunked.warc'));
+test("no await catch errors", async t => {
+  const fs = require("fs");
+  const path = require("path");
+  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
 
   const parser = new WARCParser(input);
 
@@ -399,6 +402,7 @@ test('no await catch errors', async t => {
   await t.throwsAsync(async () => await record0.readline(), {"message": "Record already consumed.. Perhaps a promise was not awaited?"});
 
   let count = 0;
+  // eslint-disable-next-line no-unused-vars
   for await (const chunk of record1) {
     count++;
   }
@@ -406,6 +410,7 @@ test('no await catch errors', async t => {
   t.not(record1.consumed, null);
 
   count = 0;
+  // eslint-disable-next-line no-unused-vars
   for await (const chunk of record1) {
     count++;
   }

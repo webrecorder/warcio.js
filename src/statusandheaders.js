@@ -16,7 +16,7 @@ class StatusAndHeaders {
       buff.push(`${name}: ${value}`);
     }
 
-    return buff.join('\r\n') + '\r\n';
+    return buff.join("\r\n") + "\r\n";
   }
 
   async* iterSerialize(encoder) {

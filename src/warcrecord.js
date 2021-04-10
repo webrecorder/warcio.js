@@ -1,9 +1,9 @@
-import { BaseAsyncIterReader, AsyncIterReader } from './readers';
-import { StatusAndHeaders, CRLF, CRLFCRLF } from './statusandheaders';
-import uuid from 'uuid-random';
+import { BaseAsyncIterReader, AsyncIterReader } from "./readers";
+import { StatusAndHeaders } from "./statusandheaders";
+import uuid from "uuid-random";
 
-const decoder = new TextDecoder('utf-8');
-const encoder = new TextEncoder('utf-8');
+const decoder = new TextDecoder("utf-8");
+const encoder = new TextEncoder("utf-8");
 
 const WARC_1_1 = "WARC/1.1";
 const WARC_1_0 = "WARC/1.0";
@@ -12,11 +12,11 @@ const REVISIT_PROFILE_1_0 = "http://netpreserve.org/warc/1.0/revisit/identical-p
 const REVISIT_PROFILE_1_1 = "http://netpreserve.org/warc/1.1/revisit/identical-payload-digest";
 
 const defaultRecordCT = {
-  'warcinfo': 'application/warc-fields',
-  'response': 'application/http; msgtype=response',
-  'revisit': 'application/http; msgtype=response',
-  'request': 'application/http; msgtype=request',
-  'metadata': 'application/warc-fields',
+  "warcinfo": "application/warc-fields",
+  "response": "application/http; msgtype=response",
+  "revisit": "application/http; msgtype=response",
+  "request": "application/http; msgtype=request",
+  "metadata": "application/warc-fields",
 };
 
 
@@ -24,8 +24,8 @@ const defaultRecordCT = {
 class WARCRecord extends BaseAsyncIterReader
 {
   static create({url, date, type, warcHeaders = {}, filename = "",
-                httpHeaders = {}, statusline = "HTTP/1.1 200 OK",
-                warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
+    httpHeaders = {}, statusline = "HTTP/1.1 200 OK",
+    warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
     function checkDate(d) {
       if (warcVersion === WARC_1_0) {
@@ -46,15 +46,15 @@ class WARCRecord extends BaseAsyncIterReader
     warcHeaders = {...warcHeaders};
     if (type === "warcinfo") {
       if (filename) {
-        warcHeaders['WARC-Filename'] = filename;
+        warcHeaders["WARC-Filename"] = filename;
       }
 
     } else {
       warcHeaders["WARC-Target-URI"] = url;
     }
 
-    warcHeaders['WARC-Date'] = date;
-    warcHeaders['WARC-Type'] = type;
+    warcHeaders["WARC-Date"] = date;
+    warcHeaders["WARC-Type"] = type;
 
     if (type === "revisit") {
       warcHeaders["WARC-Profile"] = warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0;
@@ -76,20 +76,20 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     if (!reader) {
-      async function* emptyReader() {};
+      const emptyReader = async function* () {};
       reader = emptyReader();
     }
 
     const record = new WARCRecord({warcHeaders, reader});
 
     switch (type) {
-      case "response":
-      case "request":
-      case "revisit":
-        record.httpHeaders = new StatusAndHeaders({
-          statusline,
-          headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
-        break;
+    case "response":
+    case "request":
+    case "revisit":
+      record.httpHeaders = new StatusAndHeaders({
+        statusline,
+        headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
+      break;
     }
 
     return record;
@@ -135,7 +135,7 @@ class WARCRecord extends BaseAsyncIterReader
       headers: httpHeaders.headers,
       status: httpHeaders.statusCode,
       statusText: httpHeaders.statusText
-    }
+    };
   }
 
   fixUp() {

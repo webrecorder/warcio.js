@@ -1,8 +1,8 @@
-import { WARCParser } from './warcparser';
+import { WARCParser } from "./warcparser";
 
-const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
+const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
 
-import { postToGetUrl, getSurt } from './utils';
+import { postToGetUrl, getSurt } from "./utils";
 
 
 // ===========================================================================
@@ -43,7 +43,7 @@ class BaseIndexer
 
   async* iterRecords(parser, filename) {
     for await (const record of parser) {
-      await record.skipFully()
+      await record.skipFully();
       const result = this.indexRecord(record, parser, filename);
       if (result) {
         yield result;
@@ -126,8 +126,8 @@ class Indexer extends BaseIndexer
 
 
 // ===========================================================================
-const DEFAULT_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,length,offset,filename'.split(',');
-const DEFAULT_LEGACY_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename'.split(',');
+const DEFAULT_CDX_FIELDS = "urlkey,timestamp,url,mime,status,digest,length,offset,filename".split(",");
+const DEFAULT_LEGACY_CDX_FIELDS = "urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename".split(",");
 
 
 // ===========================================================================
@@ -142,18 +142,18 @@ class CDXIndexer extends Indexer
     this._lastRecord = null;
 
     switch (opts.format) {
-      case "cdxj":
-        this.serialize = this.serializeCDXJ;
-        break;
+    case "cdxj":
+      this.serialize = this.serializeCDXJ;
+      break;
 
-      case "cdx":
-        this.serialize = this.serializeCDX11;
-        break;
+    case "cdx":
+      this.serialize = this.serializeCDX11;
+      break;
 
-      case "json":
-      default:
-        // default write
-        break;
+    case "json":
+    default:
+      // default write
+      break;
     }
   }
 
@@ -161,7 +161,7 @@ class CDXIndexer extends Indexer
     this._lastRecord = null;
 
     for await (const record of parser) {
-      await record.readFully()
+      await record.readFully();
       const result = this.indexRecord(record, parser, filename);
       if (result) {
         yield result;
@@ -286,40 +286,40 @@ class CDXIndexer extends Indexer
     let value = null;
 
     switch (field) {
-      case "urlkey":
-        value = record._urlkey ? record._urlkey : record.warcTargetURI;
-        return this.noSurt ? value : getSurt(value);
+    case "urlkey":
+      value = record._urlkey ? record._urlkey : record.warcTargetURI;
+      return this.noSurt ? value : getSurt(value);
 
-      case "timestamp":
-        value = record.warcDate;
-        return value.replace(/[-:T]/g, '').slice(0, 14);
+    case "timestamp":
+      value = record.warcDate;
+      return value.replace(/[-:T]/g, "").slice(0, 14);
 
-      case "url":
-        return record.warcTargetURI;
+    case "url":
+      return record.warcTargetURI;
 
-      case "mime":
-        switch (record.warcType) {
-          case "revisit":
-            return "warc/revisit";
+    case "mime":
+      switch (record.warcType) {
+      case "revisit":
+        return "warc/revisit";
 
-          case "response":
-          case "request":
-            field = "http:content-type";
-            break;
+      case "response":
+      case "request":
+        field = "http:content-type";
+        break;
 
-          default:
-            field = "content-type";
+      default:
+        field = "content-type";
 
-        }
-        value = super.getField(field, record);
-        return value ? value.split(";", 1)[0].trim() : null;
+      }
+      value = super.getField(field, record);
+      return value ? value.split(";", 1)[0].trim() : null;
 
-      case "status":
-        return super.getField("http:status", record);
+    case "status":
+      return super.getField("http:status", record);
 
-      case "digest":
-        value = record.warcPayloadDigest;
-        return value ? value.split(":", 2)[1] : null;
+    case "digest":
+      value = record.warcPayloadDigest;
+      return value ? value.split(":", 2)[1] : null;
     }
   }
 }

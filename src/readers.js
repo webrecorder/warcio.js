@@ -1,5 +1,6 @@
-import { Inflate } from 'pako/lib/inflate'
+/*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 
+import { Inflate } from "pako/lib/inflate";
 
 const decoder = new TextDecoder("utf-8");
 
@@ -88,7 +89,7 @@ class BaseAsyncIterReader
   async* iterLines(maxLength = 0) {
     let line = null;
 
-    while (line = await this.readline(maxLength)) {
+    while ((line = await this.readline(maxLength))) {
       yield line;
     }
   }
@@ -207,7 +208,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
     /* istanbul ignore if */
     if (this._savedChunk) {
-      console.log('Already have chunk!');
+      console.log("Already have chunk!");
     }
 
     this._savedChunk = chunk;
@@ -289,7 +290,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
   async* [Symbol.asyncIterator]() {
     let chunk = null;
-    while (chunk = await this._next()) {
+    while ((chunk = await this._next())) {
       this._readOffset += chunk.length;
       yield chunk;
     }
@@ -346,9 +347,6 @@ class AsyncIterReader extends BaseAsyncIterReader {
     const chunks = [];
     let size = 0;
 
-    let res;
-    let chunk;
-
     //while ((res = await this._readiter.next()) && (chunk = res.value)) {
     for await (const chunk of this) {
       if (sizeLimit >= 0) {
@@ -401,7 +399,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
           yield res.value;
         }
       }
-    }
+    };
 
     return iterable;
   }
@@ -413,7 +411,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
           yield chunk;
         }
       }
-    }
+    };
 
     return iterable;
   }
@@ -444,7 +442,7 @@ class LimitReader extends BaseAsyncIterReader
     for await (let chunk of this.sourceIter) {
       if (this.skip > 0) {
         if (chunk.length >= this.skip) {
-          const [first, remainder] = LimitReader.splitChunk(chunk, this.skip);
+          const [/*first*/, remainder] = LimitReader.splitChunk(chunk, this.skip);
           chunk = remainder;
           this.skip = 0;
         } else {
@@ -485,9 +483,6 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async skipFully() {
-    let res;
-    let chunk;
-
     const origLimit = this.limit;
 
     while (this.limit > 0) {

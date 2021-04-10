@@ -1,14 +1,14 @@
 
-export { BaseAsyncIterReader, AsyncIterReader, LimitReader } from './src/readers';
+export { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./src/readers";
 
-export { StatusAndHeadersParser, StatusAndHeaders } from './src/statusandheaders';
+export { StatusAndHeadersParser, StatusAndHeaders } from "./src/statusandheaders";
 
-export { WARCParser } from './src/warcparser';
+export { WARCParser } from "./src/warcparser";
 
-export { WARCSerializer } from './src/warcserializer';
+export { WARCSerializer } from "./src/warcserializer";
 
-export { WARCRecord } from './src/warcrecord';
+export { WARCRecord } from "./src/warcrecord";
 
-export { Indexer, CDXIndexer } from './src/indexer';
+export { Indexer, CDXIndexer } from "./src/indexer";
 
-export { postToGetUrl, getSurt, appendRequestQuery } from './src/utils';
+export { postToGetUrl, getSurt, appendRequestQuery } from "./src/utils";
