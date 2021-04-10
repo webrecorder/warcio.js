@@ -4,7 +4,7 @@ function getSurt(url) {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
     }
-    url = url.replace(/www\d*\./, '');
+    url = url.replace(/www\d*\./, "");
     const urlObj = new URL(url.toLowerCase());
 
     const hostParts = urlObj.hostname.split(".").reverse();
@@ -25,7 +25,7 @@ function getSurt(url) {
 }
 
 function postToGetUrl(request) {
-  let {url, method, headers, postData} = request;
+  let {method, headers, postData} = request;
 
   if (method === "GET") {
     return false;
@@ -43,21 +43,21 @@ function postToGetUrl(request) {
   let query = null;
 
   switch (requestMime) {
-    case "application/x-www-form-urlencoded":
-      query = decodeIfNeeded(postData);
-      break;
+  case "application/x-www-form-urlencoded":
+    query = decodeIfNeeded(postData);
+    break;
 
-    case "text/plain":
-    case "application/json":
-      query = jsonToQueryString(decodeIfNeeded(postData));
-      break;
+  case "text/plain":
+  case "application/json":
+    query = jsonToQueryString(decodeIfNeeded(postData));
+    break;
 
-    case "multipart/form-data":
-      query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
-      break;
+  case "multipart/form-data":
+    query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
+    break;
 
-    default:
-      return false;
+  default:
+    return false;
   }
 
   if (query)  {
@@ -98,7 +98,9 @@ function jsonToQueryString(json) {
       }
       return v;
     });
-  } catch (e) {}
+  } catch (e) {
+    // ignore invalid json, don't add params
+  }
 
   return q.toString();
 }
@@ -122,7 +124,9 @@ function mfdToQueryString(mfd, contentType) {
       }
     }
 
-  } catch (e) {}
+  } catch (e) {
+    // ignore invalid, don't add params
+  }
 
   return params.toString();
 }

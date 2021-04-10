@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/*eslint-env node */
+// eslint-disable-next-line no-global-assign
 require = require("esm")(module);
 
 // ===========================================================================

@@ -1,14 +1,16 @@
+/*eslint-env node */
 "use strict";
 
-import test from 'ava';
-import fetch from 'node-fetch';
+import test from "ava";
+// eslint-disable-next-line no-unused-vars
+import fetch from "node-fetch";
 
-import './utils';
+import "./utils";
 
-import { WARCRecord, WARCParser, AsyncIterReader, StatusAndHeaders, WARCSerializer } from '../main';
+import { WARCRecord, WARCParser, WARCSerializer } from "../main";
 
-import { inflate } from 'pako';
-import { Deflate } from 'pako/lib/deflate';
+import { inflate } from "pako";
+import { Deflate } from "pako/lib/deflate";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
@@ -18,8 +20,8 @@ async function* iter(data) {
 }
 
 
-test('compute digest, buffering', async t => {
-  const input = `\
+test("compute digest, buffering", async t => {
+  const input = "\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -29,18 +31,18 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 97\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
-text\r\n\r\n`;
+text\r\n\r\n";
 
   const record = await WARCParser.parse(iter(input), {keepHeadersCase: true});
   t.is(record.warcType, "response");
 
-  const res = await WARCSerializer.serialize(record, {digest: {algo: 'sha-1', prefix: "sha1:", base32: true}});
+  const res = await WARCSerializer.serialize(record, {digest: {algo: "sha-1", prefix: "sha1:", base32: true}});
 
-  t.is(decoder.decode(res), `\
+  t.is(decoder.decode(res), "\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -52,21 +54,21 @@ WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
 WARC-Block-Digest: sha1:OS3OKGCWQIJOAOC3PKXQOQFD52NECQ74\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
-text\r\n\r\n`);
+text\r\n\r\n");
 
 });
 
 
-test('compute digest, create record', async t => {
+test("compute digest, create record", async t => {
 
   async function* reader() {
-    yield encoder.encode('so');
-    yield encoder.encode('me\n');
-    yield encoder.encode('text');
+    yield encoder.encode("so");
+    yield encoder.encode("me\n");
+    yield encoder.encode("text");
   }
 
   const url = "http://example.com/";
@@ -74,20 +76,20 @@ test('compute digest, create record', async t => {
   const type = "response";
   const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
   const httpHeaders = {
-      "Custom-Header": "somevalue",
-      "Content-Type": 'text/plain; charset="UTF-8"'
+    "Custom-Header": "somevalue",
+    "Content-Type": "text/plain; charset=\"UTF-8\""
   };
 
   const keepHeadersCase = true;
 
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, httpHeaders, keepHeadersCase}, reader());
+    url, date, type, warcHeaders, httpHeaders, keepHeadersCase}, reader());
 
   t.is(record.warcType, "response");
 
-  const res = decoder.decode(await WARCSerializer.serialize(record, {digest: {algo: 'sha-1', prefix: "sha1:", base32: true}}));
+  const res = decoder.decode(await WARCSerializer.serialize(record, {digest: {algo: "sha-1", prefix: "sha1:", base32: true}}));
 
-  t.is(res, `\
+  t.is(res, "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -100,16 +102,16 @@ Content-Length: 97\r\n\
 \r\n\
 HTTP/1.1 200 OK\r\n\
 Custom-Header: somevalue\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
 \r\n\
 some\n\
-text\r\n\r\n`);
+text\r\n\r\n");
 
 });
 
-test('test auto record id, current date', async t => {
+test("test auto record id, current date", async t => {
   async function* payload() {
-    yield encoder.encode('some text');
+    yield encoder.encode("some text");
   }
 
   const url = "urn:custom:http://example.com/";
@@ -126,9 +128,9 @@ test('test auto record id, current date', async t => {
 
 });
 
-test('test default content-type for resource', async t => {
+test("test default content-type for resource", async t => {
   async function* payload() {
-    yield encoder.encode('some text');
+    yield encoder.encode("some text");
   }
 
   const url = "urn:custom:http://example.com/";
@@ -150,9 +152,9 @@ test('test default content-type for resource', async t => {
 const createRecordGzipped = async (t) => {
 
   async function* reader() {
-    yield encoder.encode('so');
-    yield encoder.encode('me\n');
-    yield encoder.encode('text');
+    yield encoder.encode("so");
+    yield encoder.encode("me\n");
+    yield encoder.encode("text");
   }
 
   const url = "http://example.com/";
@@ -160,21 +162,21 @@ const createRecordGzipped = async (t) => {
   const type = "response";
   const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
   const httpHeaders = {
-      "Custom-Header": "somevalue",
-      "Content-Type": 'text/plain; charset="UTF-8"'
+    "Custom-Header": "somevalue",
+    "Content-Type": "text/plain; charset=\"UTF-8\""
   };
 
   const statusline = "HTTP/1.1 404 Not Found";
 
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, httpHeaders, statusline}, reader());
+    url, date, type, warcHeaders, httpHeaders, statusline}, reader());
 
   t.is(record.warcType, "response");
 
   const gzipped = await WARCSerializer.serialize(record, {gzip: true});
   const res = decoder.decode(inflate(gzipped));
 
-  t.is(res, `\
+  t.is(res, "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -187,37 +189,37 @@ Content-Length: 104\r\n\
 \r\n\
 HTTP/1.1 404 Not Found\r\n\
 Custom-Header: somevalue\r\n\
-Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Type: text/plain; charset=\"UTF-8\"\r\n\
 \r\n\
 some\n\
-text\r\n\r\n`);
+text\r\n\r\n");
 
 };
 
 
-test('compute digest, create record, gzipped', createRecordGzipped);
+test("compute digest, create record, gzipped", createRecordGzipped);
 
 
-test('create request record', async t => {
+test("create request record", async t => {
   const url = "http://example.com/";
   const date = "2000-01-01T00:00:00Z";
   const type = "request";
   const warcHeaders = {"WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"};
   const httpHeaders = {
-      "Accept": "*/*",
+    "Accept": "*/*",
   };
 
   const statusline = "GET /file HTTP/1.1";
 
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, httpHeaders, statusline});
+    url, date, type, warcHeaders, httpHeaders, statusline});
 
   t.is(record.warcType, "request");
 
   const gzipped = await WARCSerializer.serialize(record, {gzip: true});
   const res = decoder.decode(inflate(gzipped));
 
-  t.is(res, `\
+  t.is(res, "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -233,13 +235,13 @@ Accept: */*\r\n\
 \r\n\
 \r\n\
 \r\n\
-`);
+");
 
 });
 
 
 
-test('create warcinfo', async t => {
+test("create warcinfo", async t => {
   const filename = "/my/web/archive.warc";
   const type = "warcinfo";
   const date = "2020-06-06T07:07:04.923Z";
@@ -249,20 +251,20 @@ test('create warcinfo', async t => {
     "format": "WARC File Format 1.1",
     "creator": "test-case",
     "isPartOf": "test"
-  }
+  };
 
   const warcHeaders = {
-    'WARC-Record-ID': '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>',
+    "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
   };
 
   const warcVersion = "WARC/1.1";
 
   const record = await WARCRecord.createWARCInfo({
-      filename, warcHeaders, date, type, warcVersion}, fields);
+    filename, warcHeaders, date, type, warcVersion}, fields);
 
   const res = decoder.decode(await WARCSerializer.serialize(record));
 
-  t.is(res, `\
+  t.is(res, "\
 WARC/1.1\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Filename: /my/web/archive.warc\r\n\
@@ -277,12 +279,12 @@ creator: test-case\r\n\
 isPartOf: test\r\n\
 \r\n\
 \r\n\
-`);
+");
 
 });
 
 
-test('create revisit', async t => {
+test("create revisit", async t => {
   const url = "https://example.com/another/file.html";
   const type = "revisit";
   const date = "2020-06-06T07:07:04.923Z";
@@ -290,16 +292,16 @@ test('create revisit', async t => {
   const refersToUrl = "https://example.com/";
 
   const warcHeaders = {
-    'WARC-Payload-Digest': 'sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253',
-    'WARC-Record-ID': '<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>'
-  }
+    "WARC-Payload-Digest": "sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253",
+    "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+  };
 
   const record = await WARCRecord.create({
-      url, date, type, warcHeaders, refersToUrl, refersToDate}, iter(''));
+    url, date, type, warcHeaders, refersToUrl, refersToDate}, iter(""));
 
   const res = decoder.decode(await WARCSerializer.serialize(record));
 
-  t.is(res, `\
+  t.is(res, "\
 WARC/1.0\r\n\
 WARC-Payload-Digest: sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -315,13 +317,13 @@ Content-Length: 19\r\n\
 HTTP/1.1 200 OK\r\n\
 \r\n\
 \r\n\
-\r\n`);
+\r\n");
 
 });
 
 
-test('create record, gzipped, streaming', async t => {
-  const { TransformStream } = require('web-streams-node');
+test("create record, gzipped, streaming", async t => {
+  const { TransformStream } = require("web-streams-node");
 
   class CompressionStream extends TransformStream
   {

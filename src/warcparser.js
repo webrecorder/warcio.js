@@ -1,6 +1,6 @@
-import { StatusAndHeaders, StatusAndHeadersParser } from './statusandheaders';
-import { WARCRecord } from './warcrecord';
-import { AsyncIterReader, LimitReader } from './readers';
+import { StatusAndHeadersParser } from "./statusandheaders";
+import { WARCRecord } from "./warcrecord";
+import { AsyncIterReader, LimitReader } from "./readers";
 
 
 // ===========================================================================
@@ -51,8 +51,6 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
         await this._reader.readSize(2, true);
         nextline = "";
       } else {
-        let count = 0;
-
         nextline = await this._reader.readline();
 
         // consume remaining new lines
@@ -92,16 +90,16 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
 
     if (this._parseHttp) {
       switch (record.warcType) {
-        case "response":
-        case "request":
-          await this._addHttpHeaders(record, headersParser, this._reader);
-          break;
+      case "response":
+      case "request":
+        await this._addHttpHeaders(record, headersParser, this._reader);
+        break;
 
-        case "revisit":
-          if (record.warcContentLength > 0) {
-            await this._addHttpHeaders(record, headersParser, this._reader);
-          }
-          break;
+      case "revisit":
+        if (record.warcContentLength > 0) {
+          await this._addHttpHeaders(record, headersParser, this._reader);
+        }
+        break;
       }
     }
 
@@ -119,7 +117,7 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
   async* [Symbol.asyncIterator]() {
     let record = null;
 
-    while (record = await this.parse(this._reader)) {
+    while ((record = await this.parse(this._reader)) !== null) {
       yield record;
     }
 

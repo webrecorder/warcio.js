@@ -1,8 +1,8 @@
-import base32 from 'hi-base32';
-import { Deflate } from 'pako/lib/deflate';
+import base32 from "hi-base32";
+import { Deflate } from "pako/lib/deflate";
 
-import { BaseAsyncIterReader } from './readers';
-import { CRLF, CRLFCRLF } from './statusandheaders';
+import { BaseAsyncIterReader } from "./readers";
+import { CRLF, CRLFCRLF } from "./statusandheaders";
 
 
 const encoder = new TextEncoder();
@@ -18,7 +18,7 @@ class WARCSerializer extends BaseAsyncIterReader
 
   static base16(hashBuffer) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
   constructor(record, opts = {}) {
@@ -47,8 +47,11 @@ class WARCSerializer extends BaseAsyncIterReader
     let cs = null;
 
     try {
+      // eslint-disable-next-line no-undef
       cs = new CompressionStream("gzip");
-    } catch (e) {  }
+    } catch (e) {  
+      // ignore if no CompressionStream available
+    }
 
     if (cs) {
       yield* this.streamCompress(cs);
