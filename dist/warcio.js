@@ -3223,6 +3223,8 @@ Inflate.prototype.onEnd = function (status) {
 
 var Inflate_1 = Inflate;
 
+/*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
+
 const decoder = new TextDecoder("utf-8");
 
 
@@ -3310,7 +3312,7 @@ class BaseAsyncIterReader
   async* iterLines(maxLength = 0) {
     let line = null;
 
-    while (line = await this.readline(maxLength)) {
+    while ((line = await this.readline(maxLength))) {
       yield line;
     }
   }
@@ -3429,7 +3431,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
     /* istanbul ignore if */
     if (this._savedChunk) {
-      console.log('Already have chunk!');
+      console.log("Already have chunk!");
     }
 
     this._savedChunk = chunk;
@@ -3511,7 +3513,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
 
   async* [Symbol.asyncIterator]() {
     let chunk = null;
-    while (chunk = await this._next()) {
+    while ((chunk = await this._next())) {
       this._readOffset += chunk.length;
       yield chunk;
     }
@@ -3663,7 +3665,7 @@ class LimitReader extends BaseAsyncIterReader
     for await (let chunk of this.sourceIter) {
       if (this.skip > 0) {
         if (chunk.length >= this.skip) {
-          const [first, remainder] = LimitReader.splitChunk(chunk, this.skip);
+          const [/*first*/, remainder] = LimitReader.splitChunk(chunk, this.skip);
           chunk = remainder;
           this.skip = 0;
         } else {
@@ -3704,7 +3706,6 @@ class LimitReader extends BaseAsyncIterReader
   }
 
   async skipFully() {
-
     const origLimit = this.limit;
 
     while (this.limit > 0) {
@@ -3733,7 +3734,7 @@ class StatusAndHeaders {
       buff.push(`${name}: ${value}`);
     }
 
-    return buff.join('\r\n') + '\r\n';
+    return buff.join("\r\n") + "\r\n";
   }
 
   async* iterSerialize(encoder) {
@@ -3979,8 +3980,8 @@ var uuidRandom = createCommonjsModule(function (module) {
 })();
 });
 
-const decoder$1 = new TextDecoder('utf-8');
-const encoder = new TextEncoder('utf-8');
+const decoder$1 = new TextDecoder("utf-8");
+const encoder = new TextEncoder("utf-8");
 
 const WARC_1_1 = "WARC/1.1";
 const WARC_1_0 = "WARC/1.0";
@@ -3989,11 +3990,11 @@ const REVISIT_PROFILE_1_0 = "http://netpreserve.org/warc/1.0/revisit/identical-p
 const REVISIT_PROFILE_1_1 = "http://netpreserve.org/warc/1.1/revisit/identical-payload-digest";
 
 const defaultRecordCT = {
-  'warcinfo': 'application/warc-fields',
-  'response': 'application/http; msgtype=response',
-  'revisit': 'application/http; msgtype=response',
-  'request': 'application/http; msgtype=request',
-  'metadata': 'application/warc-fields',
+  "warcinfo": "application/warc-fields",
+  "response": "application/http; msgtype=response",
+  "revisit": "application/http; msgtype=response",
+  "request": "application/http; msgtype=request",
+  "metadata": "application/warc-fields",
 };
 
 
@@ -4001,8 +4002,8 @@ const defaultRecordCT = {
 class WARCRecord extends BaseAsyncIterReader
 {
   static create({url, date, type, warcHeaders = {}, filename = "",
-                httpHeaders = {}, statusline = "HTTP/1.1 200 OK",
-                warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
+    httpHeaders = {}, statusline = "HTTP/1.1 200 OK",
+    warcVersion = WARC_1_0, keepHeadersCase = true, refersToUrl = undefined, refersToDate = undefined} = {}, reader) {
 
     function checkDate(d) {
       if (warcVersion === WARC_1_0) {
@@ -4023,15 +4024,15 @@ class WARCRecord extends BaseAsyncIterReader
     warcHeaders = {...warcHeaders};
     if (type === "warcinfo") {
       if (filename) {
-        warcHeaders['WARC-Filename'] = filename;
+        warcHeaders["WARC-Filename"] = filename;
       }
 
     } else {
       warcHeaders["WARC-Target-URI"] = url;
     }
 
-    warcHeaders['WARC-Date'] = date;
-    warcHeaders['WARC-Type'] = type;
+    warcHeaders["WARC-Date"] = date;
+    warcHeaders["WARC-Type"] = type;
 
     if (type === "revisit") {
       warcHeaders["WARC-Profile"] = warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0;
@@ -4048,24 +4049,25 @@ class WARCRecord extends BaseAsyncIterReader
       warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuidRandom()}>`);
     }
 
-    if (!warcHeaders.headers.get("Content-Type") && defaultRecordCT[type]) {
-      warcHeaders.headers.set("Content-Type", defaultRecordCT[type]);
+    if (!warcHeaders.headers.get("Content-Type")) {
+      warcHeaders.headers.set("Content-Type", defaultRecordCT[type] || "application/octet-stream");
     }
 
     if (!reader) {
-      async function* emptyReader() {}      reader = emptyReader();
+      const emptyReader = async function* () {};
+      reader = emptyReader();
     }
 
     const record = new WARCRecord({warcHeaders, reader});
 
     switch (type) {
-      case "response":
-      case "request":
-      case "revisit":
-        record.httpHeaders = new StatusAndHeaders({
-          statusline,
-          headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
-        break;
+    case "response":
+    case "request":
+    case "revisit":
+      record.httpHeaders = new StatusAndHeaders({
+        statusline,
+        headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
+      break;
     }
 
     return record;
@@ -4111,7 +4113,7 @@ class WARCRecord extends BaseAsyncIterReader
       headers: httpHeaders.headers,
       status: httpHeaders.statusCode,
       statusText: httpHeaders.statusText
-    }
+    };
   }
 
   fixUp() {
@@ -4305,7 +4307,6 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
         await this._reader.readSize(2, true);
         nextline = "";
       } else {
-
         nextline = await this._reader.readline();
 
         // consume remaining new lines
@@ -4345,16 +4346,16 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
 
     if (this._parseHttp) {
       switch (record.warcType) {
-        case "response":
-        case "request":
-          await this._addHttpHeaders(record, headersParser, this._reader);
-          break;
+      case "response":
+      case "request":
+        await this._addHttpHeaders(record, headersParser, this._reader);
+        break;
 
-        case "revisit":
-          if (record.warcContentLength > 0) {
-            await this._addHttpHeaders(record, headersParser, this._reader);
-          }
-          break;
+      case "revisit":
+        if (record.warcContentLength > 0) {
+          await this._addHttpHeaders(record, headersParser, this._reader);
+        }
+        break;
       }
     }
 
@@ -4372,7 +4373,7 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
   async* [Symbol.asyncIterator]() {
     let record = null;
 
-    while (record = await this.parse(this._reader)) {
+    while ((record = await this.parse(this._reader)) !== null) {
       yield record;
     }
 
@@ -8276,7 +8277,7 @@ class WARCSerializer extends BaseAsyncIterReader
 
   static base16(hashBuffer) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
   constructor(record, opts = {}) {
@@ -8305,8 +8306,11 @@ class WARCSerializer extends BaseAsyncIterReader
     let cs = null;
 
     try {
+      // eslint-disable-next-line no-undef
       cs = new CompressionStream("gzip");
-    } catch (e) {  }
+    } catch (e) {  
+      // ignore if no CompressionStream available
+    }
 
     if (cs) {
       yield* this.streamCompress(cs);
@@ -8409,7 +8413,7 @@ function getSurt(url) {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
     }
-    url = url.replace(/www\d*\./, '');
+    url = url.replace(/www\d*\./, "");
     const urlObj = new URL(url.toLowerCase());
 
     const hostParts = urlObj.hostname.split(".").reverse();
@@ -8430,7 +8434,7 @@ function getSurt(url) {
 }
 
 function postToGetUrl(request) {
-  let {url, method, headers, postData} = request;
+  let {method, headers, postData} = request;
 
   if (method === "GET") {
     return false;
@@ -8448,21 +8452,21 @@ function postToGetUrl(request) {
   let query = null;
 
   switch (requestMime) {
-    case "application/x-www-form-urlencoded":
-      query = decodeIfNeeded(postData);
-      break;
+  case "application/x-www-form-urlencoded":
+    query = decodeIfNeeded(postData);
+    break;
 
-    case "text/plain":
-    case "application/json":
-      query = jsonToQueryString(decodeIfNeeded(postData));
-      break;
+  case "text/plain":
+  case "application/json":
+    query = jsonToQueryString(decodeIfNeeded(postData));
+    break;
 
-    case "multipart/form-data":
-      query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
-      break;
+  case "multipart/form-data":
+    query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
+    break;
 
-    default:
-      return false;
+  default:
+    return false;
   }
 
   if (query)  {
@@ -8503,7 +8507,9 @@ function jsonToQueryString(json) {
       }
       return v;
     });
-  } catch (e) {}
+  } catch (e) {
+    // ignore invalid json, don't add params
+  }
 
   return q.toString();
 }
@@ -8527,12 +8533,14 @@ function mfdToQueryString(mfd, contentType) {
       }
     }
 
-  } catch (e) {}
+  } catch (e) {
+    // ignore invalid, don't add params
+  }
 
   return params.toString();
 }
 
-const DEFAULT_FIELDS = 'offset,warc-type,warc-target-uri'.split(',');
+const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
 
 
 // ===========================================================================
@@ -8656,8 +8664,8 @@ class Indexer extends BaseIndexer
 
 
 // ===========================================================================
-const DEFAULT_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,length,offset,filename'.split(',');
-const DEFAULT_LEGACY_CDX_FIELDS = 'urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename'.split(',');
+const DEFAULT_CDX_FIELDS = "urlkey,timestamp,url,mime,status,digest,length,offset,filename".split(",");
+const DEFAULT_LEGACY_CDX_FIELDS = "urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename".split(",");
 
 
 // ===========================================================================
@@ -8672,13 +8680,13 @@ class CDXIndexer extends Indexer
     this._lastRecord = null;
 
     switch (opts.format) {
-      case "cdxj":
-        this.serialize = this.serializeCDXJ;
-        break;
+    case "cdxj":
+      this.serialize = this.serializeCDXJ;
+      break;
 
-      case "cdx":
-        this.serialize = this.serializeCDX11;
-        break;
+    case "cdx":
+      this.serialize = this.serializeCDX11;
+      break;
     }
   }
 
@@ -8811,40 +8819,40 @@ class CDXIndexer extends Indexer
     let value = null;
 
     switch (field) {
-      case "urlkey":
-        value = record._urlkey ? record._urlkey : record.warcTargetURI;
-        return this.noSurt ? value : getSurt(value);
+    case "urlkey":
+      value = record._urlkey ? record._urlkey : record.warcTargetURI;
+      return this.noSurt ? value : getSurt(value);
 
-      case "timestamp":
-        value = record.warcDate;
-        return value.replace(/[-:T]/g, '').slice(0, 14);
+    case "timestamp":
+      value = record.warcDate;
+      return value.replace(/[-:T]/g, "").slice(0, 14);
 
-      case "url":
-        return record.warcTargetURI;
+    case "url":
+      return record.warcTargetURI;
 
-      case "mime":
-        switch (record.warcType) {
-          case "revisit":
-            return "warc/revisit";
+    case "mime":
+      switch (record.warcType) {
+      case "revisit":
+        return "warc/revisit";
 
-          case "response":
-          case "request":
-            field = "http:content-type";
-            break;
+      case "response":
+      case "request":
+        field = "http:content-type";
+        break;
 
-          default:
-            field = "content-type";
+      default:
+        field = "content-type";
 
-        }
-        value = super.getField(field, record);
-        return value ? value.split(";", 1)[0].trim() : null;
+      }
+      value = super.getField(field, record);
+      return value ? value.split(";", 1)[0].trim() : null;
 
-      case "status":
-        return super.getField("http:status", record);
+    case "status":
+      return super.getField("http:status", record);
 
-      case "digest":
-        value = record.warcPayloadDigest;
-        return value ? value.split(":", 2)[1] : null;
+    case "digest":
+      value = record.warcPayloadDigest;
+      return value ? value.split(":", 2)[1] : null;
     }
   }
 }
