@@ -29,5 +29,5 @@ test("json to query with more dupes", toQuery, {
     "bar": "123",
     "a": "5"
   }},
-  "abc=def&data=bar&bar=2&a=3&a.2_=4&bar.2_=123&a.3_=5"
+"abc=def&data=bar&bar=2&a=3&a.2_=4&bar.2_=123&a.3_=5"
 );
