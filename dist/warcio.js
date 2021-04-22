@@ -8489,7 +8489,7 @@ function appendRequestQuery(url, query, method) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-function jsonToQueryString(json) {
+function jsonToQueryParams(json) {
   if (typeof(json) === "string") {
     try {
       json = JSON.parse(json);
@@ -8500,10 +8500,23 @@ function jsonToQueryString(json) {
 
   const q = new URLSearchParams();
 
+  const dupes = {};
+
+  const getKey = (key) => {
+    if (!q.has(key)) {
+      return key;
+    }
+
+    if (!dupes[key]) {
+      dupes[key] = 1;
+    }
+    return key + "." + (++dupes[key]) + "_";
+  };
+
   try {
     JSON.stringify(json, (k, v) => {
       if (!["object", "function"].includes(typeof(v))) {
-        q.set(k, v);
+        q.set(getKey(k), v);
       }
       return v;
     });
@@ -8511,10 +8524,10 @@ function jsonToQueryString(json) {
     // ignore invalid json, don't add params
   }
 
-  return q.toString();
+  return q;
 }
 
-function mfdToQueryString(mfd, contentType) {
+function mfdToQueryParams(mfd, contentType) {
   const params = new URLSearchParams();
 
   if (mfd instanceof Uint8Array) {
@@ -8537,7 +8550,16 @@ function mfdToQueryString(mfd, contentType) {
     // ignore invalid, don't add params
   }
 
-  return params.toString();
+  return params;
+}
+
+
+function jsonToQueryString(json) {
+  return jsonToQueryParams(json).toString();
+}
+
+function mfdToQueryString(mfd, contentType) {
+  return mfdToQueryParams(mfd, contentType).toString();
 }
 
 const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
@@ -8857,4 +8879,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, getSurt, postToGetUrl };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl };

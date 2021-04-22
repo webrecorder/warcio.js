@@ -11,4 +11,6 @@ export { WARCRecord } from "./src/warcrecord";
 
 export { Indexer, CDXIndexer } from "./src/indexer";
 
-export { postToGetUrl, getSurt, appendRequestQuery } from "./src/utils";
+//export { postToGetUrl, getSurt, appendRequestQuery, jsonToQueryString, mfdToQueryString } from "./src/utils";
+export * from "./src/utils";
+
