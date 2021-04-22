@@ -1,5 +1,5 @@
 
-function getSurt(url) {
+export function getSurt(url) {
   try {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
@@ -24,7 +24,7 @@ function getSurt(url) {
   }
 }
 
-function postToGetUrl(request) {
+export function postToGetUrl(request) {
   let {method, headers, postData} = request;
 
   if (method === "GET") {
@@ -70,7 +70,7 @@ function postToGetUrl(request) {
   return false;
 }
 
-function appendRequestQuery(url, query, method) {
+export function appendRequestQuery(url, query, method) {
   if (!method) {
     return url;
   }
@@ -80,7 +80,7 @@ function appendRequestQuery(url, query, method) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-function jsonToQueryString(json) {
+export function jsonToQueryParams(json) {
   if (typeof(json) === "string") {
     try {
       json = JSON.parse(json);
@@ -91,10 +91,23 @@ function jsonToQueryString(json) {
 
   const q = new URLSearchParams();
 
+  const dupes = {};
+
+  const getKey = (key) => {
+    if (!q.has(key)) {
+      return key;
+    }
+
+    if (!dupes[key]) {
+      dupes[key] = 1;
+    }
+    return key + "." + (++dupes[key]) + "_";
+  };
+
   try {
     JSON.stringify(json, (k, v) => {
       if (!["object", "function"].includes(typeof(v))) {
-        q.set(k, v);
+        q.set(getKey(k), v);
       }
       return v;
     });
@@ -102,10 +115,10 @@ function jsonToQueryString(json) {
     // ignore invalid json, don't add params
   }
 
-  return q.toString();
+  return q;
 }
 
-function mfdToQueryString(mfd, contentType) {
+export function mfdToQueryParams(mfd, contentType) {
   const params = new URLSearchParams();
 
   if (mfd instanceof Uint8Array) {
@@ -128,7 +141,16 @@ function mfdToQueryString(mfd, contentType) {
     // ignore invalid, don't add params
   }
 
-  return params.toString();
+  return params;
 }
 
-export { postToGetUrl, getSurt, appendRequestQuery };
+
+export function jsonToQueryString(json) {
+  return jsonToQueryParams(json).toString();
+}
+
+export function mfdToQueryString(mfd, contentType) {
+  return mfdToQueryParams(mfd, contentType).toString();
+}
+
+
