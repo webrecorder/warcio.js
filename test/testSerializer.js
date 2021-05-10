@@ -183,8 +183,8 @@ WARC-Target-URI: http://example.com/\r\n\
 WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: response\r\n\
 Content-Type: application/http; msgtype=response\r\n\
-WARC-Payload-Digest: sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
-WARC-Block-Digest: sha-256:9b5a9b1d4a0263075b50a47dc2326320f6083f3800ddf7ae079ebbb661b3ffc9\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Block-Digest: sha256:9b5a9b1d4a0263075b50a47dc2326320f6083f3800ddf7ae079ebbb661b3ffc9\r\n\
 Content-Length: 104\r\n\
 \r\n\
 HTTP/1.1 404 Not Found\r\n\
@@ -226,8 +226,8 @@ WARC-Target-URI: http://example.com/\r\n\
 WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: request\r\n\
 Content-Type: application/http; msgtype=request\r\n\
-WARC-Payload-Digest: sha-256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
-WARC-Block-Digest: sha-256:bae4ef8a0c1f20864d3cf60e7bba15c5f1b8d15fd6d18bdfffcd41ab57d9b1dc\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:bae4ef8a0c1f20864d3cf60e7bba15c5f1b8d15fd6d18bdfffcd41ab57d9b1dc\r\n\
 Content-Length: 35\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
@@ -292,7 +292,7 @@ test("create revisit", async t => {
   const refersToUrl = "https://example.com/";
 
   const warcHeaders = {
-    "WARC-Payload-Digest": "sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253",
+    "WARC-Payload-Digest": "sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253",
     "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
   };
 
@@ -303,7 +303,7 @@ test("create revisit", async t => {
 
   t.is(res, "\
 WARC/1.0\r\n\
-WARC-Payload-Digest: sha-256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: https://example.com/another/file.html\r\n\
 WARC-Date: 2020-06-06T07:07:04Z\r\n\

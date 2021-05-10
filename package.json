@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "main": "index.js",
   "module": "main.js",
   "license": "Apache-2.0",

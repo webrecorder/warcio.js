@@ -8290,7 +8290,7 @@ class WARCSerializer extends BaseAsyncIterReader
     if (record.warcType !== "revisit" && record.warcType !== "warcinfo" &&
        (!record.warcPayloadDigest || !record.warcBlockDigest)) {
       this.digestAlgo = digestOpts.algo || "sha-256";
-      this.digestAlgoPrefix = digestOpts.prefix || "sha-256:";
+      this.digestAlgoPrefix = digestOpts.prefix || "sha256:";
       this.digestBase32 = digestOpts.base32 || false;
     } else {
       this.digestAlgo = null;
