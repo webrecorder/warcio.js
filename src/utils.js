@@ -1,4 +1,24 @@
 
+
+
+export function binaryToString(data) {
+  let string;
+
+  if (typeof(data) === "string") {
+    string = data;
+  } else if (data && data.length) {
+    string = "";
+    for (let i = 0; i < data.length; i++) {
+      string += String.fromCharCode(data[i]);
+    }
+  } else if (data) {
+    string = data.toString();
+  } else {
+    string = "";
+  }
+  return "__wb_post_data=" + btoa(string);
+}
+
 export function getSurt(url) {
   try {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
@@ -47,9 +67,16 @@ export function postToGetUrl(request) {
     query = decodeIfNeeded(postData);
     break;
 
-  case "text/plain":
   case "application/json":
     query = jsonToQueryString(decodeIfNeeded(postData));
+    break;
+
+  case "text/plain":
+    try {
+      query = jsonToQueryString(decodeIfNeeded(postData), false);
+    } catch(e) {
+      query = binaryToString(postData);
+    }
     break;
 
   case "multipart/form-data":
@@ -57,10 +84,10 @@ export function postToGetUrl(request) {
     break;
 
   default:
-    return false;
+    query = binaryToString(postData);
   }
 
-  if (query)  {
+  if (query !== null)  {
     request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
     request.requestBody = query;
@@ -80,7 +107,7 @@ export function appendRequestQuery(url, query, method) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-export function jsonToQueryParams(json) {
+export function jsonToQueryParams(json, ignoreInvalid = true) {
   if (typeof(json) === "string") {
     try {
       json = JSON.parse(json);
@@ -112,7 +139,9 @@ export function jsonToQueryParams(json) {
       return v;
     });
   } catch (e) {
-    // ignore invalid json, don't add params
+    if (!ignoreInvalid) {
+      throw e;
+    }
   }
 
   return q;
@@ -145,8 +174,8 @@ export function mfdToQueryParams(mfd, contentType) {
 }
 
 
-export function jsonToQueryString(json) {
-  return jsonToQueryParams(json).toString();
+export function jsonToQueryString(json, ignoreInvalid=true) {
+  return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
 export function mfdToQueryString(mfd, contentType) {

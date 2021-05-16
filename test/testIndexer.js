@@ -2,6 +2,7 @@
 "use strict";
 
 import test from "ava";
+import "./utils/";
 
 import { main } from "../src/cli_main";
 
@@ -114,7 +115,7 @@ test("post append 2", index,
   `\
 org,httpbin)/post?__wb_method=post&another=more%5Edata&test=some+data 20200809195334 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"7AWVEIPQMCA4KTCNDXWSZ465FITB7LSK","length":688,"offset":0,"filename":"post-test-more.warc","method":"POST","requestBody":"test=some+data&another=more%5Edata"}
 org,httpbin)/post?__wb_method=post&a=json-data 20200809195334 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"BYOQWRSQFW3A5SNUBDSASHFLXGL4FNGB","length":655,"offset":1227,"filename":"post-test-more.warc","method":"POST","requestBody":"a=json-data"}
-org,httpbin)/post 20200810055049 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"34LEADQD3MOBQ42FCO2WA5TUSEL5QOKP","length":628,"offset":2338,"filename":"post-test-more.warc","method":"POST"}
+org,httpbin)/post?__wb_method=post&__wb_post_data=na0kc29tzq0kza0ky2h1bmstzw5jb2rlza0kna0kzgf0yq0kma0kdqo%3D 20200810055049 {"url":"https://httpbin.org/post","mime":"application/json","status":200,"digest":"34LEADQD3MOBQ42FCO2WA5TUSEL5QOKP","length":628,"offset":2338,"filename":"post-test-more.warc","method":"POST","requestBody":"__wb_post_data=NA0Kc29tZQ0KZA0KY2h1bmstZW5jb2RlZA0KNA0KZGF0YQ0KMA0KDQo="}
 `);
 
 
