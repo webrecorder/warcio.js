@@ -8484,6 +8484,7 @@ function postToGetUrl(request) {
     } catch(e) {
       query = binaryToString(postData);
     }
+    break;
 
   case "multipart/form-data":
     query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
