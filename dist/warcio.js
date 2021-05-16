@@ -8408,6 +8408,24 @@ class WARCSerializer extends BaseAsyncIterReader
   }
 }
 
+function binaryToString(data) {
+  let string;
+
+  if (typeof(data) === "string") {
+    string = data;
+  } else if (data && data.length) {
+    string = "";
+    for (let i = 0; i < data.length; i++) {
+      string += String.fromCharCode(data[i]);
+    }
+  } else if (data) {
+    string = data.toString();
+  } else {
+    string = "";
+  }
+  return "__wb_post_data=" + btoa(string);
+}
+
 function getSurt(url) {
   try {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
@@ -8456,20 +8474,26 @@ function postToGetUrl(request) {
     query = decodeIfNeeded(postData);
     break;
 
-  case "text/plain":
   case "application/json":
     query = jsonToQueryString(decodeIfNeeded(postData));
     break;
+
+  case "text/plain":
+    try {
+      query = jsonToQueryString(decodeIfNeeded(postData), false);
+    } catch(e) {
+      query = binaryToString(postData);
+    }
 
   case "multipart/form-data":
     query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
     break;
 
   default:
-    return false;
+    query = binaryToString(postData);
   }
 
-  if (query)  {
+  if (query !== null)  {
     request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
     request.requestBody = query;
@@ -8489,7 +8513,7 @@ function appendRequestQuery(url, query, method) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-function jsonToQueryParams(json) {
+function jsonToQueryParams(json, ignoreInvalid = true) {
   if (typeof(json) === "string") {
     try {
       json = JSON.parse(json);
@@ -8521,7 +8545,9 @@ function jsonToQueryParams(json) {
       return v;
     });
   } catch (e) {
-    // ignore invalid json, don't add params
+    if (!ignoreInvalid) {
+      throw e;
+    }
   }
 
   return q;
@@ -8554,8 +8580,8 @@ function mfdToQueryParams(mfd, contentType) {
 }
 
 
-function jsonToQueryString(json) {
-  return jsonToQueryParams(json).toString();
+function jsonToQueryString(json, ignoreInvalid=true) {
+  return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
 function mfdToQueryString(mfd, contentType) {
@@ -8879,4 +8905,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, binaryToString, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl };

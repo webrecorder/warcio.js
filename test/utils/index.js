@@ -5,6 +5,9 @@ import { ReadableStream } from "web-streams-node";
 
 import { Crypto } from "@peculiar/webcrypto";
 
+import btoa from "btoa";
+
+global.btoa = btoa;
 global.Headers = Headers;
 global.crypto = new Crypto();
 
