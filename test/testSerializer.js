@@ -284,7 +284,7 @@ isPartOf: test\r\n\
 });
 
 
-test("create revisit", async t => {
+test("create revisit, no http headers", async t => {
   const url = "https://example.com/another/file.html";
   const type = "revisit";
   const date = "2020-06-06T07:07:04.923Z";
@@ -312,14 +312,55 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: https://example.com/\r\n\
 WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
 Content-Type: application/http; msgtype=response\r\n\
-Content-Length: 19\r\n\
-\r\n\
-HTTP/1.1 200 OK\r\n\
+Content-Length: 0\r\n\
 \r\n\
 \r\n\
 \r\n");
 
 });
+
+test("create revisit, with http hedaers", async t => {
+  const url = "https://example.com/another/file.html";
+  const type = "revisit";
+  const date = "2020-06-06T07:07:04.923Z";
+  const refersToDate = "2020-12-26T07:07:04.12";
+  const refersToUrl = "https://example.com/";
+
+  const warcHeaders = {
+    "WARC-Payload-Digest": "sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253",
+    "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+  };
+
+  const httpHeaders = {"Content-Type": "text/html", "Foo": "Bar"};
+
+  const record = await WARCRecord.create({
+    url, date, type, warcHeaders, refersToUrl, refersToDate, httpHeaders}, iter(""));
+
+  const res = decoder.decode(await WARCSerializer.serialize(record));
+
+  t.is(res, "\
+WARC/1.0\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: https://example.com/another/file.html\r\n\
+WARC-Date: 2020-06-06T07:07:04Z\r\n\
+WARC-Type: revisit\r\n\
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r\n\
+WARC-Refers-To-Target-URI: https://example.com/\r\n\
+WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 54\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+Foo: Bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+");
+
+});
+
 
 
 test("create record, gzipped, streaming", async t => {

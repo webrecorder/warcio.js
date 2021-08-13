@@ -81,14 +81,21 @@ class WARCRecord extends BaseAsyncIterReader
     }
 
     const record = new WARCRecord({warcHeaders, reader});
+    let headers = null;
+    let entries = null;
 
     switch (type) {
     case "response":
     case "request":
     case "revisit":
-      record.httpHeaders = new StatusAndHeaders({
-        statusline,
-        headers: keepHeadersCase ? new Map(Object.entries(httpHeaders)) : new Headers(httpHeaders)});
+      entries = Object.entries(httpHeaders);
+      headers = keepHeadersCase ? new Map(entries) : new Headers(httpHeaders);
+
+      // for revisit records, if there are no http headers, don't add statusline
+      // for other request/response, add an empty statusline-only block
+      if (entries.length > 0 || type !== "revisit") {
+        record.httpHeaders = new StatusAndHeaders({statusline, headers});
+      }
       break;
     }
 
@@ -147,11 +154,20 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   async readFully(isContent = false) {
+
+    // if have httpHeaders, need to consider transfer and content decoding is decoding content vs raw data
     if (this.httpHeaders) {
+      // if payload is empty, just return
+      if (this.payload && !this.payload.length) {
+        return this.payload;
+      }
+
+      // otherwise, can't serialize payload as raw if already started reading
       if (this._contentReader && !isContent) {
         throw new TypeError("WARC Record decoding already started, but requesting raw payload");
       }
 
+      // reading content, but already consumed raw data, convert
       if (isContent && this.consumed === "raw" && this.payload) {
         return await this._createDecodingReader([this.payload]).readFully();
       }

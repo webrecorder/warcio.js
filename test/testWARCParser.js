@@ -181,7 +181,7 @@ json-metadata: {\"foo\": \"bar\"}\r\n\
 });
 
 
-test("Load revisit 1", async t => {
+test("Load revisit, no http headers", async t => {
   const input = "\
 WARC/1.0\r\n\
 WARC-Type: revisit\r\n\
@@ -223,6 +223,61 @@ Content-Length: 0\r\n\
 
   t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
+
+
+test("Load revisit, with http headers", async t => {
+  const input = "\
+WARC/1.0\r\n\
+WARC-Type: revisit\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r\n\
+WARC-Refers-To-Target-URI: http://example.com/foo\r\n\
+WARC-Refers-To-Date: 1999-01-01T00:00:00Z\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 54\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+Foo: Bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+";
+
+  const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
+
+  const record = await parser.parse();
+
+  t.is(record.warcHeaders.protocol, "WARC/1.0");
+  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
+  t.is(record.warcType, "revisit");
+  t.is(record.warcTargetURI, "http://example.com/");
+  t.is(record.warcDate, "2000-01-01T00:00:00Z");
+  t.is(record.warcRefersToTargetURI, "http://example.com/foo");
+  t.is(record.warcRefersToDate, "1999-01-01T00:00:00Z");
+  t.is(record.warcPayloadDigest, "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O");
+  t.is(record.warcContentType, "application/http; msgtype=response");
+  t.is(record.warcContentLength, 54);
+
+  t.is(record.httpHeaders.protocol, "HTTP/1.1");
+  t.is(record.httpHeaders.statusCode, 200);
+  t.is(record.httpHeaders.statusText, "OK");
+
+  t.is(record.httpHeaders.headers.get("Foo"), "Bar");
+  t.is(record.httpHeaders.headers.get("Content-Type"), "text/html");
+
+  t.is(await record.contentText(), "");
+
+  t.deepEqual(record.payload, new Uint8Array([]));
+
+  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
+});
+
+
 
 
 
