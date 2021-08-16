@@ -8447,7 +8447,7 @@ function getSurt(url) {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
     }
-    url = url.replace(/www\d*\./, "");
+    url = url.replace(/^(https?:\/\/)www\d*\./, "$1");
     const urlObj = new URL(url.toLowerCase());
 
     const hostParts = urlObj.hostname.split(".").reverse();

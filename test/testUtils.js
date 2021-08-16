@@ -1,7 +1,7 @@
 import test from "ava";
 import "./utils/";
 
-import { jsonToQueryString, postToGetUrl } from "../src/utils";
+import { jsonToQueryString, postToGetUrl, getSurt } from "../src/utils";
 
 async function toQuery(t, json, expected) {
   const actual = jsonToQueryString(json);
@@ -12,6 +12,11 @@ async function testPTG(t, request, url) {
   const actual = postToGetUrl(request);
   t.is(actual, true);
   t.is(request.url, url);
+}
+
+function testSURT(t, orig, surt) {
+  const res = getSurt(orig);
+  t.is(res, surt);
 }
 
 test("json to query simple", toQuery,
@@ -57,4 +62,40 @@ test("post-to-get binary", testPTG,
     "url": "https://example.com/path/file"
   }, "https://example.com/path/file?__wb_method=POST&__wb_post_data=AQIDBAUG");
 
+
+
+test("surt with www", testSURT,
+  "https://www23.example.com/some/path",
+  "com,example)/some/path"
+);
+
+test("surt with www in middle", testSURT,
+  "https://example.com/www2.example/some/value",
+  "com,example)/www2.example/some/value"
+);
+
+test("surt with www in middle host", testSURT,
+  "https://abc.www.example.com/example",
+  "com,example,www,abc)/example"
+);
+
+test("surt with default port https", testSURT,
+  "https://www.example.com:443/some/path",
+  "com,example)/some/path"
+);
+
+test("surt with default port http", testSURT,
+  "http://www.example.com:80/some/path",
+  "com,example)/some/path"
+);
+
+test("surt with default custom port", testSURT,
+  "https://www.example.com:123/some/path",
+  "com,example:123)/some/path"
+);
+
+test("surt with query args sorted, lowercase", testSURT,
+  "https://www.example.com/some/path?D=1&CC=2&EE=3",
+  "com,example)/some/path?cc=2&d=1&ee=3"
+);
 
