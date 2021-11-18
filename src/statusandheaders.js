@@ -1,7 +1,10 @@
+import { concatChunks, splitChunk } from "./utils";
+
+
 const CRLF = new Uint8Array([13, 10]);
 const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
-import { readtoCRLFCRLF } from "./utils";
+const decoder = new TextDecoder("utf-8");
 
 
 // ===========================================================================
@@ -144,43 +147,12 @@ class StatusAndHeadersParser {
       }
     }
 
-    /*
-    const lines = headerBuff.split("\n");
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trimEnd();
-
-      if (!line) {
-        continue;
-      }
-
-      let [name, value] = splitRemainder(line, ":", 1);
-      if (value) {
-        name = name.trimStart();
-        value = value.trimStart();
-      }
-
-      while ((i + 1) < lines.length && this.startsWithSpace(lines[i + 1])) {
-        if (value) {
-          value += lines[i + 1].trimEnd();
-        }
-        i++;
-      }
-
-      if (value) {
-        try {
-          headers.set(name, value);
-        } catch(e) {
-          // try to sanitize value, removing newlines
-          //headers.set(name, value.replace(/[\r\n]+/g, ', '));
-        }
-      }
-    }
-*/
     return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
   }
 }
 
+
+// ===========================================================================
 function splitRemainder(str, sep, limit) {
   const parts = str.split(sep);
   const newParts = parts.slice(0, limit);
@@ -192,6 +164,75 @@ function splitRemainder(str, sep, limit) {
 }
 
 
+// ===========================================================================
+export async function indexOfDoubleLine(buffer, iter) {
+  let start = 0;
+
+  for (let i = 0; i < buffer.length - 4; i++) {
+    const inx = buffer.indexOf(13, start);
+    if (inx < 0) {
+      break;
+    }
+
+    if (inx + 3 >= buffer.length) {
+      const {value} = await iter.next();
+      if (!value) {
+        break;
+      }
+
+      const newBuff = new Uint8Array(value.length + buffer.length);
+      newBuff.set(buffer, 0);
+      newBuff.set(value, buffer.length);
+      buffer = newBuff;
+    }
+
+    if (buffer[inx + 1] === 10 && buffer[inx + 2] === 13 && buffer[inx + 3] === 10) {
+      return [inx + 3, buffer];
+    }
+
+    start = inx + 1;
+  }
+
+  return [-1, buffer];
+}
+
 
 // ===========================================================================
-export { StatusAndHeaders, StatusAndHeadersParser, CRLF, CRLFCRLF };
+async function readtoCRLFCRLF(reader) {
+  const chunks = [];
+  let size = 0;
+
+  let inx;
+
+  let lastChunk = null;
+
+  const iter = reader[Symbol.asyncIterator]();
+
+  for await (let chunk of iter) {
+    [inx, chunk] = await indexOfDoubleLine(chunk, iter);
+
+    if (inx >= 0) {
+      lastChunk = chunk;
+      break;
+    }
+
+    chunks.push(chunk);
+    size += chunk.byteLength;
+  }
+
+  if (lastChunk) {
+    const [first, remainder] = splitChunk(lastChunk, inx + 1);
+    chunks.push(first);
+    size += first.byteLength;
+
+    reader.unread(remainder);
+  } else if (!chunks.length) {
+    return "";
+  }
+
+  return decoder.decode(concatChunks(chunks, size));
+}
+
+
+// ===========================================================================
+export { StatusAndHeaders, StatusAndHeadersParser, CRLF, CRLFCRLF, readtoCRLFCRLF };

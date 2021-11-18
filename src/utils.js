@@ -186,9 +186,6 @@ export function mfdToQueryString(mfd, contentType) {
 // ===========================================================================
 // parsing utils
 
-const decoder = new TextDecoder("utf-8");
-
-
 export function concatChunks(chunks, size) {
   if (chunks.length === 1) {
     return chunks[0];
@@ -208,73 +205,4 @@ export function concatChunks(chunks, size) {
 export function splitChunk(chunk, inx) {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }
-
-
-
-export async function indexOfDoubleLine(buffer, iter) {
-  let start = 0;
-
-  for (let i = 0; i < buffer.length - 4; i++) {
-    const inx = buffer.indexOf(13, start);
-    if (inx < 0) {
-      break;
-    }
-
-    if (inx + 3 >= buffer.length) {
-      const {value} = await iter.next();
-      if (!value) {
-        break;
-      }
-
-      const newBuff = new Uint8Array(value.length + buffer.length);
-      newBuff.set(buffer, 0);
-      newBuff.set(value, buffer.length);
-      buffer = newBuff;
-    }
-
-    if (buffer[inx + 1] === 10 && buffer[inx + 2] === 13 && buffer[inx + 3] === 10) {
-      return [inx + 3, buffer];
-    }
-
-    start = inx + 1;
-  }
-
-  return [-1, buffer];
-}
-
-export async function readtoCRLFCRLF(reader) {
-  const chunks = [];
-  let size = 0;
-
-  let inx;
-
-  let lastChunk = null;
-
-  const iter = reader[Symbol.asyncIterator]();
-
-  for await (let chunk of iter) {
-    [inx, chunk] = await indexOfDoubleLine(chunk, iter);
-
-    if (inx >= 0) {
-      lastChunk = chunk;
-      break;
-    }
-
-    chunks.push(chunk);
-    size += chunk.byteLength;
-  }
-
-  if (lastChunk) {
-    const [first, remainder] = splitChunk(lastChunk, inx + 1);
-    chunks.push(first);
-    size += first.byteLength;
-
-    reader.unread(remainder);
-  } else if (!chunks.length) {
-    return "";
-  }
-
-  return decoder.decode(concatChunks(chunks, size));
-}
-
 

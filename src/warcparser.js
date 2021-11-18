@@ -134,7 +134,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
   async* [Symbol.asyncIterator]() {
     let record = null;
 
-    while ((record = await this.parse(this._reader)) !== null) {
+    while ((record = await this.parse()) !== null) {
       yield record;
     }
 
