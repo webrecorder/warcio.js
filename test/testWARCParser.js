@@ -7,6 +7,8 @@ import { getReadableStream, getReader } from "./utils";
 
 import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../main";
 
+import { concatChunks } from "../main";
+
 const decoder = new TextDecoder("utf-8");
 
 
@@ -403,7 +405,7 @@ test("warc1.1 serialize records match", async t => {
     size += chunk.length;
   }
 
-  t.is(decoder.decode(AsyncIterReader.concatChunks(serialized, size)), input);
+  t.is(decoder.decode(concatChunks(serialized, size)), input);
 
 });
 

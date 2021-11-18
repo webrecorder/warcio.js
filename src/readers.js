@@ -2,6 +2,8 @@
 
 import { Inflate } from "pako/lib/inflate";
 
+import { splitChunk, concatChunks } from "./utils";
+
 const decoder = new TextDecoder("utf-8");
 
 
@@ -26,26 +28,6 @@ class NoConcatInflator extends Inflate
 class BaseAsyncIterReader
 {
 
-  static concatChunks(chunks, size) {
-    if (chunks.length === 1) {
-      return chunks[0];
-    }
-    const buffer = new Uint8Array(size);
-
-    let offset = 0;
-
-    for (const chunk of chunks) {
-      buffer.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    return buffer;
-  }
-
-  static splitChunk(chunk, inx) {
-    return [chunk.slice(0, inx), chunk.slice(inx)];
-  }
-
   static async readFully(iter) {
     const chunks = [];
     let size = 0;
@@ -55,7 +37,7 @@ class BaseAsyncIterReader
       size += chunk.byteLength;
     }
 
-    return BaseAsyncIterReader.concatChunks(chunks, size);
+    return concatChunks(chunks, size);
   }
 
 
@@ -199,7 +181,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
     yield *reader;
   }
 
-  _unread(chunk) {
+  unread(chunk) {
     if (!chunk.length) {
       return;
     }
@@ -327,16 +309,16 @@ class AsyncIterReader extends BaseAsyncIterReader {
     }
 
     if (lastChunk) {
-      const [first, remainder] = AsyncIterReader.splitChunk(lastChunk, inx + 1);
+      const [first, remainder] = splitChunk(lastChunk, inx + 1);
       chunks.push(first);
       size += first.byteLength;
 
-      this._unread(remainder);
+      this.unread(remainder);
     } else if (!chunks.length) {
       return null;
     }
 
-    return AsyncIterReader.concatChunks(chunks, size);
+    return concatChunks(chunks, size);
   }
 
   readFully() {
@@ -351,12 +333,12 @@ class AsyncIterReader extends BaseAsyncIterReader {
     for await (const chunk of this) {
       if (sizeLimit >= 0) {
         if (chunk.length > sizeLimit) {
-          const [first, remainder] = AsyncIterReader.splitChunk(chunk, sizeLimit);
+          const [first, remainder] = splitChunk(chunk, sizeLimit);
           if (!skip) {
             chunks.push(first);
           }
           size += first.byteLength;
-          this._unread(remainder);
+          this.unread(remainder);
           break;
         } else if (chunk.length === sizeLimit) {
           if (!skip) {
@@ -375,7 +357,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
       size += chunk.byteLength;
     }
 
-    return skip ? size : AsyncIterReader.concatChunks(chunks, size);
+    return skip ? size : concatChunks(chunks, size);
   }
 
   getReadOffset() {
@@ -442,7 +424,7 @@ class LimitReader extends BaseAsyncIterReader
     for await (let chunk of this.sourceIter) {
       if (this.skip > 0) {
         if (chunk.length >= this.skip) {
-          const [/*first*/, remainder] = LimitReader.splitChunk(chunk, this.skip);
+          const [/*first*/, remainder] = splitChunk(chunk, this.skip);
           chunk = remainder;
           this.skip = 0;
         } else {
@@ -452,11 +434,11 @@ class LimitReader extends BaseAsyncIterReader
       }
 
       if (chunk.length > this.limit) {
-        const [first, remainder] = LimitReader.splitChunk(chunk, this.limit);
+        const [first, remainder] = splitChunk(chunk, this.limit);
         chunk = first;
 
-        if (this.sourceIter._unread) {
-          this.sourceIter._unread(remainder);
+        if (this.sourceIter.unread) {
+          this.sourceIter.unread(remainder);
         }
       }
 

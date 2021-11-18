@@ -1,6 +1,8 @@
 const CRLF = new Uint8Array([13, 10]);
 const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
+import { readtoCRLFCRLF } from "./utils";
+
 
 // ===========================================================================
 class StatusAndHeaders {
@@ -78,11 +80,6 @@ class StatusAndHeaders {
 
 // ===========================================================================
 class StatusAndHeadersParser {
-  startsWithSpace(line) {
-    const first = line.charAt(0);
-    return first === " " || first === "\t";
-  }
-
   async parse(reader, {headersClass = Map, firstLine} = {}) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
@@ -90,31 +87,84 @@ class StatusAndHeadersParser {
       return null;
     }
 
-    let statusline = fullStatusLine.trimEnd();
-
-    const headers = new headersClass();
+    const statusline = fullStatusLine.trimEnd();
 
     if (!statusline) {
       return null;
-      //return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
     }
 
-    let line = (await reader.readline()).trimEnd();
-    while (line) {
+    const headers = new headersClass();
+
+    const headerBuff = await readtoCRLFCRLF(reader);
+
+    let start = 0;
+    let nameEnd, valueStart, valueEnd;
+    let name, value;
+
+    while (start < headerBuff.length) {
+      valueEnd = headerBuff.indexOf("\n", start);
+
+      if (value && (headerBuff[start] === " " || headerBuff[start] === "\t")) {
+        value += headerBuff.slice(start, valueEnd < 0 ? undefined : valueEnd).trimEnd();
+
+      } else {
+        if (value) {
+          try {
+            headers.set(name, value);
+          } catch(e) {
+            // ignore
+          }
+          value = null;
+        }
+
+        nameEnd = headerBuff.indexOf(":", start);
+
+        valueStart = nameEnd < 0 ? start : nameEnd + 1;
+
+        if (nameEnd >= 0 && nameEnd < valueEnd) {
+          name = headerBuff.slice(start, nameEnd).trimStart();
+          value = headerBuff.slice(valueStart, valueEnd < 0 ? undefined : valueEnd).trim();
+        } else {
+          value = null;
+        }
+      }
+
+      if (valueEnd < 0) {
+        break;
+      }
+
+      start = valueEnd + 1;
+    }
+
+    if (value) {
+      try {
+        headers.set(name, value);
+      } catch(e) {
+        // ignore
+      }
+    }
+
+    /*
+    const lines = headerBuff.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trimEnd();
+
+      if (!line) {
+        continue;
+      }
+
       let [name, value] = splitRemainder(line, ":", 1);
       if (value) {
         name = name.trimStart();
-        value = value.trim();
+        value = value.trimStart();
       }
 
-      let nextLine = (await reader.readline()).trimEnd();
-
-      while (this.startsWithSpace(nextLine)) {
+      while ((i + 1) < lines.length && this.startsWithSpace(lines[i + 1])) {
         if (value) {
-          value += nextLine;
+          value += lines[i + 1].trimEnd();
         }
-
-        nextLine = (await reader.readline()).trimEnd();
+        i++;
       }
 
       if (value) {
@@ -125,9 +175,8 @@ class StatusAndHeadersParser {
           //headers.set(name, value.replace(/[\r\n]+/g, ', '));
         }
       }
-      line = nextLine;
     }
-
+*/
     return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
   }
 }
