@@ -60,6 +60,12 @@ Bad: multi\r
 `);
 
 
+test("StatusAndHeaders test 3", readSH,
+  "HTTP/1.0 204 None\r\n\r\n",
+
+  "HTTP/1.0 204 None\r\n");
+
+
 test("StatusAndHeaders test empty", async t => {
   const parser = new StatusAndHeadersParser();
   const result = await parser.parse(new AsyncIterReader(getReader(["\r\n\r\n"])));
