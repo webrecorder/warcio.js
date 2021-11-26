@@ -7,6 +7,8 @@ import { getReadableStream, getReader } from "./utils";
 
 import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../main";
 
+import { concatChunks } from "../main";
+
 const decoder = new TextDecoder("utf-8");
 
 
@@ -56,6 +58,12 @@ Content-Type: Value\r
 Content-Length: 0\r
 Bad: multi\r
 `);
+
+
+test("StatusAndHeaders test 3", readSH,
+  "HTTP/1.0 204 None\r\n\r\n",
+
+  "HTTP/1.0 204 None\r\n");
 
 
 test("StatusAndHeaders test empty", async t => {
@@ -403,7 +411,7 @@ test("warc1.1 serialize records match", async t => {
     size += chunk.length;
   }
 
-  t.is(decoder.decode(AsyncIterReader.concatChunks(serialized, size)), input);
+  t.is(decoder.decode(concatChunks(serialized, size)), input);
 
 });
 

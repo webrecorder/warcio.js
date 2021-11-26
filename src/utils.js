@@ -183,3 +183,26 @@ export function mfdToQueryString(mfd, contentType) {
 }
 
 
+// ===========================================================================
+// parsing utils
+
+export function concatChunks(chunks, size) {
+  if (chunks.length === 1) {
+    return chunks[0];
+  }
+  const buffer = new Uint8Array(size);
+
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return buffer;
+}
+
+export function splitChunk(chunk, inx) {
+  return [chunk.slice(0, inx), chunk.slice(inx)];
+}
+

@@ -4,6 +4,8 @@ import { Deflate } from "pako/lib/deflate";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
+import { concatChunks } from "./utils";
+
 
 const encoder = new TextEncoder();
 
@@ -126,7 +128,7 @@ class WARCSerializer extends BaseAsyncIterReader
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
       const payloadDigest = await this.digestMessage(payload);
-      const blockDigest = httpHeadersBuff ? await this.digestMessage(WARCSerializer.concatChunks([httpHeadersBuff, payload], size)) : payloadDigest;
+      const blockDigest = httpHeadersBuff ? await this.digestMessage(concatChunks([httpHeadersBuff, payload], size)) : payloadDigest;
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);

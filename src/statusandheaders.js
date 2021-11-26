@@ -1,5 +1,10 @@
+import { concatChunks, splitChunk } from "./utils";
+
+
 const CRLF = new Uint8Array([13, 10]);
 const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
+
+const decoder = new TextDecoder("utf-8");
 
 
 // ===========================================================================
@@ -78,11 +83,6 @@ class StatusAndHeaders {
 
 // ===========================================================================
 class StatusAndHeadersParser {
-  startsWithSpace(line) {
-    const first = line.charAt(0);
-    return first === " " || first === "\t";
-  }
-
   async parse(reader, {headersClass = Map, firstLine} = {}) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
@@ -90,48 +90,69 @@ class StatusAndHeadersParser {
       return null;
     }
 
-    let statusline = fullStatusLine.trimEnd();
-
-    const headers = new headersClass();
+    const statusline = fullStatusLine.trimEnd();
 
     if (!statusline) {
       return null;
-      //return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
     }
 
-    let line = (await reader.readline()).trimEnd();
-    while (line) {
-      let [name, value] = splitRemainder(line, ":", 1);
-      if (value) {
-        name = name.trimStart();
-        value = value.trim();
-      }
+    const headers = new headersClass();
 
-      let nextLine = (await reader.readline()).trimEnd();
+    const headerBuff = await readToDoubleCRLF(reader);
 
-      while (this.startsWithSpace(nextLine)) {
+    let start = 0;
+    let nameEnd, valueStart, valueEnd;
+    let name, value;
+
+    while (start < headerBuff.length) {
+      valueEnd = headerBuff.indexOf("\n", start);
+
+      if (value && (headerBuff[start] === " " || headerBuff[start] === "\t")) {
+        value += headerBuff.slice(start, valueEnd < 0 ? undefined : valueEnd).trimEnd();
+
+      } else {
         if (value) {
-          value += nextLine;
+          try {
+            headers.set(name, value);
+          } catch(e) {
+            // ignore
+          }
+          value = null;
         }
 
-        nextLine = (await reader.readline()).trimEnd();
-      }
+        nameEnd = headerBuff.indexOf(":", start);
 
-      if (value) {
-        try {
-          headers.set(name, value);
-        } catch(e) {
-          // try to sanitize value, removing newlines
-          //headers.set(name, value.replace(/[\r\n]+/g, ', '));
+        valueStart = nameEnd < 0 ? start : nameEnd + 1;
+
+        if (nameEnd >= 0 && nameEnd < valueEnd) {
+          name = headerBuff.slice(start, nameEnd).trimStart();
+          value = headerBuff.slice(valueStart, valueEnd < 0 ? undefined : valueEnd).trim();
+        } else {
+          value = null;
         }
       }
-      line = nextLine;
+
+      if (valueEnd < 0) {
+        break;
+      }
+
+      start = valueEnd + 1;
+    }
+
+    if (value) {
+      try {
+        headers.set(name, value);
+      } catch(e) {
+        // ignore
+      }
     }
 
     return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
   }
 }
 
+
+// ===========================================================================
 function splitRemainder(str, sep, limit) {
   const parts = str.split(sep);
   const newParts = parts.slice(0, limit);
@@ -143,6 +164,75 @@ function splitRemainder(str, sep, limit) {
 }
 
 
+// ===========================================================================
+export async function indexOfDoubleCRLF(buffer, iter) {
+  let start = 0;
+
+  for (let i = 0; i < buffer.length - 4; i++) {
+    const inx = buffer.indexOf(13, start);
+    if (inx < 0) {
+      break;
+    }
+
+    if (inx + 3 >= buffer.length) {
+      const {value} = await iter.next();
+      if (!value) {
+        break;
+      }
+
+      const newBuff = new Uint8Array(value.length + buffer.length);
+      newBuff.set(buffer, 0);
+      newBuff.set(value, buffer.length);
+      buffer = newBuff;
+    }
+
+    if (buffer[inx + 1] === 10 && buffer[inx + 2] === 13 && buffer[inx + 3] === 10) {
+      return [inx + 3, buffer];
+    }
+
+    start = inx + 1;
+  }
+
+  return [-1, buffer];
+}
+
 
 // ===========================================================================
-export { StatusAndHeaders, StatusAndHeadersParser, CRLF, CRLFCRLF };
+async function readToDoubleCRLF(reader) {
+  const chunks = [];
+  let size = 0;
+
+  let inx;
+
+  let lastChunk = null;
+
+  const iter = reader[Symbol.asyncIterator]();
+
+  for await (let chunk of iter) {
+    [inx, chunk] = await indexOfDoubleCRLF(chunk, iter);
+
+    if (inx >= 0) {
+      lastChunk = chunk;
+      break;
+    }
+
+    chunks.push(chunk);
+    size += chunk.byteLength;
+  }
+
+  if (lastChunk) {
+    const [first, remainder] = splitChunk(lastChunk, inx + 1);
+    chunks.push(first);
+    size += first.byteLength;
+
+    reader.unread(remainder);
+  } else if (!chunks.length) {
+    return "";
+  }
+
+  return decoder.decode(concatChunks(chunks, size));
+}
+
+
+// ===========================================================================
+export { StatusAndHeaders, StatusAndHeadersParser, CRLF, CRLFCRLF, readToDoubleCRLF };

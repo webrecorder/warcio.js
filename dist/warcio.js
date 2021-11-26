@@ -3223,6 +3223,211 @@ Inflate.prototype.onEnd = function (status) {
 
 var Inflate_1 = Inflate;
 
+function binaryToString(data) {
+  let string;
+
+  if (typeof(data) === "string") {
+    string = data;
+  } else if (data && data.length) {
+    string = "";
+    for (let i = 0; i < data.length; i++) {
+      string += String.fromCharCode(data[i]);
+    }
+  } else if (data) {
+    string = data.toString();
+  } else {
+    string = "";
+  }
+  return "__wb_post_data=" + btoa(string);
+}
+
+function getSurt(url) {
+  try {
+    if (!url.startsWith("https:") && !url.startsWith("http:")) {
+      return url;
+    }
+    url = url.replace(/^(https?:\/\/)www\d*\./, "$1");
+    const urlObj = new URL(url.toLowerCase());
+
+    const hostParts = urlObj.hostname.split(".").reverse();
+    let surt = hostParts.join(",");
+    if (urlObj.port) {
+      surt += ":" + urlObj.port;
+    }
+    surt += ")";
+    surt += urlObj.pathname;
+    if (urlObj.search) {
+      urlObj.searchParams.sort();
+      surt += urlObj.search;
+    }
+    return surt;
+  } catch (e) {
+    return url;
+  }
+}
+
+function postToGetUrl(request) {
+  let {method, headers, postData} = request;
+
+  if (method === "GET") {
+    return false;
+  }
+
+  const requestMime = (headers.get("content-type") || "").split(";")[0];
+
+  function decodeIfNeeded(postData) {
+    if (postData instanceof Uint8Array) {
+      postData = new TextDecoder().decode(postData);
+    }
+    return postData;
+  }
+
+  let query = null;
+
+  switch (requestMime) {
+  case "application/x-www-form-urlencoded":
+    query = decodeIfNeeded(postData);
+    break;
+
+  case "application/json":
+    query = jsonToQueryString(decodeIfNeeded(postData));
+    break;
+
+  case "text/plain":
+    try {
+      query = jsonToQueryString(decodeIfNeeded(postData), false);
+    } catch(e) {
+      query = binaryToString(postData);
+    }
+    break;
+
+  case "multipart/form-data":
+    query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
+    break;
+
+  default:
+    query = binaryToString(postData);
+  }
+
+  if (query !== null)  {
+    request.url = appendRequestQuery(request.url, query, request.method);
+    request.method = "GET";
+    request.requestBody = query;
+    return true;
+  }
+
+  return false;
+}
+
+function appendRequestQuery(url, query, method) {
+  if (!method) {
+    return url;
+  }
+
+  const start = (url.indexOf("?") > 0 ? "&" : "?");
+
+  return `${url}${start}__wb_method=${method}&${query}`;
+}
+
+function jsonToQueryParams(json, ignoreInvalid = true) {
+  if (typeof(json) === "string") {
+    try {
+      json = JSON.parse(json);
+    } catch(e) {
+      json = {};
+    }
+  }
+
+  const q = new URLSearchParams();
+
+  const dupes = {};
+
+  const getKey = (key) => {
+    if (!q.has(key)) {
+      return key;
+    }
+
+    if (!dupes[key]) {
+      dupes[key] = 1;
+    }
+    return key + "." + (++dupes[key]) + "_";
+  };
+
+  try {
+    JSON.stringify(json, (k, v) => {
+      if (!["object", "function"].includes(typeof(v))) {
+        q.set(getKey(k), v);
+      }
+      return v;
+    });
+  } catch (e) {
+    if (!ignoreInvalid) {
+      throw e;
+    }
+  }
+
+  return q;
+}
+
+function mfdToQueryParams(mfd, contentType) {
+  const params = new URLSearchParams();
+
+  if (mfd instanceof Uint8Array) {
+    mfd = new TextDecoder().decode(mfd);
+  }
+
+  try {
+    const boundary = contentType.split("boundary=")[1];
+
+    const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
+
+    for (let i = 0; i < parts.length; i++) {
+      const m = parts[i].trim().match(/name="([^"]+)"\r\n\r\n(.*)/mi);
+      if (m) {
+        params.set(m[1], m[2]);
+      }
+    }
+
+  } catch (e) {
+    // ignore invalid, don't add params
+  }
+
+  return params;
+}
+
+
+function jsonToQueryString(json, ignoreInvalid=true) {
+  return jsonToQueryParams(json, ignoreInvalid).toString();
+}
+
+function mfdToQueryString(mfd, contentType) {
+  return mfdToQueryParams(mfd, contentType).toString();
+}
+
+
+// ===========================================================================
+// parsing utils
+
+function concatChunks(chunks, size) {
+  if (chunks.length === 1) {
+    return chunks[0];
+  }
+  const buffer = new Uint8Array(size);
+
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return buffer;
+}
+
+function splitChunk(chunk, inx) {
+  return [chunk.slice(0, inx), chunk.slice(inx)];
+}
+
 /*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 
 const decoder = new TextDecoder("utf-8");
@@ -3249,26 +3454,6 @@ class NoConcatInflator extends Inflate_1
 class BaseAsyncIterReader
 {
 
-  static concatChunks(chunks, size) {
-    if (chunks.length === 1) {
-      return chunks[0];
-    }
-    const buffer = new Uint8Array(size);
-
-    let offset = 0;
-
-    for (const chunk of chunks) {
-      buffer.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    return buffer;
-  }
-
-  static splitChunk(chunk, inx) {
-    return [chunk.slice(0, inx), chunk.slice(inx)];
-  }
-
   static async readFully(iter) {
     const chunks = [];
     let size = 0;
@@ -3278,7 +3463,7 @@ class BaseAsyncIterReader
       size += chunk.byteLength;
     }
 
-    return BaseAsyncIterReader.concatChunks(chunks, size);
+    return concatChunks(chunks, size);
   }
 
 
@@ -3422,7 +3607,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
     yield *reader;
   }
 
-  _unread(chunk) {
+  unread(chunk) {
     if (!chunk.length) {
       return;
     }
@@ -3550,16 +3735,16 @@ class AsyncIterReader extends BaseAsyncIterReader {
     }
 
     if (lastChunk) {
-      const [first, remainder] = AsyncIterReader.splitChunk(lastChunk, inx + 1);
+      const [first, remainder] = splitChunk(lastChunk, inx + 1);
       chunks.push(first);
       size += first.byteLength;
 
-      this._unread(remainder);
+      this.unread(remainder);
     } else if (!chunks.length) {
       return null;
     }
 
-    return AsyncIterReader.concatChunks(chunks, size);
+    return concatChunks(chunks, size);
   }
 
   readFully() {
@@ -3574,12 +3759,12 @@ class AsyncIterReader extends BaseAsyncIterReader {
     for await (const chunk of this) {
       if (sizeLimit >= 0) {
         if (chunk.length > sizeLimit) {
-          const [first, remainder] = AsyncIterReader.splitChunk(chunk, sizeLimit);
+          const [first, remainder] = splitChunk(chunk, sizeLimit);
           if (!skip) {
             chunks.push(first);
           }
           size += first.byteLength;
-          this._unread(remainder);
+          this.unread(remainder);
           break;
         } else if (chunk.length === sizeLimit) {
           if (!skip) {
@@ -3598,7 +3783,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
       size += chunk.byteLength;
     }
 
-    return skip ? size : AsyncIterReader.concatChunks(chunks, size);
+    return skip ? size : concatChunks(chunks, size);
   }
 
   getReadOffset() {
@@ -3665,7 +3850,7 @@ class LimitReader extends BaseAsyncIterReader
     for await (let chunk of this.sourceIter) {
       if (this.skip > 0) {
         if (chunk.length >= this.skip) {
-          const [/*first*/, remainder] = LimitReader.splitChunk(chunk, this.skip);
+          const [/*first*/, remainder] = splitChunk(chunk, this.skip);
           chunk = remainder;
           this.skip = 0;
         } else {
@@ -3675,11 +3860,11 @@ class LimitReader extends BaseAsyncIterReader
       }
 
       if (chunk.length > this.limit) {
-        const [first, remainder] = LimitReader.splitChunk(chunk, this.limit);
+        const [first, remainder] = splitChunk(chunk, this.limit);
         chunk = first;
 
-        if (this.sourceIter._unread) {
-          this.sourceIter._unread(remainder);
+        if (this.sourceIter.unread) {
+          this.sourceIter.unread(remainder);
         }
       }
 
@@ -3718,6 +3903,8 @@ class LimitReader extends BaseAsyncIterReader
 
 const CRLF = new Uint8Array([13, 10]);
 const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
+
+const decoder$1 = new TextDecoder("utf-8");
 
 
 // ===========================================================================
@@ -3796,11 +3983,6 @@ class StatusAndHeaders {
 
 // ===========================================================================
 class StatusAndHeadersParser {
-  startsWithSpace(line) {
-    const first = line.charAt(0);
-    return first === " " || first === "\t";
-  }
-
   async parse(reader, {headersClass = Map, firstLine} = {}) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
@@ -3808,48 +3990,69 @@ class StatusAndHeadersParser {
       return null;
     }
 
-    let statusline = fullStatusLine.trimEnd();
-
-    const headers = new headersClass();
+    const statusline = fullStatusLine.trimEnd();
 
     if (!statusline) {
       return null;
-      //return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
     }
 
-    let line = (await reader.readline()).trimEnd();
-    while (line) {
-      let [name, value] = splitRemainder(line, ":", 1);
-      if (value) {
-        name = name.trimStart();
-        value = value.trim();
-      }
+    const headers = new headersClass();
 
-      let nextLine = (await reader.readline()).trimEnd();
+    const headerBuff = await readtoCRLFCRLF(reader);
 
-      while (this.startsWithSpace(nextLine)) {
+    let start = 0;
+    let nameEnd, valueStart, valueEnd;
+    let name, value;
+
+    while (start < headerBuff.length) {
+      valueEnd = headerBuff.indexOf("\n", start);
+
+      if (value && (headerBuff[start] === " " || headerBuff[start] === "\t")) {
+        value += headerBuff.slice(start, valueEnd < 0 ? undefined : valueEnd).trimEnd();
+
+      } else {
         if (value) {
-          value += nextLine;
+          try {
+            headers.set(name, value);
+          } catch(e) {
+            // ignore
+          }
+          value = null;
         }
 
-        nextLine = (await reader.readline()).trimEnd();
-      }
+        nameEnd = headerBuff.indexOf(":", start);
 
-      if (value) {
-        try {
-          headers.set(name, value);
-        } catch(e) {
-          // try to sanitize value, removing newlines
-          //headers.set(name, value.replace(/[\r\n]+/g, ', '));
+        valueStart = nameEnd < 0 ? start : nameEnd + 1;
+
+        if (nameEnd >= 0 && nameEnd < valueEnd) {
+          name = headerBuff.slice(start, nameEnd).trimStart();
+          value = headerBuff.slice(valueStart, valueEnd < 0 ? undefined : valueEnd).trim();
+        } else {
+          value = null;
         }
       }
-      line = nextLine;
+
+      if (valueEnd < 0) {
+        break;
+      }
+
+      start = valueEnd + 1;
+    }
+
+    if (value) {
+      try {
+        headers.set(name, value);
+      } catch(e) {
+        // ignore
+      }
     }
 
     return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
   }
 }
 
+
+// ===========================================================================
 function splitRemainder(str, sep, limit) {
   const parts = str.split(sep);
   const newParts = parts.slice(0, limit);
@@ -3858,6 +4061,76 @@ function splitRemainder(str, sep, limit) {
     newParts.push(parts.slice(limit).join(sep));
   }
   return newParts;
+}
+
+
+// ===========================================================================
+async function indexOfDoubleLine(buffer, iter) {
+  let start = 0;
+
+  for (let i = 0; i < buffer.length - 4; i++) {
+    const inx = buffer.indexOf(13, start);
+    if (inx < 0) {
+      break;
+    }
+
+    if (inx + 3 >= buffer.length) {
+      const {value} = await iter.next();
+      if (!value) {
+        break;
+      }
+
+      const newBuff = new Uint8Array(value.length + buffer.length);
+      newBuff.set(buffer, 0);
+      newBuff.set(value, buffer.length);
+      buffer = newBuff;
+    }
+
+    if (buffer[inx + 1] === 10 && buffer[inx + 2] === 13 && buffer[inx + 3] === 10) {
+      return [inx + 3, buffer];
+    }
+
+    start = inx + 1;
+  }
+
+  return [-1, buffer];
+}
+
+
+// ===========================================================================
+async function readtoCRLFCRLF(reader) {
+  const chunks = [];
+  let size = 0;
+
+  let inx;
+
+  let lastChunk = null;
+
+  const iter = reader[Symbol.asyncIterator]();
+
+  for await (let chunk of iter) {
+    [inx, chunk] = await indexOfDoubleLine(chunk, iter);
+
+    if (inx >= 0) {
+      lastChunk = chunk;
+      break;
+    }
+
+    chunks.push(chunk);
+    size += chunk.byteLength;
+  }
+
+  if (lastChunk) {
+    const [first, remainder] = splitChunk(lastChunk, inx + 1);
+    chunks.push(first);
+    size += first.byteLength;
+
+    reader.unread(remainder);
+  } else if (!chunks.length) {
+    return "";
+  }
+
+  return decoder$1.decode(concatChunks(chunks, size));
 }
 
 var _nodeResolve_empty = {};
@@ -3980,7 +4253,7 @@ var uuidRandom = createCommonjsModule(function (module) {
 })();
 });
 
-const decoder$1 = new TextDecoder("utf-8");
+const decoder$2 = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
 
 const WARC_1_1 = "WARC/1.1";
@@ -4210,7 +4483,7 @@ class WARCRecord extends BaseAsyncIterReader
 
   async contentText() {
     const payload = await this.readFully(true);
-    return decoder$1.decode(payload);
+    return decoder$2.decode(payload);
   }
 
   async* [Symbol.asyncIterator]() {
@@ -4275,6 +4548,10 @@ class WARCRecord extends BaseAsyncIterReader
   }
 }
 
+const decoder$3 = new TextDecoder();
+const EMPTY = new Uint8Array([]);
+
+
 // ===========================================================================
 class WARCParser
 {
@@ -4304,36 +4581,49 @@ class WARCParser
   }
 
   async readToNextRecord() {
-    let nextline = "";
+    let nextline;
 
     if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
 
-      nextline = await this._reader.readline();
+      let lineLen = 0;
 
-      const lineLen = nextline.trim().length;
+      nextline = await this._reader.readlineRaw();
+      if (!nextline) {
+        nextline = EMPTY;
+      } else {
+        lineLen = nextline.byteLength - 1;
+
+        while (lineLen >= 0) {
+          const value = nextline[lineLen - 1];
+          if (value !== 10 && value !== 13) {
+            break;
+          }
+          lineLen--;
+        }
+      }
 
       if (lineLen) {
         console.warn(`Content-Length Too Small: Record not followed by newline, \
 Remainder Length: ${lineLen}, \
-Offset: ${this._reader.getRawOffset() - nextline.length}`);
+Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
       }
 
       if (this._reader.compressed) {
         await this._reader.readSize(2, true);
-        nextline = "";
+        nextline = EMPTY;
       } else {
-        nextline = await this._reader.readline();
+        nextline = await this._reader.readlineRaw();
 
         // consume remaining new lines
-        while (nextline.length === 2) {
-          nextline = await this._reader.readline();
+        while (nextline && nextline.byteLength === 2) {
+          nextline = await this._reader.readlineRaw();
         }
       }
     }
 
     this._atRecordBoundary = true;
-    return nextline;
+    return nextline ? decoder$3.decode(nextline) : "";
   }
 
   _initRecordReader(warcHeaders) {
@@ -4389,7 +4679,7 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
   async* [Symbol.asyncIterator]() {
     let record = null;
 
-    while ((record = await this.parse(this._reader)) !== null) {
+    while ((record = await this.parse()) !== null) {
       yield record;
     }
 
@@ -8401,7 +8691,7 @@ class WARCSerializer extends BaseAsyncIterReader
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
       const payloadDigest = await this.digestMessage(payload);
-      const blockDigest = httpHeadersBuff ? await this.digestMessage(WARCSerializer.concatChunks([httpHeadersBuff, payload], size)) : payloadDigest;
+      const blockDigest = httpHeadersBuff ? await this.digestMessage(concatChunks([httpHeadersBuff, payload], size)) : payloadDigest;
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
@@ -8422,187 +8712,6 @@ class WARCSerializer extends BaseAsyncIterReader
 
     yield CRLFCRLF;
   }
-}
-
-function binaryToString(data) {
-  let string;
-
-  if (typeof(data) === "string") {
-    string = data;
-  } else if (data && data.length) {
-    string = "";
-    for (let i = 0; i < data.length; i++) {
-      string += String.fromCharCode(data[i]);
-    }
-  } else if (data) {
-    string = data.toString();
-  } else {
-    string = "";
-  }
-  return "__wb_post_data=" + btoa(string);
-}
-
-function getSurt(url) {
-  try {
-    if (!url.startsWith("https:") && !url.startsWith("http:")) {
-      return url;
-    }
-    url = url.replace(/^(https?:\/\/)www\d*\./, "$1");
-    const urlObj = new URL(url.toLowerCase());
-
-    const hostParts = urlObj.hostname.split(".").reverse();
-    let surt = hostParts.join(",");
-    if (urlObj.port) {
-      surt += ":" + urlObj.port;
-    }
-    surt += ")";
-    surt += urlObj.pathname;
-    if (urlObj.search) {
-      urlObj.searchParams.sort();
-      surt += urlObj.search;
-    }
-    return surt;
-  } catch (e) {
-    return url;
-  }
-}
-
-function postToGetUrl(request) {
-  let {method, headers, postData} = request;
-
-  if (method === "GET") {
-    return false;
-  }
-
-  const requestMime = (headers.get("content-type") || "").split(";")[0];
-
-  function decodeIfNeeded(postData) {
-    if (postData instanceof Uint8Array) {
-      postData = new TextDecoder().decode(postData);
-    }
-    return postData;
-  }
-
-  let query = null;
-
-  switch (requestMime) {
-  case "application/x-www-form-urlencoded":
-    query = decodeIfNeeded(postData);
-    break;
-
-  case "application/json":
-    query = jsonToQueryString(decodeIfNeeded(postData));
-    break;
-
-  case "text/plain":
-    try {
-      query = jsonToQueryString(decodeIfNeeded(postData), false);
-    } catch(e) {
-      query = binaryToString(postData);
-    }
-    break;
-
-  case "multipart/form-data":
-    query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
-    break;
-
-  default:
-    query = binaryToString(postData);
-  }
-
-  if (query !== null)  {
-    request.url = appendRequestQuery(request.url, query, request.method);
-    request.method = "GET";
-    request.requestBody = query;
-    return true;
-  }
-
-  return false;
-}
-
-function appendRequestQuery(url, query, method) {
-  if (!method) {
-    return url;
-  }
-
-  const start = (url.indexOf("?") > 0 ? "&" : "?");
-
-  return `${url}${start}__wb_method=${method}&${query}`;
-}
-
-function jsonToQueryParams(json, ignoreInvalid = true) {
-  if (typeof(json) === "string") {
-    try {
-      json = JSON.parse(json);
-    } catch(e) {
-      json = {};
-    }
-  }
-
-  const q = new URLSearchParams();
-
-  const dupes = {};
-
-  const getKey = (key) => {
-    if (!q.has(key)) {
-      return key;
-    }
-
-    if (!dupes[key]) {
-      dupes[key] = 1;
-    }
-    return key + "." + (++dupes[key]) + "_";
-  };
-
-  try {
-    JSON.stringify(json, (k, v) => {
-      if (!["object", "function"].includes(typeof(v))) {
-        q.set(getKey(k), v);
-      }
-      return v;
-    });
-  } catch (e) {
-    if (!ignoreInvalid) {
-      throw e;
-    }
-  }
-
-  return q;
-}
-
-function mfdToQueryParams(mfd, contentType) {
-  const params = new URLSearchParams();
-
-  if (mfd instanceof Uint8Array) {
-    mfd = new TextDecoder().decode(mfd);
-  }
-
-  try {
-    const boundary = contentType.split("boundary=")[1];
-
-    const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
-
-    for (let i = 0; i < parts.length; i++) {
-      const m = parts[i].trim().match(/name="([^"]+)"\r\n\r\n(.*)/mi);
-      if (m) {
-        params.set(m[1], m[2]);
-      }
-    }
-
-  } catch (e) {
-    // ignore invalid, don't add params
-  }
-
-  return params;
-}
-
-
-function jsonToQueryString(json, ignoreInvalid=true) {
-  return jsonToQueryParams(json, ignoreInvalid).toString();
-}
-
-function mfdToQueryString(mfd, contentType) {
-  return mfdToQueryParams(mfd, contentType).toString();
 }
 
 const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
@@ -8922,4 +9031,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, binaryToString, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, binaryToString, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };

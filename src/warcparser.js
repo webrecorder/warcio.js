@@ -3,6 +3,10 @@ import { WARCRecord } from "./warcrecord";
 import { AsyncIterReader, LimitReader } from "./readers";
 
 
+const decoder = new TextDecoder();
+const EMPTY = new Uint8Array([]);
+
+
 // ===========================================================================
 class WARCParser
 {
@@ -32,36 +36,49 @@ class WARCParser
   }
 
   async readToNextRecord() {
-    let nextline = "";
+    let nextline;
 
     if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
 
-      nextline = await this._reader.readline();
+      let lineLen = 0;
 
-      const lineLen = nextline.trim().length;
+      nextline = await this._reader.readlineRaw();
+      if (!nextline) {
+        nextline = EMPTY;
+      } else {
+        lineLen = nextline.byteLength - 1;
+
+        while (lineLen >= 0) {
+          const value = nextline[lineLen - 1];
+          if (value !== 10 && value !== 13) {
+            break;
+          }
+          lineLen--;
+        }
+      }
 
       if (lineLen) {
         console.warn(`Content-Length Too Small: Record not followed by newline, \
 Remainder Length: ${lineLen}, \
-Offset: ${this._reader.getRawOffset() - nextline.length}`);
+Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
       }
 
       if (this._reader.compressed) {
         await this._reader.readSize(2, true);
-        nextline = "";
+        nextline = EMPTY;
       } else {
-        nextline = await this._reader.readline();
+        nextline = await this._reader.readlineRaw();
 
         // consume remaining new lines
-        while (nextline.length === 2) {
-          nextline = await this._reader.readline();
+        while (nextline && nextline.byteLength === 2) {
+          nextline = await this._reader.readlineRaw();
         }
       }
     }
 
     this._atRecordBoundary = true;
-    return nextline;
+    return nextline ? decoder.decode(nextline) : "";
   }
 
   _initRecordReader(warcHeaders) {
@@ -117,7 +134,7 @@ Offset: ${this._reader.getRawOffset() - nextline.length}`);
   async* [Symbol.asyncIterator]() {
     let record = null;
 
-    while ((record = await this.parse(this._reader)) !== null) {
+    while ((record = await this.parse()) !== null) {
       yield record;
     }
 
