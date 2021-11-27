@@ -132,7 +132,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
       const lineBuff = await reader.readlineRaw(64);
       let chunk = null;
 
-      size = parseInt(decoder.decode(lineBuff), 16);
+      size = lineBuff ? parseInt(decoder.decode(lineBuff), 16) : 0;
 
       if (!size || size > 2**32) {
         if (Number.isNaN(size) || size > 2**32) {

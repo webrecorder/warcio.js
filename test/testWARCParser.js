@@ -287,6 +287,54 @@ Foo: Bar\r\n\
 
 
 
+test("Load revisit, with http headers + chunk encoding", async t => {
+  const input = "\
+WARC/1.0\r\n\
+WARC-Type: revisit\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r\n\
+WARC-Refers-To-Target-URI: http://example.com/foo\r\n\
+WARC-Refers-To-Date: 1999-01-01T00:00:00Z\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 82\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+Transfer-Encoding: chunked\r\n\
+Foo: Bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+";
+
+  const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
+
+  const record = await parser.parse();
+
+  await record.readFully(true);
+
+  t.is(record.warcHeaders.protocol, "WARC/1.0");
+  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
+  t.is(record.warcType, "revisit");
+  t.is(record.warcContentLength, 82);
+
+  t.is(record.httpHeaders.protocol, "HTTP/1.1");
+  t.is(record.httpHeaders.statusCode, 200);
+  t.is(record.httpHeaders.statusText, "OK");
+
+  t.is(record.httpHeaders.headers.get("Foo"), "Bar");
+  t.is(record.httpHeaders.headers.get("Content-Type"), "text/html");
+
+  t.deepEqual(record.payload, new Uint8Array([]));
+
+  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
+});
+
+
 
 
 test("No parse http, record headers only", async t => {

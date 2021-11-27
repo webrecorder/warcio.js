@@ -3558,7 +3558,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
       const lineBuff = await reader.readlineRaw(64);
       let chunk = null;
 
-      size = parseInt(decoder.decode(lineBuff), 16);
+      size = lineBuff ? parseInt(decoder.decode(lineBuff), 16) : 0;
 
       if (!size || size > 2**32) {
         if (Number.isNaN(size) || size > 2**32) {
@@ -3998,7 +3998,7 @@ class StatusAndHeadersParser {
 
     const headers = new headersClass();
 
-    const headerBuff = await readtoCRLFCRLF(reader);
+    const headerBuff = await readToDoubleCRLF(reader);
 
     let start = 0;
     let nameEnd, valueStart, valueEnd;
@@ -4065,7 +4065,7 @@ function splitRemainder(str, sep, limit) {
 
 
 // ===========================================================================
-async function indexOfDoubleLine(buffer, iter) {
+async function indexOfDoubleCRLF(buffer, iter) {
   let start = 0;
 
   for (let i = 0; i < buffer.length - 4; i++) {
@@ -4098,7 +4098,7 @@ async function indexOfDoubleLine(buffer, iter) {
 
 
 // ===========================================================================
-async function readtoCRLFCRLF(reader) {
+async function readToDoubleCRLF(reader) {
   const chunks = [];
   let size = 0;
 
@@ -4109,7 +4109,7 @@ async function readtoCRLFCRLF(reader) {
   const iter = reader[Symbol.asyncIterator]();
 
   for await (let chunk of iter) {
-    [inx, chunk] = await indexOfDoubleLine(chunk, iter);
+    [inx, chunk] = await indexOfDoubleCRLF(chunk, iter);
 
     if (inx >= 0) {
       lastChunk = chunk;
@@ -4460,8 +4460,8 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   _createDecodingReader(source) {
-    let contentEnc = this.httpHeaders.headers.get("content-encoding");
-    let transferEnc = this.httpHeaders.headers.get("transfer-encoding");
+    let contentEnc = this.httpHeaders.headers.get("Content-Encoding");
+    let transferEnc = this.httpHeaders.headers.get("Transfer-Encoding");
 
     const chunked = (transferEnc === "chunked");
 

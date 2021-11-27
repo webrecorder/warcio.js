@@ -209,8 +209,8 @@ class WARCRecord extends BaseAsyncIterReader
   }
 
   _createDecodingReader(source) {
-    let contentEnc = this.httpHeaders.headers.get("content-encoding");
-    let transferEnc = this.httpHeaders.headers.get("transfer-encoding");
+    let contentEnc = this.httpHeaders.headers.get("Content-Encoding");
+    let transferEnc = this.httpHeaders.headers.get("Transfer-Encoding");
 
     const chunked = (transferEnc === "chunked");
 
