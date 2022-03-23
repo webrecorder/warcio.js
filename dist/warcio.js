@@ -3241,13 +3241,18 @@ function binaryToString(data) {
   return "__wb_post_data=" + btoa(string);
 }
 
+function rxEscape(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function getSurt(url) {
   try {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
     }
     url = url.replace(/^(https?:\/\/)www\d*\./, "$1");
-    const urlObj = new URL(url.toLowerCase());
+    const urlLower = url.toLowerCase();
+    const urlObj = new URL(urlLower);
 
     const hostParts = urlObj.hostname.split(".").reverse();
     let surt = hostParts.join(",");
@@ -3259,6 +3264,14 @@ function getSurt(url) {
     if (urlObj.search) {
       urlObj.searchParams.sort();
       surt += urlObj.search;
+      for (const [key, value] of urlObj.searchParams.entries()) {
+        if (!value) {
+          const rx = new RegExp(`(?<=[&?])${rxEscape(key)}=(?=&|$)`);
+          if (!rx.exec(urlLower)) {
+            surt = surt.replace(rx, key);
+          }
+        }
+      }
     }
     return surt;
   } catch (e) {
@@ -9031,4 +9044,4 @@ class CDXIndexer extends Indexer
   }
 }
 
-export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, binaryToString, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
+export { AsyncIterReader, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCRecord, WARCSerializer, appendRequestQuery, binaryToString, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, rxEscape, splitChunk };

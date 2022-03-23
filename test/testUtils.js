@@ -99,3 +99,16 @@ test("surt with query args sorted, lowercase", testSURT,
   "com,example)/some/path?cc=2&d=1&ee=3"
 );
 
+
+test("surt with no = param, lowercase", testSURT,
+  "https://www.example.com/some/path?a=b&c&cc=1&d=e",
+  "com,example)/some/path?a=b&c&cc=1&d=e"
+);
+
+test("surt with no = param, sort", testSURT,
+  "https://www.example.com/some/path?a=b&c=d&*&z",
+  "com,example)/some/path?*&a=b&c=d&z"
+);
+
+
+
