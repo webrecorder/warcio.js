@@ -2,11 +2,15 @@
   "name": "warcio",
   "version": "1.5.1",
   "main": "index.js",
+  "type": "module",
   "module": "main.js",
   "license": "Apache-2.0",
   "author": "Webrecorder Software, Ilya Kreymer",
   "bin": {
     "warcio.js": "./cli.js"
+  },
+  "exports": {
+    ".": "./main.js"
   },
   "homepage": "https://github.com/webrecorder/warcio.js#readme",
   "repository": {
