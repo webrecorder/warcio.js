@@ -5,12 +5,16 @@ import test from "ava";
 
 import { getReadableStream, getReader } from "./utils";
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../main";
+import {
+  StatusAndHeadersParser,
+  AsyncIterReader,
+  WARCParser,
+  WARCSerializer,
+} from "../main";
 
 import { concatChunks } from "../main";
 
 const decoder = new TextDecoder("utf-8");
-
 
 // ===========================================================================
 // StatusAndHeaders parsing utils
@@ -21,11 +25,12 @@ async function readSH(t, input, expected) {
   t.deepEqual(result.toString(), expected);
 }
 
-
 // ===========================================================================
 // ===========================================================================
 // Tests
-test("StatusAndHeaders test 1", readSH,
+test(
+  "StatusAndHeaders test 1",
+  readSH,
   "\
 HTTP/1.0 200 OK\r\n\
 Content-Type: ABC\r\n\
@@ -41,9 +46,12 @@ HTTP/1.0 200 OK\r
 Content-Type: ABC\r
 Some: Value\r
 Multi-Line: Value1    Also This\r
-`);
+`
+);
 
-test("StatusAndHeaders test 2", readSH,
+test(
+  "StatusAndHeaders test 2",
+  readSH,
   "\
 HTTP/1.0 204 Empty\r\n\
 Content-Type: Value\r\n\
@@ -57,25 +65,29 @@ Bad: multi\nline\r\n\
 Content-Type: Value\r
 Content-Length: 0\r
 Bad: multi\r
-`);
+`
+);
 
-
-test("StatusAndHeaders test 3", readSH,
+test(
+  "StatusAndHeaders test 3",
+  readSH,
   "HTTP/1.0 204 None\r\n\r\n",
 
-  "HTTP/1.0 204 None\r\n");
+  "HTTP/1.0 204 None\r\n"
+);
 
-
-test("StatusAndHeaders test empty", async t => {
+test("StatusAndHeaders test empty", async (t) => {
   const parser = new StatusAndHeadersParser();
-  const result = await parser.parse(new AsyncIterReader(getReader(["\r\n\r\n"])));
+  const result = await parser.parse(
+    new AsyncIterReader(getReader(["\r\n\r\n"]))
+  );
 
   t.is(result, null);
 });
 
-
-test("Load WARC Records", async t => {
-  const input = "\
+test("Load WARC Records", async (t) => {
+  const input =
+    '\
 WARC/1.0\r\n\
 WARC-Type: warcinfo\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -86,7 +98,7 @@ Content-Length: 86\r\n\
 \r\n\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
-json-metadata: {\"foo\": \"bar\"}\r\n\
+json-metadata: {"foo": "bar"}\r\n\
 \r\n\
 \r\n\
 WARC/1.0\r\n\
@@ -100,7 +112,7 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 97\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset=\"UTF-8\"\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
@@ -117,15 +129,15 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 268\r\n\
 \r\n\
 HTTP/1.0 200 OK\r\n\
-Content-Type: text/plain; charset=\"UTF-8\"\r\n\
-Content-Disposition: attachment; filename*=UTF-8''%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Disposition: attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
 Custom-Header: somevalue\r\n\
 Unicode-Header: %F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F\r\n\
 \r\n\
 more\n\
 text\r\n\
 \r\n\
-";
+';
 
   let reader = new AsyncIterReader(getReader([input]));
 
@@ -143,11 +155,14 @@ text\r\n\
     warcinfo += line;
   }
 
-  t.is(warcinfo, "\
+  t.is(
+    warcinfo,
+    '\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
-json-metadata: {\"foo\": \"bar\"}\r\n\
-");
+json-metadata: {"foo": "bar"}\r\n\
+'
+  );
 
   const record = await parser.parse();
 
@@ -173,7 +188,6 @@ json-metadata: {\"foo\": \"bar\"}\r\n\
   }
   t.is(count, 0);
 
-
   // reread via getReadableStream
   parser = new WARCParser(getReader([input]));
   await parser.parse();
@@ -185,12 +199,11 @@ json-metadata: {\"foo\": \"bar\"}\r\n\
   for await (const arecord of WARCParser.iterRecords(getReader([input]))) {
     t.not(arecord.warcType, null);
   }
-
 });
 
-
-test("Load revisit, no http headers", async t => {
-  const input = "\
+test("Load revisit, no http headers", async (t) => {
+  const input =
+    "\
 WARC/1.0\r\n\
 WARC-Type: revisit\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -208,12 +221,17 @@ Content-Length: 0\r\n\
 \r\n\
 ";
 
-  const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
+  const parser = new WARCParser(getReadableStream([input]), {
+    keepHeadersCase: true,
+  });
 
   const record = await parser.parse();
 
   t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
+  t.is(
+    record.warcHeader("WARC-Record-ID"),
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+  );
   t.is(record.warcType, "revisit");
   t.is(record.warcTargetURI, "http://example.com/");
   t.is(record.warcDate, "2000-01-01T00:00:00Z");
@@ -232,9 +250,9 @@ Content-Length: 0\r\n\
   t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
 
-
-test("Load revisit, with http headers", async t => {
-  const input = "\
+test("Load revisit, with http headers", async (t) => {
+  const input =
+    "\
 WARC/1.0\r\n\
 WARC-Type: revisit\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -256,12 +274,17 @@ Foo: Bar\r\n\
 \r\n\
 ";
 
-  const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
+  const parser = new WARCParser(getReadableStream([input]), {
+    keepHeadersCase: true,
+  });
 
   const record = await parser.parse();
 
   t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
+  t.is(
+    record.warcHeader("WARC-Record-ID"),
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+  );
   t.is(record.warcType, "revisit");
   t.is(record.warcTargetURI, "http://example.com/");
   t.is(record.warcDate, "2000-01-01T00:00:00Z");
@@ -285,10 +308,9 @@ Foo: Bar\r\n\
   t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
 
-
-
-test("Load revisit, with http headers + chunk encoding", async t => {
-  const input = "\
+test("Load revisit, with http headers + chunk encoding", async (t) => {
+  const input =
+    "\
 WARC/1.0\r\n\
 WARC-Type: revisit\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -311,14 +333,19 @@ Foo: Bar\r\n\
 \r\n\
 ";
 
-  const parser = new WARCParser(getReadableStream([input]), {keepHeadersCase: true});
+  const parser = new WARCParser(getReadableStream([input]), {
+    keepHeadersCase: true,
+  });
 
   const record = await parser.parse();
 
   await record.readFully(true);
 
   t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(record.warcHeader("WARC-Record-ID"), "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>");
+  t.is(
+    record.warcHeader("WARC-Record-ID"),
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+  );
   t.is(record.warcType, "revisit");
   t.is(record.warcContentLength, 82);
 
@@ -334,11 +361,9 @@ Foo: Bar\r\n\
   t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
 });
 
-
-
-
-test("No parse http, record headers only", async t => {
-  const input = "\
+test("No parse http, record headers only", async (t) => {
+  const input =
+    "\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -360,8 +385,8 @@ text\r\n\
 \r\n\
 ";
 
-  const parser = new WARCParser(getReader([input]), {parseHttp: false});
-  
+  const parser = new WARCParser(getReader([input]), { parseHttp: false });
+
   const record = await parser.parse();
 
   t.is(record.warcHeaders.protocol, "WARC/1.0");
@@ -379,21 +404,24 @@ text\r\n\
   }
 
   // check headers case
-  const record2 = await WARCParser.parse(getReader([input]), {keepHeadersCase: true});
+  const record2 = await WARCParser.parse(getReader([input]), {
+    keepHeadersCase: true,
+  });
   t.is(record2.warcHeaders.protocol, "WARC/1.0");
   t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
 
   // serialize
   const buff = await WARCSerializer.serialize(record2);
   t.is(decoder.decode(buff), input);
-
 });
 
-
-test("warc1.1 response and request, status checks", async t => {
+test("warc1.1 response and request, status checks", async (t) => {
   const fs = require("fs");
   const path = require("path");
-  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
+  const input = fs.readFileSync(
+    path.join(__dirname, "data", "redirect.warc"),
+    "utf-8"
+  );
 
   let parser = new WARCParser(getReader([input]));
   let response;
@@ -431,7 +459,7 @@ test("warc1.1 response and request, status checks", async t => {
 
   t.not(response.getResponseInfo(), null);
 
-  const {status, statusText, headers} = response.getResponseInfo();
+  const { status, statusText, headers } = response.getResponseInfo();
   t.is(status, 301);
   t.is(statusText, "Moved Permanently");
   t.is(headers, response.httpHeaders.headers);
@@ -439,35 +467,38 @@ test("warc1.1 response and request, status checks", async t => {
   request = await parser.parse();
   t.is(request.httpHeaders.requestPath, "/domains/example");
   t.is(request.httpHeaders.method, "GET");
-
 });
 
-
-test("warc1.1 serialize records match", async t => {
+test("warc1.1 serialize records match", async (t) => {
   const fs = require("fs");
   const path = require("path");
-  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
+  const input = fs.readFileSync(
+    path.join(__dirname, "data", "redirect.warc"),
+    "utf-8"
+  );
 
   const serialized = [];
   let size = 0;
 
   const encoder = new TextEncoder("utf-8");
 
-  for await (const record of WARCParser.iterRecords(getReader([input]), {keepHeadersCase: true})) {
+  for await (const record of WARCParser.iterRecords(getReader([input]), {
+    keepHeadersCase: true,
+  })) {
     const chunk = await WARCSerializer.serialize(record, encoder);
     serialized.push(chunk);
     size += chunk.length;
   }
 
   t.is(decoder.decode(concatChunks(serialized, size)), input);
-
 });
 
-
-test("chunked warc read", async t => {
+test("chunked warc read", async (t) => {
   const fs = require("fs");
   const path = require("path");
-  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
+  const input = fs.createReadStream(
+    path.join(__dirname, "data", "example-iana.org-chunked.warc")
+  );
 
   const parser = new WARCParser(input);
 
@@ -479,22 +510,27 @@ test("chunked warc read", async t => {
   t.is(await record.readline(), "<!doctype html>\n");
 
   // can't read raw data anymore
-  await t.throwsAsync(async () => await record.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+  await t.throwsAsync(async () => await record.readFully(false), {
+    message: "WARC Record decoding already started, but requesting raw payload",
+  });
 
   const text = await record.contentText();
 
   t.is(text.split("\n")[0], "<html>");
 
-  await t.throwsAsync(async () => await record.reader.readFully(false), {"message": "WARC Record decoding already started, but requesting raw payload"});
+  await t.throwsAsync(async () => await record.reader.readFully(false), {
+    message: "WARC Record decoding already started, but requesting raw payload",
+  });
 
   t.not(await record.readFully(true), null);
+});
 
-}); 
-
-test("no await catch errors", async t => {
+test("no await catch errors", async (t) => {
   const fs = require("fs");
   const path = require("path");
-  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
+  const input = fs.createReadStream(
+    path.join(__dirname, "data", "example-iana.org-chunked.warc")
+  );
 
   const parser = new WARCParser(input);
 
@@ -509,8 +545,12 @@ test("no await catch errors", async t => {
   await iter.next();
 
   const record1 = await parser.parse();
-  await t.throwsAsync(async () => await iter.next(), {"message": "Record already consumed.. Perhaps a promise was not awaited?"});
-  await t.throwsAsync(async () => await record0.readline(), {"message": "Record already consumed.. Perhaps a promise was not awaited?"});
+  await t.throwsAsync(async () => await iter.next(), {
+    message: "Record already consumed.. Perhaps a promise was not awaited?",
+  });
+  await t.throwsAsync(async () => await record0.readline(), {
+    message: "Record already consumed.. Perhaps a promise was not awaited?",
+  });
 
   let count = 0;
   // eslint-disable-next-line no-unused-vars
@@ -526,10 +566,4 @@ test("no await catch errors", async t => {
     count++;
   }
   t.true(count === 0);
- 
-
 });
-
-
-
-

@@ -1,46 +1,64 @@
 import base32 from "hi-base32";
-import { Deflate } from "pako/lib/deflate";
+import { Deflate } from "pako";
 
-import { BaseAsyncIterReader } from "./readers";
+import { WARCRecord } from "./warcrecord";
+import { BaseAsyncIterReader, LimitReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
 import { concatChunks } from "./utils";
 
-
 const encoder = new TextEncoder();
 
-
 // ===========================================================================
-class WARCSerializer extends BaseAsyncIterReader
-{
-  static async serialize(record, opts) {
+type WARCSerializerOpts = {
+  gzip?: boolean;
+  digest?: {
+    algo?: string;
+    prefix?: string;
+    base32?: string;
+  };
+};
+class WARCSerializer extends BaseAsyncIterReader {
+  static async serialize(
+    record: WARCRecord<LimitReader>,
+    opts: WARCSerializerOpts
+  ) {
     const s = new WARCSerializer(record, opts);
     return await s.readFully();
   }
 
-  static base16(hashBuffer) {
+  static base16(hashBuffer: Buffer) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
-  constructor(record, opts = {}) {
+  record: WARCRecord<LimitReader>;
+  gzip = false;
+  digestAlgo: string | null = "";
+  digestAlgoPrefix = "";
+  digestBase32 = false;
+
+  constructor(record: WARCRecord<LimitReader>, opts: WARCSerializerOpts = {}) {
     super();
     this.record = record;
-    this.gzip = opts.gzip;
+    this.gzip = Boolean(opts.gzip);
 
-    const digestOpts = opts && opts.digest || {};
+    const digestOpts = (opts && opts.digest) || {};
 
-    if (record.warcType !== "revisit" && record.warcType !== "warcinfo" &&
-       (!record.warcPayloadDigest || !record.warcBlockDigest)) {
-      this.digestAlgo = digestOpts.algo || "sha-256";
-      this.digestAlgoPrefix = digestOpts.prefix || "sha256:";
-      this.digestBase32 = digestOpts.base32 || false;
+    if (
+      record.warcType !== "revisit" &&
+      record.warcType !== "warcinfo" &&
+      (!record.warcPayloadDigest || !record.warcBlockDigest)
+    ) {
+      this.digestAlgo = digestOpts?.algo || "sha-256";
+      this.digestAlgoPrefix = digestOpts?.prefix || "sha256:";
+      this.digestBase32 = Boolean(digestOpts?.base32);
     } else {
       this.digestAlgo = null;
     }
   }
 
-  async* [Symbol.asyncIterator]() {
+  async *[Symbol.asyncIterator]() {
     if (!this.gzip) {
       yield* this.generateRecord();
       return;
@@ -51,7 +69,7 @@ class WARCSerializer extends BaseAsyncIterReader
     try {
       // eslint-disable-next-line no-undef
       cs = new CompressionStream("gzip");
-    } catch (e) {  
+    } catch (e) {
       // ignore if no CompressionStream available
     }
 
@@ -62,8 +80,8 @@ class WARCSerializer extends BaseAsyncIterReader
     }
   }
 
-  async* pakoCompress() {
-    const deflater = new Deflate({gzip: true});
+  async *pakoCompress() {
+    const deflater = new Deflate({ gzip: true });
 
     let lastChunk = null;
 
@@ -82,7 +100,7 @@ class WARCSerializer extends BaseAsyncIterReader
     yield deflater.result;
   }
 
-  async* streamCompress(cs) {
+  async *streamCompress(cs) {
     const recordIter = this.generateRecord();
 
     const source = new ReadableStream({
@@ -93,7 +111,7 @@ class WARCSerializer extends BaseAsyncIterReader
         } else {
           controller.close();
         }
-      }
+      },
     });
 
     source.pipeThrough(cs);
@@ -107,18 +125,25 @@ class WARCSerializer extends BaseAsyncIterReader
     }
   }
 
-  async digestMessage(chunk) {
+  async digestMessage(chunk: BufferSource) {
     const hashBuffer = await crypto.subtle.digest(this.digestAlgo, chunk);
-    return this.digestAlgoPrefix + (this.digestBase32 ? base32.encode(hashBuffer) : WARCSerializer.base16(hashBuffer));
+    return (
+      this.digestAlgoPrefix +
+      (this.digestBase32
+        ? base32.encode(hashBuffer)
+        : WARCSerializer.base16(hashBuffer))
+    );
   }
 
-  async* generateRecord() {
+  async *generateRecord() {
     let size = 0;
 
     let httpHeadersBuff = null;
 
     if (this.record.httpHeaders) {
-      httpHeadersBuff = encoder.encode(this.record.httpHeaders.toString() + "\r\n");
+      httpHeadersBuff = encoder.encode(
+        this.record.httpHeaders.toString() + "\r\n"
+      );
       size += httpHeadersBuff.length;
     }
 
@@ -128,7 +153,11 @@ class WARCSerializer extends BaseAsyncIterReader
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
       const payloadDigest = await this.digestMessage(payload);
-      const blockDigest = httpHeadersBuff ? await this.digestMessage(concatChunks([httpHeadersBuff, payload], size)) : payloadDigest;
+      const blockDigest = httpHeadersBuff
+        ? await this.digestMessage(
+            concatChunks([httpHeadersBuff, payload], size)
+          )
+        : payloadDigest;
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
@@ -152,5 +181,3 @@ class WARCSerializer extends BaseAsyncIterReader
 }
 
 export { WARCSerializer };
-
-

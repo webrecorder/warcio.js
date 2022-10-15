@@ -12,11 +12,10 @@ import { LimitReader, AsyncIterReader } from "../main";
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
 
-
 // ===========================================================================
 async function readLines(t, input, expected, maxLength = 0) {
   //const reader = new AsyncIterReader(getReader(input));
-  const reader = new AsyncIterReader(input.map(str => encoder.encode(str)));
+  const reader = new AsyncIterReader(input.map((str) => encoder.encode(str)));
 
   const output = [];
 
@@ -35,26 +34,25 @@ function compressMembers(chunks, method = "gzip") {
   for (const chunk of chunks) {
     const binChunk = encoder.encode(chunk);
     switch (method) {
-    case "deflate":
-      buffers.push(pako.deflate(binChunk));
-      break;
+      case "deflate":
+        buffers.push(pako.deflate(binChunk));
+        break;
 
-    case "deflateRaw":
-      buffers.push(pako.deflateRaw(binChunk));
-      break;
+      case "deflateRaw":
+        buffers.push(pako.deflateRaw(binChunk));
+        break;
 
-    case "gzip":
-      buffers.push(pako.gzip(binChunk));
-      break;
+      case "gzip":
+        buffers.push(pako.gzip(binChunk));
+        break;
 
-    default:
-      buffers.push(binChunk);
+      default:
+        buffers.push(binChunk);
     }
   }
 
   return Buffer.concat(buffers);
 }
-
 
 async function readDecomp(t, chunks, expectedOffsets, splitSize = 0, inc = 1) {
   if (splitSize === 0) {
@@ -123,7 +121,7 @@ async function readDecompTypes(t, chunk, expected, methods) {
     const input = compressMembers([chunk], compress);
     const reader = new AsyncIterReader(getReader([input]), decompress);
     const result = decoder.decode(await reader.readFully());
-    
+
     if (match) {
       t.is(result, expected, JSON.stringify([compress, decompress, match]));
     } else {
@@ -147,7 +145,6 @@ async function readDecompLines(t, chunks, expected) {
 
   t.deepEqual(lines, expected);
 }
-
 
 async function readChunkSizes(t, chunks, sizes, expected) {
   const inputs = [[compressMembers(chunks)], chunks];
@@ -173,10 +170,13 @@ async function readChunkSizes(t, chunks, sizes, expected) {
 }
 
 async function readWithLimit(t, chunks, limit, offset, expected) {
+  const reader = new LimitReader(
+    new AsyncIterReader(getReader(chunks)),
+    limit,
+    offset
+  );
 
-  const reader = new LimitReader(new AsyncIterReader(getReader(chunks)), limit, offset);
-
-  const value =  await reader.readFully();
+  const value = await reader.readFully();
 
   const output = decoder.decode(value);
 
@@ -186,121 +186,90 @@ async function readWithLimit(t, chunks, limit, offset, expected) {
   t.is(res.done, true);
 }
 
-
 // ===========================================================================
 // ===========================================================================
 // Tests
-test("readline() test 1", readLines,
-  [
-    "ABC\nDEFBLAHBLAH\nFOO",
-    "BAR\n\n"
-  ],
-  [
-    "ABC\n",
-    "DEFBLAHBLAH\n",
-    "FOOBAR\n",
-    "\n"
-  ]
+test(
+  "readline() test 1",
+  readLines,
+  ["ABC\nDEFBLAHBLAH\nFOO", "BAR\n\n"],
+  ["ABC\n", "DEFBLAHBLAH\n", "FOOBAR\n", "\n"]
 );
 
+test(
+  "readline() test with maxLength",
+  readLines,
+  ["ABC\nDEFBLAHBLAH\nFOO", "BAR\n\n"],
+  ["ABC", "\n", "DEF", "BLA", "HBL", "AH\n", "FOO", "BAR", "\n", "\n"],
+  3
+);
 
-test("readline() test with maxLength", readLines,
+test(
+  "readline() test 2",
+  readLines,
   [
-    "ABC\nDEFBLAHBLAH\nFOO",
-    "BAR\n\n"
-  ],
-  [
-    "ABC",
-    "\n",
-    "DEF",
-    "BLA",
-    "HBL",
-    "AH\n",
+    `ABC\r
+TEST
+BART\r\
+ABC`,
     "FOO",
-    "BAR",
-    "\n",
-    "\n"
-  ], 3
+  ],
+  ["ABC\r\n", "TEST\n", "BART\rABCFOO"]
 );
 
-
-
-
-test("readline() test 2", readLines,
+test(
+  "readline() test 2 with maxLength",
+  readLines,
   [
     `ABC\r
 TEST
 BART\r\
 ABC`,
-    "FOO"
+    "FOO",
   ],
-  [
-    "ABC\r\n",
-    "TEST\n",
-    "BART\rABCFOO",
-  ]
+  ["ABC\r\n", "TEST\n", "BART\r", "ABCFO", "O"],
+  5
 );
 
-test("readline() test 2 with maxLength", readLines,
-  [
-    `ABC\r
-TEST
-BART\r\
-ABC`,
-    "FOO"
-  ],
-  [
-    "ABC\r\n",
-    "TEST\n",
-    "BART\r",
-    "ABCFO",
-    "O",
-  ], 5
+test(
+  "decompressed reader single member",
+  readDecomp,
+  ["Some Data\nto read"],
+  [37]
 );
 
-
-test("decompressed reader single member", readDecomp,
-  [
-    "Some Data\nto read",
-  ], [37]
+test(
+  "decompressed reader multi member",
+  readDecomp,
+  ["Some Data", "Some\n More Data", "Another Chunk of Data", "extra data"],
+  [29, 64, 105, 135]
 );
 
-
-
-
-test("decompressed reader multi member", readDecomp,
-  [
-    "Some Data",
-    "Some\n More Data",
-    "Another Chunk of Data",
-    "extra data"
-  ], [29, 64, 105, 135]
+test(
+  "decompressed reader single member (1 to 10 byte chunks)",
+  readDecomp,
+  ["Some Data\nto read"],
+  [37],
+  10
 );
 
-
-test("decompressed reader single member (1 to 10 byte chunks)", readDecomp,
-  [
-    "Some Data\nto read",
-  ], [37], 10
+test(
+  "decompressed reader multi member (1 to 15 byte chunks)",
+  readDecomp,
+  ["Some Data", "Some\n More Data", "Another Chunk of Data", "extra data"],
+  [29, 64, 105, 135],
+  15,
+  5
 );
 
-
-test("decompressed reader multi member (1 to 15 byte chunks)", readDecomp,
-  [
-    "Some Data",
-    "Some\n More Data",
-    "Another Chunk of Data",
-    "extra data"
-  ], [29, 64, 105, 135], 15, 5
-);
-
-
-test("readfully decompressed", readDecompFully,
+test(
+  "readfully decompressed",
+  readDecompFully,
   [
     "Some Data\nMore Data\nAnother Line",
     "New Chunk\nSame Chunk\n",
     "Single Line\n",
-    "Next"
+    "Next",
   ],
   `Some Data
 More Data
@@ -310,9 +279,12 @@ Single Line
 Next`
 );
 
-
-test("read compress / decompress types", readDecompTypes,
-  "Some Data More Data","Some Data More Data", [
+test(
+  "read compress / decompress types",
+  readDecompTypes,
+  "Some Data More Data",
+  "Some Data More Data",
+  [
     //decompress compress valid
     ["gzip", "gzip", true],
     ["gzip", "deflate", true],
@@ -333,17 +305,17 @@ test("read compress / decompress types", readDecompTypes,
     [null, "gzip", false],
     [null, "deflate", false],
     [null, "deflateRaw", false],
-
   ]
 );
 
-
-test("readline decompressed", readDecompLines,
+test(
+  "readline decompressed",
+  readDecompLines,
   [
     "Some Data\nMore Data\nAnother Line",
     "New Chunk\nSame Chunk\n",
     "Single Line\n",
-    "Next"
+    "Next",
   ],
   [
     "Some Data\n",
@@ -351,65 +323,68 @@ test("readline decompressed", readDecompLines,
     "Another LineNew Chunk\n",
     "Same Chunk\n",
     "Single Line\n",
-    "Next"
+    "Next",
   ]
 );
 
-test("readsizes compressed and not compressed", readChunkSizes,
+test(
+  "readsizes compressed and not compressed",
+  readChunkSizes,
   [
     "Some Data",
     "Some\n More Data\n",
     "\nAnother Chunk of Data\n",
-    "extra data"
+    "extra data",
   ],
   [4, 11, 9, 1, "line", "line", -1],
-  ["Some",
+  [
+    "Some",
     " DataSome\n ",
     "More Data",
     "\n",
     "\n",
     "Another Chunk of Data\n",
-    "extra data"
+    "extra data",
   ]
 );
 
-test("LimitReader, no offset", readWithLimit,
-  [
-    "Some\n",
-    "Data"
-  ],
-  7, 0,
-  "Some\nDa");
+test(
+  "LimitReader, no offset",
+  readWithLimit,
+  ["Some\n", "Data"],
+  7,
+  0,
+  "Some\nDa"
+);
 
+test(
+  "LimitReader, offset <1 chunk",
+  readWithLimit,
+  ["Some\n", "Data"],
+  8,
+  3,
+  "e\nData"
+);
 
-test("LimitReader, offset <1 chunk", readWithLimit,
-  [
-    "Some\n",
-    "Data"
-  ],
-  8, 3,
-  "e\nData");
+test(
+  "LimitReader, offset 1 chunk",
+  readWithLimit,
+  ["Some\n", "Data"],
+  4,
+  5,
+  "Data"
+);
 
-test("LimitReader, offset 1 chunk", readWithLimit,
-  [
-    "Some\n",
-    "Data"
-  ],
-  4, 5,
-  "Data");
+test(
+  "LimitReader, offset >1 chunk",
+  readWithLimit,
+  ["Some\n", "Dat", "Even More", " Data"],
+  13,
+  9,
+  "ven More Data"
+);
 
-test("LimitReader, offset >1 chunk", readWithLimit,
-  [
-    "Some\n",
-    "Dat",
-    "Even More",
-    " Data"
-  ],
-  13, 9,
-  "ven More Data");
-
-
-test("AsyncIterReader conversions", async t => {
+test("AsyncIterReader conversions", async (t) => {
   async function* iterData() {
     yield encoder.encode("test\n");
     yield encoder.encode("data\n");
@@ -423,33 +398,35 @@ test("AsyncIterReader conversions", async t => {
   t.is(await res2.readline(), "test\n");
   t.is(await res2.readline(), "data\n");
 
-  t.throws(() => new AsyncIterReader(123), {"message": "Invalid Stream Source"});
-
+  t.throws(() => new AsyncIterReader(123), {
+    message: "Invalid Stream Source",
+  });
 });
 
-test("skip fully", async t => {
+test("skip fully", async (t) => {
   const res = new AsyncIterReader(getReader(["abc"]));
   t.is(await res.readSize(-1, true), 3);
   t.is(await res.readSize(-1, true), 0);
   t.deepEqual(await res.readSize(-1, false), new Uint8Array());
 });
 
-test("getReadableStream", async t => {
-
+test("getReadableStream", async (t) => {
   const reader = new AsyncIterReader(getReader(["some\ntext"]));
   const reader2 = new AsyncIterReader(reader.getReadableStream());
   t.is(decoder.decode(await reader2.readFully()), "some\ntext");
 });
 
-test("limitreader + readline", async t => {
-  const reader = new LimitReader(new AsyncIterReader([encoder.encode("test\ndata\n")]), 7);
+test("limitreader + readline", async (t) => {
+  const reader = new LimitReader(
+    new AsyncIterReader([encoder.encode("test\ndata\n")]),
+    7
+  );
   t.is(await reader.readline(3), "tes");
   t.is(await reader.readline(5), "t\n");
-  t.is(await reader.readline(5), "da"); 
+  t.is(await reader.readline(5), "da");
 });
 
-
-test("readsize + readsize", async t => {
+test("readsize + readsize", async (t) => {
   const reader = new AsyncIterReader(getReader(["test\ndata"]));
 
   t.is(decoder.decode(await reader.readSize(3)), "tes");
@@ -458,8 +435,12 @@ test("readsize + readsize", async t => {
   t.is(await reader.readline(), "ta");
 });
 
-test("readline + readsize, ignore chunks", async t => {
-  const reader = new AsyncIterReader(getReader(["test\ndata\ndata"]), null, true);
+test("readline + readsize, ignore chunks", async (t) => {
+  const reader = new AsyncIterReader(
+    getReader(["test\ndata\ndata"]),
+    null,
+    true
+  );
 
   t.is(await reader.readline(), "test\n");
   t.is(await reader.readline(), "data\n");
@@ -468,9 +449,9 @@ test("readline + readsize, ignore chunks", async t => {
   t.is(decoder.decode(await reader.readSize(2)), "");
 });
 
-
-test("test chunks", async t => {
-  const data = "\
+test("test chunks", async (t) => {
+  const data =
+    "\
 4\r\n\
 Wiki\r\n\
 5\r\n\
@@ -486,7 +467,7 @@ chunks.\r\n\
   t.is(decoder.decode(await reader.readFully()), "Wikipedia in\r\n\r\nchunks.");
 });
 
-test("test compressed chunks", async t => {
+test("test compressed chunks", async (t) => {
   const data = compressMembers(["test", "some\n", "mo\rre", "data"]);
 
   async function* source() {
@@ -507,7 +488,7 @@ test("test compressed chunks", async t => {
 
   async function* sourceEnc() {
     for await (const chunk of source()) {
-      yield (typeof(chunk) === "string" ? encoder.encode(chunk) : chunk);
+      yield typeof chunk === "string" ? encoder.encode(chunk) : chunk;
     }
   }
 
@@ -515,8 +496,7 @@ test("test compressed chunks", async t => {
   t.is(decoder.decode(await reader.readFully()), "testsome\nmo\rredata");
 });
 
-
-test("test chunked specified, non-chunked actual", async t=> {
+test("test chunked specified, non-chunked actual", async (t) => {
   async function readChunked(data, compress = null, errored = false) {
     const reader = new AsyncIterReader(getReader([data]), compress, true);
     const res = decoder.decode(await reader.readFully());
@@ -531,7 +511,10 @@ test("test chunked specified, non-chunked actual", async t=> {
   t.is(await readChunked("ABCDEABCDEABCDEABCDE"), "ABCDEABCDEABCDEABCDE");
 
   //Non-chunked data, numbers new line, large:
-  t.is(await readChunked("ABCDEABCDEABCDEABCDE\r\n"), "ABCDEABCDEABCDEABCDE\r\n");
+  t.is(
+    await readChunked("ABCDEABCDEABCDEABCDE\r\n"),
+    "ABCDEABCDEABCDEABCDE\r\n"
+  );
 
   //Non-chunked, attempt decompression
   t.is(await readChunked("ABCDE", "gzip"), "ABCDE");
@@ -554,4 +537,3 @@ test("test chunked specified, non-chunked actual", async t=> {
   // zero length chunk
   t.is(await readChunked("0\r\n\r\n"), "");
 });
-

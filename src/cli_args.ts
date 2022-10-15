@@ -1,0 +1,39 @@
+import yargs from "yargs";
+
+export const indexCommandArgs = yargs
+  .positional("filename", {
+    describe: "WARC file(s) to index",
+    type: "string",
+    demandOption: "true",
+  })
+  .option("f", {
+    alias: "fields",
+    describe: "fields to include in index",
+    type: "string",
+  });
+
+export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
+
+export const cdxIndexCommandArgs = yargs
+  .positional("filename", {
+    describe: "WARC file(s) to index",
+    type: "string",
+    demandOption: "true",
+  })
+  .option("a", {
+    alias: "all",
+    describe: "index all WARC records",
+    type: "boolean",
+  })
+  .option("format", {
+    describe: "output format",
+    choices: ["json", "cdxj", "cdx"],
+    default: "cdxj",
+  })
+  .option("noSurt", {
+    describe:
+      "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
+    type: "boolean",
+  });
+
+export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;

@@ -1,16 +1,15 @@
+import { Request } from "./types";
 
-
-
-export function binaryToString(data) {
+export function binaryToString(data: Uint8Array | string) {
   let string;
 
-  if (typeof(data) === "string") {
+  if (typeof data === "string") {
     string = data;
   } else if (data && data.length) {
-    string = "";
-    for (let i = 0; i < data.length; i++) {
-      string += String.fromCharCode(data[i]);
-    }
+    string = data.reduce((accumulator, value) => {
+      accumulator += String.fromCharCode(value);
+      return accumulator;
+    }, "");
   } else if (data) {
     string = data.toString();
   } else {
@@ -19,11 +18,11 @@ export function binaryToString(data) {
   return "__wb_post_data=" + btoa(string);
 }
 
-export function rxEscape(string) {
+export function rxEscape(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function getSurt(url) {
+export function getSurt(url: string) {
   try {
     if (!url.startsWith("https:") && !url.startsWith("http:")) {
       return url;
@@ -57,8 +56,8 @@ export function getSurt(url) {
   }
 }
 
-export function postToGetUrl(request) {
-  let {method, headers, postData} = request;
+export function postToGetUrl(request: Request) {
+  let { method, headers, postData } = request;
 
   if (method === "GET") {
     return false;
@@ -66,7 +65,7 @@ export function postToGetUrl(request) {
 
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
-  function decodeIfNeeded(postData) {
+  function decodeIfNeeded(postData: any) {
     if (postData instanceof Uint8Array) {
       postData = new TextDecoder().decode(postData);
     }
@@ -76,31 +75,37 @@ export function postToGetUrl(request) {
   let query = null;
 
   switch (requestMime) {
-  case "application/x-www-form-urlencoded":
-    query = decodeIfNeeded(postData);
-    break;
+    case "application/x-www-form-urlencoded":
+      query = decodeIfNeeded(postData);
+      break;
 
-  case "application/json":
-    query = jsonToQueryString(decodeIfNeeded(postData));
-    break;
+    case "application/json":
+      query = jsonToQueryString(decodeIfNeeded(postData));
+      break;
 
-  case "text/plain":
-    try {
-      query = jsonToQueryString(decodeIfNeeded(postData), false);
-    } catch(e) {
+    case "text/plain":
+      try {
+        query = jsonToQueryString(decodeIfNeeded(postData), false);
+      } catch (e) {
+        query = binaryToString(postData);
+      }
+      break;
+
+    case "multipart/form-data":
+      const content_type = headers.get("content-type");
+      if (!content_type) {
+        throw new Error(
+          "utils cannot call postToGetURL when missing content-type header"
+        );
+      }
+      query = mfdToQueryString(decodeIfNeeded(postData), content_type);
+      break;
+
+    default:
       query = binaryToString(postData);
-    }
-    break;
-
-  case "multipart/form-data":
-    query = mfdToQueryString(decodeIfNeeded(postData), headers.get("content-type"));
-    break;
-
-  default:
-    query = binaryToString(postData);
   }
 
-  if (query !== null)  {
+  if (query !== null) {
     request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
     request.requestBody = query;
@@ -110,43 +115,43 @@ export function postToGetUrl(request) {
   return false;
 }
 
-export function appendRequestQuery(url, query, method) {
+export function appendRequestQuery(url: string, query: string, method: string) {
   if (!method) {
     return url;
   }
 
-  const start = (url.indexOf("?") > 0 ? "&" : "?");
+  const start = url.indexOf("?") > 0 ? "&" : "?";
 
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-export function jsonToQueryParams(json, ignoreInvalid = true) {
-  if (typeof(json) === "string") {
+export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
+  if (typeof json === "string") {
     try {
       json = JSON.parse(json);
-    } catch(e) {
+    } catch (e) {
       json = {};
     }
   }
 
   const q = new URLSearchParams();
 
-  const dupes = {};
+  const dupes: Record<string, number> = {};
 
-  const getKey = (key) => {
+  const getKey = (key: string) => {
     if (!q.has(key)) {
       return key;
     }
 
-    if (!dupes[key]) {
+    if (!(key in dupes)) {
       dupes[key] = 1;
     }
-    return key + "." + (++dupes[key]) + "_";
+    return key + "." + ++dupes[key] + "_";
   };
 
   try {
     JSON.stringify(json, (k, v) => {
-      if (!["object", "function"].includes(typeof(v))) {
+      if (!["object", "function"].includes(typeof v)) {
         q.set(getKey(k), v);
       }
       return v;
@@ -160,7 +165,10 @@ export function jsonToQueryParams(json, ignoreInvalid = true) {
   return q;
 }
 
-export function mfdToQueryParams(mfd, contentType) {
+export function mfdToQueryParams(
+  mfd: string | Uint8Array,
+  contentType: string
+) {
   const params = new URLSearchParams();
 
   if (mfd instanceof Uint8Array) {
@@ -173,12 +181,11 @@ export function mfdToQueryParams(mfd, contentType) {
     const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
 
     for (let i = 0; i < parts.length; i++) {
-      const m = parts[i].trim().match(/name="([^"]+)"\r\n\r\n(.*)/mi);
+      const m = parts[i]!.trim().match(/name="([^"]+)"\r\n\r\n(.*)/im);
       if (m) {
-        params.set(m[1], m[2]);
+        params.set(m[1]!, m[2]!);
       }
     }
-
   } catch (e) {
     // ignore invalid, don't add params
   }
@@ -186,22 +193,23 @@ export function mfdToQueryParams(mfd, contentType) {
   return params;
 }
 
-
-export function jsonToQueryString(json, ignoreInvalid=true) {
+export function jsonToQueryString(json: any, ignoreInvalid = true) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
-export function mfdToQueryString(mfd, contentType) {
+export function mfdToQueryString(
+  mfd: string | Uint8Array,
+  contentType: string
+) {
   return mfdToQueryParams(mfd, contentType).toString();
 }
-
 
 // ===========================================================================
 // parsing utils
 
-export function concatChunks(chunks, size) {
+export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
   if (chunks.length === 1) {
-    return chunks[0];
+    return chunks[0] as Uint8Array;
   }
   const buffer = new Uint8Array(size);
 
@@ -215,7 +223,9 @@ export function concatChunks(chunks, size) {
   return buffer;
 }
 
-export function splitChunk(chunk, inx) {
+export function splitChunk(
+  chunk: Uint8Array,
+  inx: number
+): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }
-
