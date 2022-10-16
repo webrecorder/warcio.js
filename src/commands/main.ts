@@ -1,6 +1,7 @@
 import { lstatSync, createReadStream } from "fs";
 import { basename } from "path";
 import yargs from "yargs";
+import { WritableStreamBuffer } from "stream-buffers";
 
 import { indexCommandArgs, cdxIndexCommandArgs } from "./args";
 import { Indexer, CDXIndexer, StreamResults } from "../lib";
@@ -10,7 +11,7 @@ const BUFF_SIZE = 1024 * 128;
 // ===========================================================================
 export function main(
   args: string[] = [],
-  out: NodeJS.WriteStream = process.stdout
+  out: WritableStreamBuffer | NodeJS.WriteStream = process.stdout
 ) {
   let promise = Promise.resolve();
 

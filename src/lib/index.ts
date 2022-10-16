@@ -10,6 +10,13 @@ export { WARCRecord } from "./warcrecord";
 
 export { Indexer, CDXIndexer } from "./indexer";
 
-//export { postToGetUrl, getSurt, appendRequestQuery, jsonToQueryString, mfdToQueryString } from "./utils";
-export * from "./utils";
+export {
+  postToGetUrl,
+  getSurt,
+  appendRequestQuery,
+  jsonToQueryString,
+  mfdToQueryString,
+  concatChunks,
+} from "./utils";
+
 export type { StreamResults } from "./types";

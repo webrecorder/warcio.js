@@ -15,14 +15,19 @@ type WARCSerializerOpts = {
   digest?: {
     algo?: AlgorithmIdentifier;
     prefix?: string;
-    base32?: string;
+    base32?: boolean;
   };
 };
-export class WARCSerializer extends BaseAsyncIterReader {
-  static async serialize(
-    record: WARCRecord<LimitReader>,
-    opts: WARCSerializerOpts
-  ) {
+export class WARCSerializer<
+  T extends
+    | AsyncGenerator<Uint8Array, void, unknown>
+    | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
+> extends BaseAsyncIterReader {
+  static async serialize<
+    T extends
+      | AsyncGenerator<Uint8Array, void, unknown>
+      | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
+  >(record: WARCRecord<T>, opts?: WARCSerializerOpts) {
     const s = new WARCSerializer(record, opts);
     return await s.readFully();
   }
@@ -32,13 +37,13 @@ export class WARCSerializer extends BaseAsyncIterReader {
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
-  record: WARCRecord<LimitReader>;
+  record: WARCRecord<T>;
   gzip = false;
   digestAlgo: AlgorithmIdentifier = "";
   digestAlgoPrefix = "";
   digestBase32 = false;
 
-  constructor(record: WARCRecord<LimitReader>, opts: WARCSerializerOpts = {}) {
+  constructor(record: WARCRecord<T>, opts: WARCSerializerOpts = {}) {
     super();
     this.record = record;
     this.gzip = Boolean(opts.gzip);

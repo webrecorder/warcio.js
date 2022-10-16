@@ -1,10 +1,5 @@
-/*eslint-env node */
-"use strict";
-
 import pako from "pako";
-
 import { getReader } from "./utils";
-
 import { LimitReader, AsyncIterReader } from "../lib";
 
 const decoder = new TextDecoder("utf-8");

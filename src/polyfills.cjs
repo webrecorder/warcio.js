@@ -10,9 +10,11 @@ if (typeof process !== "undefined" && typeof global === "object") {
   if (!globalThis.crypto) {
     globalThis.crypto = require("crypto").webcrypto;
   }
-
   // web streams polyfill
-  if (!globalThis.CompressionStream) {
-    require("web-streams-polyfill/es2018");
+  if (!globalThis.ReadableStream) {
+    const webstreams = require("stream/web");
+    for (const prop in webstreams) {
+      globalThis[prop] = webstreams[prop];
+    }
   }
 }

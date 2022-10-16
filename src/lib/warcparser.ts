@@ -1,7 +1,7 @@
 import { ReadStream } from "fs";
 import { StatusAndHeadersParser, StatusAndHeaders } from "./statusandheaders";
 import { WARCRecord } from "./warcrecord";
-import { AsyncIterReader, LimitReader } from "./readers";
+import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
 
 const decoder = new TextDecoder();
 const EMPTY = new Uint8Array([]);
@@ -12,22 +12,36 @@ type WarcParserOpts = {
 };
 
 // ===========================================================================
-export class WARCParser {
-  static parse(
-    source:
+export class WARCParser<
+  T extends
+    | { read: Function }
+    | ReadableStream<Uint8Array>
+    | AsyncGenerator<Uint8Array, void, unknown>
+    | BaseAsyncIterReader
+    | Uint8Array[]
+    | Generator<Uint8Array, void, unknown>
+> {
+  static parse<
+    T extends
+      | { read: Function }
       | ReadableStream<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>,
-    options: WarcParserOpts
-  ) {
+      | AsyncGenerator<Uint8Array, void, unknown>
+      | BaseAsyncIterReader
+      | Uint8Array[]
+      | Generator<Uint8Array, void, unknown>
+  >(source: T, options?: WarcParserOpts) {
     return new WARCParser(source, options).parse();
   }
 
-  static iterRecords(
-    source:
+  static iterRecords<
+    T extends
+      | { read: Function }
       | ReadableStream<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>,
-    options: WarcParserOpts
-  ) {
+      | AsyncGenerator<Uint8Array, void, unknown>
+      | BaseAsyncIterReader
+      | Uint8Array[]
+      | Generator<Uint8Array, void, unknown>
+  >(source: T, options?: WarcParserOpts) {
     return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
@@ -39,15 +53,12 @@ export class WARCParser {
 
   _atRecordBoundary: boolean;
 
-  _reader: AsyncIterReader;
+  _reader: AsyncIterReader<any>;
 
   _record: WARCRecord<LimitReader> | null;
 
   constructor(
-    source:
-      | ReadStream
-      | ReadableStream<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>,
+    source: T,
     { keepHeadersCase = false, parseHttp = true }: WarcParserOpts = {}
   ) {
     this._offset = 0;
@@ -120,13 +131,15 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
     );
   }
 
-  async parse() {
+  async parse(debug = "") {
     const firstLine = await this.readToNextRecord();
 
     this._offset = this._reader.getRawOffset() - firstLine.length;
 
     const headersParser = new StatusAndHeadersParser();
-
+    if (debug) {
+      console.log({ debug, firstLine });
+    }
     const warcHeaders = await headersParser.parse(this._reader, {
       firstLine,
       headersClass: this._headersClass,

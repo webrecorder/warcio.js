@@ -1,24 +1,27 @@
+import { WritableStreamBuffer } from "stream-buffers";
+
 import { WARCParser } from "./warcparser";
 import { WARCRecord } from "./warcrecord";
 import { LimitReader } from "./readers";
-
-const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
-
 import { postToGetUrl, getSurt } from "./utils";
 import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
-import { StreamResult, StreamResults, Request } from "./types";
+import { StreamResults, Request } from "./types";
 
+const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 // ===========================================================================
 abstract class BaseIndexer {
-  opts: IndexCommandArgs;
-  out: NodeJS.WriteStream;
+  opts: Partial<IndexCommandArgs>;
+  out: WritableStreamBuffer | NodeJS.WriteStream;
   fields: string[];
   parseHttp: boolean;
 
-  constructor(opts: IndexCommandArgs, out: NodeJS.WriteStream) {
+  constructor(
+    opts: Partial<IndexCommandArgs> = {},
+    out: WritableStreamBuffer | NodeJS.WriteStream = process.stdout
+  ) {
     this.opts = opts;
     this.out = out;
-    this.fields = opts.f ? opts.f.split(",") : DEFAULT_FIELDS;
+    this.fields = opts && opts.f ? opts.f.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
 
@@ -27,6 +30,7 @@ abstract class BaseIndexer {
   }
 
   write(result: Record<string, any>) {
+    // @ts-expect-error incompatible function signatures are actually the same
     this.out.write(this.serialize(result));
   }
 
@@ -46,7 +50,7 @@ abstract class BaseIndexer {
     }
   }
 
-  async *iterRecords(parser: WARCParser, filename: string) {
+  async *iterRecords(parser: WARCParser<any>, filename: string) {
     for await (const record of parser) {
       await record.skipFully();
       const result = this.indexRecord(record, parser, filename);
@@ -60,7 +64,7 @@ abstract class BaseIndexer {
 
   indexRecord(
     record: WARCRecord<LimitReader>,
-    parser: WARCParser,
+    parser: WARCParser<any>,
     filename: string
   ): Record<string, any> | null {
     if (this.filterRecord && !this.filterRecord(record)) {
@@ -120,7 +124,10 @@ abstract class BaseIndexer {
 
 // ===========================================================================
 export class Indexer extends BaseIndexer {
-  constructor(opts: IndexCommandArgs, out: NodeJS.WriteStream) {
+  constructor(
+    opts?: Partial<IndexCommandArgs>,
+    out?: WritableStreamBuffer | NodeJS.WriteStream
+  ) {
     super(opts, out);
 
     for (const field of this.fields) {
@@ -146,15 +153,18 @@ export class CDXIndexer extends Indexer {
   noSurt: boolean;
   _lastRecord: WARCRecord<LimitReader> | null;
 
-  constructor(opts: CdxIndexCommandArgs, out: NodeJS.WriteStream) {
+  constructor(
+    opts?: Partial<CdxIndexCommandArgs>,
+    out?: WritableStreamBuffer | NodeJS.WriteStream
+  ) {
     super(opts as unknown as IndexCommandArgs, out);
-    this.includeAll = Boolean(opts.a);
+    this.includeAll = Boolean(opts?.a);
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
-    this.noSurt = Boolean(opts.noSurt);
+    this.noSurt = Boolean(opts?.noSurt);
     this._lastRecord = null;
 
-    switch (opts.format) {
+    switch (opts?.format) {
       case "cdxj":
         this.serialize = this.serializeCDXJ;
         break;
@@ -170,7 +180,7 @@ export class CDXIndexer extends Indexer {
     }
   }
 
-  override async *iterRecords(parser: WARCParser, filename: string) {
+  override async *iterRecords(parser: WARCParser<any>, filename: string) {
     this._lastRecord = null;
 
     for await (const record of parser) {
@@ -202,7 +212,7 @@ export class CDXIndexer extends Indexer {
 
   override indexRecord(
     record: WARCRecord<LimitReader> | null,
-    parser: WARCParser,
+    parser: WARCParser<any>,
     filename: string
   ) {
     if (this.includeAll) {
@@ -247,7 +257,7 @@ export class CDXIndexer extends Indexer {
   indexRecordPair(
     record: WARCRecord<LimitReader>,
     reqRecord: WARCRecord<LimitReader> | null,
-    parser: WARCParser,
+    parser: WARCParser<any>,
     filename: string
   ) {
     let method;

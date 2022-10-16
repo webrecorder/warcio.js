@@ -1,37 +1,28 @@
-/*eslint-env node */
-"use strict";
-
-import test from "ava";
-
-import { getReadableStream, getReader } from "./utils";
-
 import {
   StatusAndHeadersParser,
   AsyncIterReader,
   WARCParser,
   WARCSerializer,
+  concatChunks,
+  WARCRecord,
+  LimitReader,
 } from "../lib";
-
-import { concatChunks } from "../lib";
+import { getReader, getReadableStream } from "./utils";
+import fs from "fs";
+import path from "path";
 
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
-// StatusAndHeaders parsing utils
-async function readSH(t, input, expected) {
-  const parser = new StatusAndHeadersParser();
-  const result = await parser.parse(new AsyncIterReader(getReader([input])));
-
-  t.deepEqual(result.toString(), expected);
-}
-
-// ===========================================================================
 // ===========================================================================
 // Tests
-test(
-  "StatusAndHeaders test 1",
-  readSH,
-  "\
+
+test("StatusAndHeaders test 1", async () => {
+  const parser = new StatusAndHeadersParser();
+  const result = await parser.parse(
+    new AsyncIterReader(
+      getReader([
+        "\
 HTTP/1.0 200 OK\r\n\
 Content-Type: ABC\r\n\
 HTTP/1.0 200 OK\r\n\
@@ -40,19 +31,23 @@ Multi-Line: Value1\r\n\
     Also This\r\n\
 \r\n\
 Body",
-
-  `\
+      ])
+    )
+  );
+  expect(result?.toString()).toBe(`\
 HTTP/1.0 200 OK\r
 Content-Type: ABC\r
 Some: Value\r
 Multi-Line: Value1    Also This\r
-`
-);
+`);
+});
 
-test(
-  "StatusAndHeaders test 2",
-  readSH,
-  "\
+test("StatusAndHeaders test 2", async () => {
+  const parser = new StatusAndHeadersParser();
+  const result = await parser.parse(
+    new AsyncIterReader(
+      getReader([
+        "\
 HTTP/1.0 204 Empty\r\n\
 Content-Type: Value\r\n\
 %Invalid%\r\n\
@@ -60,32 +55,33 @@ Content-Type: Value\r\n\
 Content-Length: 0\r\n\
 Bad: multi\nline\r\n\
 \r\n",
-
-  `HTTP/1.0 204 Empty\r
+      ])
+    )
+  );
+  expect(result?.toString()).toBe(`HTTP/1.0 204 Empty\r
 Content-Type: Value\r
 Content-Length: 0\r
 Bad: multi\r
-`
-);
+`);
+});
 
-test(
-  "StatusAndHeaders test 3",
-  readSH,
-  "HTTP/1.0 204 None\r\n\r\n",
+test("StatusAndHeaders test 3", async () => {
+  const parser = new StatusAndHeadersParser();
+  const result = await parser.parse(
+    new AsyncIterReader(getReader(["HTTP/1.0 204 None\r\n\r\n"]))
+  );
+  expect(result?.toString()).toBe("HTTP/1.0 204 None\r\n");
+});
 
-  "HTTP/1.0 204 None\r\n"
-);
-
-test("StatusAndHeaders test empty", async (t) => {
+test("StatusAndHeaders test empty", async () => {
   const parser = new StatusAndHeadersParser();
   const result = await parser.parse(
     new AsyncIterReader(getReader(["\r\n\r\n"]))
   );
-
-  t.is(result, null);
+  expect(result).toBe(null);
 });
 
-test("Load WARC Records", async (t) => {
+test("Load WARC Records", async () => {
   const input =
     '\
 WARC/1.0\r\n\
@@ -143,9 +139,10 @@ text\r\n\
 
   let parser = new WARCParser(reader);
 
-  const record0 = await parser.parse();
+  const record0 = (await parser.parse())!;
 
-  t.is(record0.warcType, "warcinfo");
+  expect(record0).not.toBeNull();
+  expect(record0.warcType).toBe("warcinfo");
 
   //const warcinfo = decoder.decode(await record0.readFully());
 
@@ -155,8 +152,7 @@ text\r\n\
     warcinfo += line;
   }
 
-  t.is(
-    warcinfo,
+  expect(warcinfo).toBe(
     '\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
@@ -164,20 +160,22 @@ json-metadata: {"foo": "bar"}\r\n\
 '
   );
 
-  const record = await parser.parse();
+  const record = (await parser.parse())!;
 
-  t.is(record.warcTargetURI, "http://example.com/");
+  expect(record).not.toBeNull();
+  expect(record.warcTargetURI, "http://example.com/");
 
-  t.is(decoder.decode(await record.readFully()), "some\ntext");
+  expect(decoder.decode(await record.readFully())).toBe("some\ntext");
 
-  const record2 = await parser.parse();
+  const record2 = (await parser.parse())!;
 
-  t.is(decoder.decode(await record2.readFully()), "more\ntext");
+  expect(record2).not.toBeNull();
+  expect(decoder.decode(await record2.readFully())).toBe("more\ntext");
 
-  t.is(await parser.parse(), null);
+  expect(await parser.parse()).toBeNull();
 
   // reread payload
-  t.is(await record.contentText(), "some\ntext");
+  expect(await record.contentText()).toBe("some\ntext");
 
   // iterate should return null
   let count = 0;
@@ -186,22 +184,23 @@ json-metadata: {"foo": "bar"}\r\n\
   for await (const chunk of record) {
     count++;
   }
-  t.is(count, 0);
+  expect(count).toBe(0);
 
   // reread via getReadableStream
   parser = new WARCParser(getReader([input]));
   await parser.parse();
-  const record4 = await parser.parse();
+  const record4 = (await parser.parse())!;
+  expect(record4).not.toBeNull();
   const reader2 = new AsyncIterReader(record4.getReadableStream().getReader());
-  t.is(decoder.decode(await reader2.readFully()), "some\ntext");
+  expect(decoder.decode(await reader2.readFully())).toBe("some\ntext");
 
   // test iterRecords
   for await (const arecord of WARCParser.iterRecords(getReader([input]))) {
-    t.not(arecord.warcType, null);
+    expect(arecord.warcType).not.toBeNull();
   }
 });
 
-test("Load revisit, no http headers", async (t) => {
+test("Load revisit, no http headers", async () => {
   const input =
     "\
 WARC/1.0\r\n\
@@ -220,37 +219,37 @@ Content-Length: 0\r\n\
 \r\n\
 \r\n\
 ";
-
   const parser = new WARCParser(getReadableStream([input]), {
     keepHeadersCase: true,
   });
+  const record = (await parser.parse())!;
+  expect(record).not.toBeNull();
 
-  const record = await parser.parse();
-
-  t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(
-    record.warcHeader("WARC-Record-ID"),
+  expect(record.warcHeaders.protocol).toBe("WARC/1.0");
+  expect(record.warcHeader("WARC-Record-ID")).toBe(
     "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
   );
-  t.is(record.warcType, "revisit");
-  t.is(record.warcTargetURI, "http://example.com/");
-  t.is(record.warcDate, "2000-01-01T00:00:00Z");
-  t.is(record.warcRefersToTargetURI, "http://example.com/foo");
-  t.is(record.warcRefersToDate, "1999-01-01T00:00:00Z");
-  t.is(record.warcPayloadDigest, "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O");
-  t.is(record.warcContentType, "application/http; msgtype=response");
-  t.is(record.warcContentLength, 0);
+  expect(record.warcType).toBe("revisit");
+  expect(record.warcTargetURI).toBe("http://example.com/");
+  expect(record.warcDate).toBe("2000-01-01T00:00:00Z");
+  expect(record.warcRefersToTargetURI).toBe("http://example.com/foo");
+  expect(record.warcRefersToDate).toBe("1999-01-01T00:00:00Z");
+  expect(record.warcPayloadDigest).toBe(
+    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O"
+  );
+  expect(record.warcContentType).toBe("application/http; msgtype=response");
+  expect(record.warcContentLength).toBe(0);
 
-  t.is(record.httpHeaders, null);
+  expect(record.httpHeaders).toBeNull();
 
-  t.is(await record.contentText(), "");
+  expect(await record.contentText()).toBe("");
 
-  t.deepEqual(record.payload, new Uint8Array([]));
+  expect(record.payload).toEqual(new Uint8Array([]));
 
-  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
+  expect(decoder.decode(await WARCSerializer.serialize(record))).toBe(input);
 });
 
-test("Load revisit, with http headers", async (t) => {
+test("Load revisit, with http headers", async () => {
   const input =
     "\
 WARC/1.0\r\n\
@@ -278,37 +277,40 @@ Foo: Bar\r\n\
     keepHeadersCase: true,
   });
 
-  const record = await parser.parse();
+  const record = (await parser.parse())!;
 
-  t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(
-    record.warcHeader("WARC-Record-ID"),
+  expect(record).not.toBeNull();
+  expect(record.warcHeaders.protocol).toBe("WARC/1.0");
+  expect(record.warcHeader("WARC-Record-ID")).toBe(
     "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
   );
-  t.is(record.warcType, "revisit");
-  t.is(record.warcTargetURI, "http://example.com/");
-  t.is(record.warcDate, "2000-01-01T00:00:00Z");
-  t.is(record.warcRefersToTargetURI, "http://example.com/foo");
-  t.is(record.warcRefersToDate, "1999-01-01T00:00:00Z");
-  t.is(record.warcPayloadDigest, "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O");
-  t.is(record.warcContentType, "application/http; msgtype=response");
-  t.is(record.warcContentLength, 54);
+  expect(record.warcType).toBe("revisit");
+  expect(record.warcTargetURI).toBe("http://example.com/");
+  expect(record.warcDate).toBe("2000-01-01T00:00:00Z");
+  expect(record.warcRefersToTargetURI).toBe("http://example.com/foo");
+  expect(record.warcRefersToDate).toBe("1999-01-01T00:00:00Z");
+  expect(record.warcPayloadDigest).toBe(
+    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O"
+  );
+  expect(record.warcContentType).toBe("application/http; msgtype=response");
+  expect(record.warcContentLength).toBe(54);
 
-  t.is(record.httpHeaders.protocol, "HTTP/1.1");
-  t.is(record.httpHeaders.statusCode, 200);
-  t.is(record.httpHeaders.statusText, "OK");
+  expect(record.httpHeaders).not.toBeNull();
+  expect(record.httpHeaders!.protocol).toBe("HTTP/1.1");
+  expect(record.httpHeaders!.statusCode).toBe(200);
+  expect(record.httpHeaders!.statusText).toBe("OK");
 
-  t.is(record.httpHeaders.headers.get("Foo"), "Bar");
-  t.is(record.httpHeaders.headers.get("Content-Type"), "text/html");
+  expect(record.httpHeaders!.headers.get("Foo")).toBe("Bar");
+  expect(record.httpHeaders!.headers.get("Content-Type")).toBe("text/html");
 
-  t.is(await record.contentText(), "");
+  expect(await record.contentText()).toBe("");
 
-  t.deepEqual(record.payload, new Uint8Array([]));
+  expect(record.payload).toEqual(new Uint8Array([]));
 
-  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
+  expect(decoder.decode(await WARCSerializer.serialize(record))).toEqual(input);
 });
 
-test("Load revisit, with http headers + chunk encoding", async (t) => {
+test("Load revisit, with http headers + chunk encoding", async () => {
   const input =
     "\
 WARC/1.0\r\n\
@@ -337,31 +339,33 @@ Foo: Bar\r\n\
     keepHeadersCase: true,
   });
 
-  const record = await parser.parse();
+  const record = (await parser.parse())!;
+  expect(record).not.toBeNull();
 
   await record.readFully(true);
 
-  t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(
-    record.warcHeader("WARC-Record-ID"),
+  expect(record.warcHeaders.protocol).toBe("WARC/1.0");
+  expect(record.warcHeader("WARC-Record-ID")).toBe(
     "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
   );
-  t.is(record.warcType, "revisit");
-  t.is(record.warcContentLength, 82);
+  expect(record.warcType).toBe("revisit");
+  expect(record.warcContentLength).toBe(82);
 
-  t.is(record.httpHeaders.protocol, "HTTP/1.1");
-  t.is(record.httpHeaders.statusCode, 200);
-  t.is(record.httpHeaders.statusText, "OK");
+  const httpHeaders = record.httpHeaders!;
+  expect(httpHeaders).not.toBeNull();
+  expect(httpHeaders.protocol).toBe("HTTP/1.1");
+  expect(httpHeaders.statusCode).toBe(200);
+  expect(httpHeaders.statusText).toBe("OK");
 
-  t.is(record.httpHeaders.headers.get("Foo"), "Bar");
-  t.is(record.httpHeaders.headers.get("Content-Type"), "text/html");
+  expect(httpHeaders.headers.get("Foo")).toBe("Bar");
+  expect(httpHeaders.headers.get("Content-Type")).toBe("text/html");
 
-  t.deepEqual(record.payload, new Uint8Array([]));
+  expect(record.payload).toEqual(new Uint8Array([]));
 
-  t.is(decoder.decode(await WARCSerializer.serialize(record)), input);
+  expect(decoder.decode(await WARCSerializer.serialize(record))).toBe(input);
 });
 
-test("No parse http, record headers only", async (t) => {
+test("No parse http, record headers only", async () => {
   const input =
     "\
 WARC/1.0\r\n\
@@ -387,89 +391,101 @@ text\r\n\
 
   const parser = new WARCParser(getReader([input]), { parseHttp: false });
 
-  const record = await parser.parse();
+  const record = (await parser.parse())!;
+  expect(record).not.toBeNull();
 
-  t.is(record.warcHeaders.protocol, "WARC/1.0");
-  t.is(record.warcContentLength, 268);
-  t.not(record.warcHeaders, null);
-  t.is(record.httpHeaders, null);
+  expect(record.warcHeaders.protocol).toBe("WARC/1.0");
+  expect(record.warcContentLength).toBe(268);
+  expect(record.warcHeaders).not.toBeNull();
+  expect(record.httpHeaders).toBe(null);
 
-  t.is(record.getResponseInfo(), null);
+  expect(record.getResponseInfo()).toBe(null);
 
   const statusline = "HTTP/1.0 200 OK\r\n";
-  t.is(await record.reader.readline(), statusline);
+  expect(await record.reader.readline()).toBe(statusline);
 
   for await (const chunk of record) {
-    t.is(chunk.length, 268 - statusline.length);
+    expect(chunk.length).toBe(268 - statusline.length);
   }
 
   // check headers case
-  const record2 = await WARCParser.parse(getReader([input]), {
+  const record2 = (await WARCParser.parse(getReader([input]), {
     keepHeadersCase: true,
-  });
-  t.is(record2.warcHeaders.protocol, "WARC/1.0");
-  t.true(input.indexOf(record2.httpHeaders.toString()) > 0);
+  }))!;
+  expect(record2).not.toBeNull();
+  expect(record2.warcHeaders.protocol).toBe("WARC/1.0");
+  const httpHeaders = record2.httpHeaders!;
+  expect(httpHeaders).not.toBeNull();
+  expect(input.indexOf(httpHeaders.toString())).toBeGreaterThan(0);
 
   // serialize
   const buff = await WARCSerializer.serialize(record2);
-  t.is(decoder.decode(buff), input);
+  expect(decoder.decode(buff)).toBe(input);
 });
 
-test("warc1.1 response and request, status checks", async (t) => {
-  const fs = require("fs");
-  const path = require("path");
+test("warc1.1 response and request, status checks", async () => {
   const input = fs.readFileSync(
     path.join(__dirname, "data", "redirect.warc"),
     "utf-8"
   );
 
   let parser = new WARCParser(getReader([input]));
-  let response;
+  let response: WARCRecord<LimitReader> | null = null;
 
   for await (response of parser) {
     break;
   }
 
-  t.is(response.warcHeaders.protocol, "WARC/1.1");
+  expect(response).not.toBeNull();
+  expect(response!.warcHeaders.protocol).toBe("WARC/1.1");
 
-  t.is(response.httpHeaders.protocol, "HTTP/1.1");
-  t.is(response.httpHeaders.statusCode, 301);
-  t.is(response.httpHeaders.statusText, "Moved Permanently");
+  const responseHttpHeaders = response!.httpHeaders!;
+  expect(responseHttpHeaders).not.toBeNull();
+  expect(responseHttpHeaders.protocol).toBe("HTTP/1.1");
+  expect(responseHttpHeaders.statusCode).toBe(301);
+  expect(responseHttpHeaders.statusText).toBe("Moved Permanently");
 
-  t.is(response.warcDate, "2020-04-12T18:42:50.696509Z");
+  expect(response!.warcDate).toBe("2020-04-12T18:42:50.696509Z");
 
-  let request = await parser.parse();
+  let request = (await parser.parse())!;
+  expect(request).not.toBeNull();
 
-  t.is(request.warcHeaders.protocol, "WARC/1.1");
+  expect(request.warcHeaders.protocol).toBe("WARC/1.1");
 
-  t.is(request.httpHeaders.method, "GET");
-  t.is(request.httpHeaders.requestPath, "/domains/example");
-  t.is(request.warcDate, "2020-04-12T18:42:50.696509Z");
+  const requestHttpHeaders = request.httpHeaders!;
+  expect(requestHttpHeaders).not.toBeNull();
+  expect(requestHttpHeaders.method).toBe("GET");
+  expect(requestHttpHeaders.requestPath).toBe("/domains/example");
+  expect(request.warcDate).toBe("2020-04-12T18:42:50.696509Z");
 
   // read again, access in different order
   parser = new WARCParser(getReader([input]));
 
-  response = await parser.parse();
+  response = (await parser.parse())!;
+  expect(response).not.toBeNull();
 
   // incorrect accessor, just return protocol
-  t.is(response.warcHeaders.method, "WARC/1.1");
+  expect(response.warcHeaders.method).toBe("WARC/1.1");
 
-  t.is(response.httpHeaders.statusText, "Moved Permanently");
-  t.is(response.httpHeaders.protocol, "HTTP/1.1");
+  expect(response?.httpHeaders?.statusText).toBe("Moved Permanently");
+  expect(response?.httpHeaders?.protocol).toBe("HTTP/1.1");
 
-  t.not(response.getResponseInfo(), null);
+  expect(response.getResponseInfo()).not.toBeNull();
 
-  const { status, statusText, headers } = response.getResponseInfo();
-  t.is(status, 301);
-  t.is(statusText, "Moved Permanently");
-  t.is(headers, response.httpHeaders.headers);
+  const responseInfo = response.getResponseInfo();
+  expect(responseInfo).not.toBeNull();
+  const { status, statusText, headers } = responseInfo!;
+  expect(status).toBe(301);
+  expect(statusText).toBe("Moved Permanently");
+  expect(headers).toBe(response?.httpHeaders?.headers);
 
-  request = await parser.parse();
-  t.is(request.httpHeaders.requestPath, "/domains/example");
-  t.is(request.httpHeaders.method, "GET");
+  request = (await parser.parse())!;
+  expect(request).not.toBeNull();
+  expect(request?.httpHeaders?.requestPath).toBe("/domains/example");
+  expect(request?.httpHeaders?.method).toBe("GET");
 });
 
-test("warc1.1 serialize records match", async (t) => {
+test("warc1.1 serialize records match", async () => {
   const fs = require("fs");
   const path = require("path");
   const input = fs.readFileSync(
@@ -480,90 +496,88 @@ test("warc1.1 serialize records match", async (t) => {
   const serialized = [];
   let size = 0;
 
-  const encoder = new TextEncoder("utf-8");
-
   for await (const record of WARCParser.iterRecords(getReader([input]), {
     keepHeadersCase: true,
   })) {
-    const chunk = await WARCSerializer.serialize(record, encoder);
+    const chunk = await WARCSerializer.serialize(record);
     serialized.push(chunk);
     size += chunk.length;
   }
 
-  t.is(decoder.decode(concatChunks(serialized, size)), input);
+  expect(decoder.decode(concatChunks(serialized, size))).toBe(input);
 });
 
-test("chunked warc read", async (t) => {
-  const fs = require("fs");
-  const path = require("path");
+test("chunked warc read", async () => {
   const input = fs.createReadStream(
     path.join(__dirname, "data", "example-iana.org-chunked.warc")
   );
 
   const parser = new WARCParser(input);
 
-  await parser.parse();
-  const record = await parser.parse();
+  // FIXME: remove debug from parse
+  await parser.parse("chunked warc read 1");
+  const record = (await parser.parse("chunked warc read 1"))!;
 
-  t.is(record.warcType, "response");
+  expect(record).not.toBeNull();
+  expect(record.warcType).toBe("response");
 
-  t.is(await record.readline(), "<!doctype html>\n");
+  expect(await record.readline()).toBe("<!doctype html>\n");
 
   // can't read raw data anymore
-  await t.throwsAsync(async () => await record.readFully(false), {
-    message: "WARC Record decoding already started, but requesting raw payload",
-  });
+  await expect(async () => await record.readFully(false)).rejects.toThrow(
+    "WARC Record decoding already started, but requesting raw payload"
+  );
 
   const text = await record.contentText();
 
-  t.is(text.split("\n")[0], "<html>");
+  expect(text.split("\n")[0]).toBe("<html>");
 
-  await t.throwsAsync(async () => await record.reader.readFully(false), {
-    message: "WARC Record decoding already started, but requesting raw payload",
-  });
+  await expect(async () => await record.reader.readFully()).rejects.toThrow(
+    "WARC Record decoding already started, but requesting raw payload"
+  );
 
-  t.not(await record.readFully(true), null);
+  expect(await record.readFully(true)).not.toBeNull();
 });
 
-test("no await catch errors", async (t) => {
-  const fs = require("fs");
-  const path = require("path");
+test("no await catch errors", async () => {
   const input = fs.createReadStream(
     path.join(__dirname, "data", "example-iana.org-chunked.warc")
   );
 
   const parser = new WARCParser(input);
 
-  async function* readLines(record) {
+  async function* readLines(record: WARCRecord<any>) {
     for await (const chunk of record) {
       yield chunk;
     }
   }
 
-  const record0 = await parser.parse();
+  const record0 = (await parser.parse())!;
+  expect(record0).not.toBeNull();
   const iter = readLines(record0);
   await iter.next();
 
-  const record1 = await parser.parse();
-  await t.throwsAsync(async () => await iter.next(), {
-    message: "Record already consumed.. Perhaps a promise was not awaited?",
-  });
-  await t.throwsAsync(async () => await record0.readline(), {
-    message: "Record already consumed.. Perhaps a promise was not awaited?",
-  });
+  const record1 = (await parser.parse())!;
+  expect(record1).not.toBeNull();
+  await expect(async () => await iter.next()).rejects.toThrow(
+    "Record already consumed.. Perhaps a promise was not awaited?"
+  );
+  await expect(async () => await record0.readline()).rejects.toThrow(
+    "Record already consumed.. Perhaps a promise was not awaited?"
+  );
 
   let count = 0;
   // eslint-disable-next-line no-unused-vars
   for await (const chunk of record1) {
     count++;
   }
-  t.true(count > 0);
-  t.not(record1.consumed, null);
+  expect(count).toBeGreaterThan(0);
+  expect(record1.consumed).not.toBeNull();
 
   count = 0;
   // eslint-disable-next-line no-unused-vars
   for await (const chunk of record1) {
     count++;
   }
-  t.true(count === 0);
+  expect(count).toBe(0);
 });

@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "keywords": [
     "WARC",
     "web archiving"
@@ -59,10 +59,9 @@
     "stream-buffers": "^3.0.2",
     "ts-jest": "^29.0.3",
     "tsup": "^6.2.3",
-    "typescript": "^4.8.4",
-    "web-streams-polyfill": "^3.2.1"
+    "typescript": "^4.8.4"
   },
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=16.5.0"
   }
 }

@@ -13,7 +13,17 @@ const REVISIT_PROFILE_1_0 =
 const REVISIT_PROFILE_1_1 =
   "http://netpreserve.org/warc/1.1/revisit/identical-payload-digest";
 
-const defaultRecordCT = {
+type WARCType =
+  | "warcinfo"
+  | "response"
+  | "resource"
+  | "request"
+  | "metadata"
+  | "revisit"
+  | "conversion"
+  | "continuation";
+
+const defaultRecordCT: Partial<Record<WARCType, string>> = {
   warcinfo: "application/warc-fields",
   response: "application/http; msgtype=response",
   revisit: "application/http; msgtype=response",
@@ -25,7 +35,7 @@ const defaultRecordCT = {
 type WARCRecordOpts = {
   url?: string;
   date?: string;
-  type?: keyof typeof defaultRecordCT;
+  type?: WARCType;
   warcHeaders?: any;
   filename?: string;
   httpHeaders?: Record<string, string>;
@@ -54,7 +64,7 @@ export class WARCRecord<
       refersToUrl = undefined,
       refersToDate = undefined,
     }: WARCRecordOpts = {},
-    reader: AsyncGenerator<Uint8Array, void, unknown>
+    reader?: AsyncGenerator<Uint8Array, void, unknown>
   ) {
     function checkDate(d: string) {
       const date = d;

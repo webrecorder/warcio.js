@@ -1,20 +1,15 @@
-/*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
-
-import { ReadableStream, ReadableStreamDefaultReader } from "node:stream/web";
-import { ReadStream } from "fs";
+import type { ReadStream } from "fs";
 import { Inflate, InflateOptions, ReturnCodes } from "pako";
-
 import { splitChunk, concatChunks } from "./utils";
-
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
 class NoConcatInflator extends Inflate {
-  reader: AsyncIterReader;
+  reader: AsyncIterReader<any>;
   ended = false;
   chunks: Uint8Array[] = [];
 
-  constructor(options: InflateOptions, reader: AsyncIterReader) {
+  constructor(options: InflateOptions, reader: AsyncIterReader<any>) {
     super(options);
     this.reader = reader;
   }
@@ -102,7 +97,15 @@ function isAsyncIterator(
 }
 
 // ===========================================================================
-export class AsyncIterReader extends BaseAsyncIterReader {
+export class AsyncIterReader<
+  T extends
+    | { read: Function }
+    | ReadableStream<Uint8Array>
+    | AsyncGenerator<Uint8Array, void, unknown>
+    | BaseAsyncIterReader
+    | Uint8Array[]
+    | Generator<Uint8Array, void, unknown>
+> extends BaseAsyncIterReader {
   compressed!: string | null;
   opts!: AsyncIterReaderOpts;
   inflator!: NoConcatInflator | null;
@@ -117,14 +120,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   numChunks: number;
 
   constructor(
-    streamOrIter:
-      | ReadStream
-      | ReadableStream<Uint8Array>
-      | ReadableStreamDefaultReader<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>
-      | BaseAsyncIterReader
-      | Uint8Array[]
-      | Generator<Uint8Array, void, unknown>,
+    streamOrIter: T,
     compressed: string | null = "gzip",
     dechunk = false
   ) {
@@ -140,8 +136,8 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     if (streamOrIter instanceof ReadableStream) {
       source = AsyncIterReader.fromReadable(streamOrIter.getReader());
     } else if (
-      streamOrIter instanceof ReadStream ||
-      streamOrIter instanceof ReadableStreamDefaultReader
+      "read" in streamOrIter &&
+      typeof streamOrIter.read === "function"
     ) {
       source = AsyncIterReader.fromReadable(streamOrIter);
     } else if (streamOrIter instanceof BaseAsyncIterReader) {
@@ -461,9 +457,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
       : this._readOffset - prevOffset;
   }
 
-  static fromReadable(
-    source: ReadStream | ReadableStreamDefaultReader<Uint8Array>
-  ) {
+  static fromReadable<Readable extends { read: Function }>(source: Readable) {
     const iterable = {
       async *[Symbol.asyncIterator]() {
         let res = null;
@@ -492,12 +486,12 @@ export class AsyncIterReader extends BaseAsyncIterReader {
 
 // ===========================================================================
 export class LimitReader extends BaseAsyncIterReader {
-  sourceIter!: AsyncIterReader;
+  sourceIter!: AsyncIterReader<any>;
   length!: number;
   limit!: number;
   skip!: number;
 
-  constructor(streamIter: AsyncIterReader, limit: number, skip = 0) {
+  constructor(streamIter: AsyncIterReader<any>, limit: number, skip = 0) {
     super();
     this.sourceIter = streamIter;
     this.length = limit;
