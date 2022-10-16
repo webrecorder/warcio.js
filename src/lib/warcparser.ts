@@ -12,7 +12,7 @@ type WarcParserOpts = {
 };
 
 // ===========================================================================
-class WARCParser {
+export class WARCParser {
   static parse(
     source:
       | ReadableStream<Uint8Array>
@@ -199,4 +199,3 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
 }
 
 // ===========================================================================
-export { WARCParser };

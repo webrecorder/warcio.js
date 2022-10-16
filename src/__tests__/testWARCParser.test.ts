@@ -10,9 +10,9 @@ import {
   AsyncIterReader,
   WARCParser,
   WARCSerializer,
-} from "../main";
+} from "../lib";
 
-import { concatChunks } from "../main";
+import { concatChunks } from "../lib";
 
 const decoder = new TextDecoder("utf-8");
 

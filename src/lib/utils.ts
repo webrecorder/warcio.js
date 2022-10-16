@@ -65,14 +65,14 @@ export function postToGetUrl(request: Request) {
 
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
-  function decodeIfNeeded(postData: any) {
+  function decodeIfNeeded(postData: Uint8Array | string): string {
     if (postData instanceof Uint8Array) {
       postData = new TextDecoder().decode(postData);
     }
     return postData;
   }
 
-  let query = null;
+  let query = "";
 
   switch (requestMime) {
     case "application/x-www-form-urlencoded":
@@ -161,7 +161,6 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
       throw e;
     }
   }
-
   return q;
 }
 

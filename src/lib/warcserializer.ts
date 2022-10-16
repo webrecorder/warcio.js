@@ -4,7 +4,7 @@ import { Deflate } from "pako";
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader, LimitReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
-
+import { CompressionStream } from "stream/web";
 import { concatChunks } from "./utils";
 
 const encoder = new TextEncoder();
@@ -13,12 +13,12 @@ const encoder = new TextEncoder();
 type WARCSerializerOpts = {
   gzip?: boolean;
   digest?: {
-    algo?: string;
+    algo?: AlgorithmIdentifier;
     prefix?: string;
     base32?: string;
   };
 };
-class WARCSerializer extends BaseAsyncIterReader {
+export class WARCSerializer extends BaseAsyncIterReader {
   static async serialize(
     record: WARCRecord<LimitReader>,
     opts: WARCSerializerOpts
@@ -27,14 +27,14 @@ class WARCSerializer extends BaseAsyncIterReader {
     return await s.readFully();
   }
 
-  static base16(hashBuffer: Buffer) {
+  static base16(hashBuffer: ArrayBuffer) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
   record: WARCRecord<LimitReader>;
   gzip = false;
-  digestAlgo: string | null = "";
+  digestAlgo: AlgorithmIdentifier = "";
   digestAlgoPrefix = "";
   digestBase32 = false;
 
@@ -54,7 +54,7 @@ class WARCSerializer extends BaseAsyncIterReader {
       this.digestAlgoPrefix = digestOpts?.prefix || "sha256:";
       this.digestBase32 = Boolean(digestOpts?.base32);
     } else {
-      this.digestAlgo = null;
+      this.digestAlgo = "";
     }
   }
 
@@ -66,24 +66,22 @@ class WARCSerializer extends BaseAsyncIterReader {
 
     let cs = null;
 
-    try {
-      // eslint-disable-next-line no-undef
-      cs = new CompressionStream("gzip");
-    } catch (e) {
-      // ignore if no CompressionStream available
-    }
-
-    if (cs) {
+    if ("CompressionStream" in globalThis) {
+      cs = new globalThis.CompressionStream("gzip");
       yield* this.streamCompress(cs);
     } else {
       yield* this.pakoCompress();
     }
   }
 
+  override async readlineRaw(maxLength?: number): Promise<Uint8Array | null> {
+    return null;
+  }
+
   async *pakoCompress() {
     const deflater = new Deflate({ gzip: true });
 
-    let lastChunk = null;
+    let lastChunk: Uint8Array | null = null;
 
     for await (const chunk of this.generateRecord()) {
       if (lastChunk && lastChunk.length > 0) {
@@ -91,16 +89,20 @@ class WARCSerializer extends BaseAsyncIterReader {
       }
       lastChunk = chunk;
 
+      // @ts-expect-error Deflate has property chunks in implementation
       while (deflater.chunks.length) {
+        // @ts-expect-error Deflate has property chunks in implementation
         yield deflater.chunks.shift();
       }
     }
 
-    deflater.push(lastChunk, true);
+    if (lastChunk) {
+      deflater.push(lastChunk, true);
+    }
     yield deflater.result;
   }
 
-  async *streamCompress(cs) {
+  async *streamCompress(cs: CompressionStream) {
     const recordIter = this.generateRecord();
 
     const source = new ReadableStream({
@@ -138,7 +140,7 @@ class WARCSerializer extends BaseAsyncIterReader {
   async *generateRecord() {
     let size = 0;
 
-    let httpHeadersBuff = null;
+    let httpHeadersBuff: Uint8Array | null = null;
 
     if (this.record.httpHeaders) {
       httpHeadersBuff = encoder.encode(
@@ -163,7 +165,7 @@ class WARCSerializer extends BaseAsyncIterReader {
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
     }
 
-    this.record.warcHeaders.headers.set("Content-Length", size);
+    this.record.warcHeaders.headers.set("Content-Length", size.toString());
 
     const warcHeadersBuff = encoder.encode(this.record.warcHeaders.toString());
 
@@ -179,5 +181,3 @@ class WARCSerializer extends BaseAsyncIterReader {
     yield CRLFCRLF;
   }
 }
-
-export { WARCSerializer };

@@ -35,7 +35,7 @@ type WARCRecordOpts = {
   refersToUrl?: string;
   refersToDate?: string;
 };
-class WARCRecord<
+export class WARCRecord<
   T extends
     | AsyncGenerator<Uint8Array, void, unknown>
     | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
@@ -389,4 +389,3 @@ class WARCRecord<
 }
 
 // ===========================================================================
-export { WARCRecord };

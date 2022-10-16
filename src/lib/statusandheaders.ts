@@ -1,13 +1,13 @@
 import { concatChunks, splitChunk } from "./utils";
 import { AsyncIterReader } from "./readers";
 
-const CRLF = new Uint8Array([13, 10]);
-const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
+export const CRLF = new Uint8Array([13, 10]);
+export const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
-class StatusAndHeaders {
+export class StatusAndHeaders {
   statusline: string;
   headers: Map<string, string> | Headers;
 
@@ -97,7 +97,7 @@ class StatusAndHeaders {
 }
 
 // ===========================================================================
-class StatusAndHeadersParser {
+export class StatusAndHeadersParser {
   async parse(
     reader: AsyncIterReader,
     {
@@ -232,7 +232,7 @@ export async function indexOfDoubleCRLF(
 }
 
 // ===========================================================================
-async function readToDoubleCRLF(reader: AsyncIterReader) {
+export async function readToDoubleCRLF(reader: AsyncIterReader) {
   const chunks = [];
   let size = 0;
 
@@ -268,10 +268,3 @@ async function readToDoubleCRLF(reader: AsyncIterReader) {
 }
 
 // ===========================================================================
-export {
-  StatusAndHeaders,
-  StatusAndHeadersParser,
-  CRLF,
-  CRLFCRLF,
-  readToDoubleCRLF,
-};

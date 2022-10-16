@@ -5,7 +5,7 @@ import { LimitReader } from "./readers";
 const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
 
 import { postToGetUrl, getSurt } from "./utils";
-import { IndexCommandArgs, CdxIndexCommandArgs } from "./cli_args";
+import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
 import { StreamResult, StreamResults, Request } from "./types";
 
 // ===========================================================================
@@ -119,7 +119,7 @@ abstract class BaseIndexer {
 }
 
 // ===========================================================================
-class Indexer extends BaseIndexer {
+export class Indexer extends BaseIndexer {
   constructor(opts: IndexCommandArgs, out: NodeJS.WriteStream) {
     super(opts, out);
 
@@ -141,9 +141,8 @@ const DEFAULT_LEGACY_CDX_FIELDS =
   );
 
 // ===========================================================================
-class CDXIndexer extends Indexer {
+export class CDXIndexer extends Indexer {
   includeAll: boolean;
-  override fields: string[];
   noSurt: boolean;
   _lastRecord: WARCRecord<LimitReader> | null;
 
@@ -358,6 +357,3 @@ class CDXIndexer extends Indexer {
     }
   }
 }
-
-// ===========================================================================
-export { Indexer, CDXIndexer };

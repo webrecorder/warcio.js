@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["es2021", "DOM", "dom.iterable"],
+    "lib": ["es2022", "DOM", "dom.iterable"],
     "target": "es2015",
     "allowJs": false,
     "allowSyntheticDefaultImports": true,

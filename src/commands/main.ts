@@ -1,19 +1,20 @@
-/*eslint-env node */
 import { lstatSync, createReadStream } from "fs";
 import { basename } from "path";
 import yargs from "yargs";
 
-import { indexCommandArgs, cdxIndexCommandArgs } from "./cli_args";
-import { Indexer, CDXIndexer } from "./indexer";
-import { StreamResults } from "./types";
+import { indexCommandArgs, cdxIndexCommandArgs } from "./args";
+import { Indexer, CDXIndexer, StreamResults } from "../lib";
 
 const BUFF_SIZE = 1024 * 128;
 
 // ===========================================================================
-function main(args: string[], out: NodeJS.WriteStream) {
-  let promise = Promise.resolve(true);
+export function main(
+  args: string[] = [],
+  out: NodeJS.WriteStream = process.stdout
+) {
+  let promise = Promise.resolve();
 
-  const argv = yargs
+  yargs
     .usage("$0 [command]")
     // Basic Indexer
     .command({
@@ -23,9 +24,7 @@ function main(args: string[], out: NodeJS.WriteStream) {
         return indexCommandArgs;
       },
       handler: async (args) => {
-        /* istanbul ignore next */
-        out = out || process.stdout;
-        await new Indexer(args, out).run(loadStreams([args.filename]));
+        promise = new Indexer(args, out).run(loadStreams([args.filename]));
       },
     })
     // CDX Indexer
@@ -36,9 +35,7 @@ function main(args: string[], out: NodeJS.WriteStream) {
         return cdxIndexCommandArgs;
       },
       handler: async (args) => {
-        /* istanbul ignore next */
-        out = out || process.stdout;
-        await new CDXIndexer(args, out).run(loadStreams([args.filename]));
+        promise = new CDXIndexer(args, out).run(loadStreams([args.filename]));
       },
     })
     .demandCommand(1, "Please specify a command")
@@ -62,6 +59,3 @@ function loadStreams(filenames: string[]) {
     return accumulator;
   }, []);
 }
-
-// ===========================================================================
-export { main };

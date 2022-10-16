@@ -1,12 +1,11 @@
-/*eslint-env node */
-"use strict";
+import fs from "fs";
+import path from "path";
 
-import test from "ava";
 import "./utils/";
 
-import { main } from "../src/cli_main";
+import { main } from "../commands";
 
-import { Indexer, CDXIndexer } from "../src/indexer";
+import { Indexer, CDXIndexer } from "../lib";
 
 import { WritableStreamBuffer } from "stream-buffers";
 
@@ -158,9 +157,6 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
 test("skip dir", index, ["cdx-index", "./"], false);
 
 test("test custom CDXIndexer", async (t) => {
-  const fs = require("fs");
-  const path = require("path");
-
   const entries = [];
   const indexer = new CDXIndexer();
 

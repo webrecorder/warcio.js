@@ -1,5 +1,6 @@
 /*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 
+import { ReadableStream, ReadableStreamDefaultReader } from "node:stream/web";
 import { ReadStream } from "fs";
 import { Inflate, InflateOptions, ReturnCodes } from "pako";
 
@@ -28,7 +29,7 @@ class NoConcatInflator extends Inflate {
 }
 
 // ===========================================================================
-abstract class BaseAsyncIterReader {
+export abstract class BaseAsyncIterReader {
   static async readFully(
     iter?: AsyncGenerator<Uint8Array, void, unknown> | BaseAsyncIterReader
   ) {
@@ -92,16 +93,16 @@ type AsyncIterReaderOpts = {
 };
 
 function isIterator(input: any): input is Generator<Uint8Array, void, unknown> {
-  return input && Symbol.iterator in input;
+  return input && Symbol.iterator in Object(input);
 }
 function isAsyncIterator(
   input: any
 ): input is AsyncGenerator<Uint8Array, void, unknown> {
-  return input && Symbol.asyncIterator in input;
+  return input && Symbol.asyncIterator in Object(input);
 }
 
 // ===========================================================================
-class AsyncIterReader extends BaseAsyncIterReader {
+export class AsyncIterReader extends BaseAsyncIterReader {
   compressed!: string | null;
   opts!: AsyncIterReaderOpts;
   inflator!: NoConcatInflator | null;
@@ -119,11 +120,12 @@ class AsyncIterReader extends BaseAsyncIterReader {
     streamOrIter:
       | ReadStream
       | ReadableStream<Uint8Array>
+      | ReadableStreamDefaultReader<Uint8Array>
       | AsyncGenerator<Uint8Array, void, unknown>
       | BaseAsyncIterReader
       | Uint8Array[]
       | Generator<Uint8Array, void, unknown>,
-    compressed = "gzip",
+    compressed: string | null = "gzip",
     dechunk = false
   ) {
     super();
@@ -137,7 +139,10 @@ class AsyncIterReader extends BaseAsyncIterReader {
     };
     if (streamOrIter instanceof ReadableStream) {
       source = AsyncIterReader.fromReadable(streamOrIter.getReader());
-    } else if (streamOrIter instanceof ReadStream) {
+    } else if (
+      streamOrIter instanceof ReadStream ||
+      streamOrIter instanceof ReadableStreamDefaultReader
+    ) {
       source = AsyncIterReader.fromReadable(streamOrIter);
     } else if (streamOrIter instanceof BaseAsyncIterReader) {
       source = streamOrIter[Symbol.asyncIterator]();
@@ -486,7 +491,7 @@ class AsyncIterReader extends BaseAsyncIterReader {
 }
 
 // ===========================================================================
-class LimitReader extends BaseAsyncIterReader {
+export class LimitReader extends BaseAsyncIterReader {
   sourceIter!: AsyncIterReader;
   length!: number;
   limit!: number;
@@ -567,4 +572,3 @@ class LimitReader extends BaseAsyncIterReader {
 }
 
 // ===========================================================================
-export { BaseAsyncIterReader, AsyncIterReader, LimitReader };
