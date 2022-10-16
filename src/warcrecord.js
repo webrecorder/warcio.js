@@ -1,5 +1,5 @@
-import { BaseAsyncIterReader, AsyncIterReader } from "./readers";
-import { StatusAndHeaders } from "./statusandheaders";
+import { BaseAsyncIterReader, AsyncIterReader } from "./readers.js";
+import { StatusAndHeaders } from "./statusandheaders.js";
 import uuid from "uuid-random";
 
 const decoder = new TextDecoder("utf-8");

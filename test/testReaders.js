@@ -1,13 +1,12 @@
 /*eslint-env node */
-"use strict";
 
 import test from "ava";
 
 import pako from "pako";
 
-import { getReader } from "./utils";
+import { getReader } from "./utils/index.js";
 
-import { LimitReader, AsyncIterReader } from "../main";
+import { LimitReader, AsyncIterReader } from "../index.js";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");

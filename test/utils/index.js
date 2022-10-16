@@ -1,15 +1,8 @@
 /*eslint-env node */
-import { Headers } from "node-fetch";
 
-import { ReadableStream } from "web-streams-node";
+import crypto from "node:crypto";
 
-import { Crypto } from "@peculiar/webcrypto";
-
-import btoa from "btoa";
-
-global.btoa = btoa;
-global.Headers = Headers;
-global.crypto = new Crypto();
+global.crypto = crypto;
 
 const encoder = new TextEncoder("utf-8");
 

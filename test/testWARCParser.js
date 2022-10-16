@@ -1,13 +1,12 @@
-/*eslint-env node */
-"use strict";
+import fs from "fs";
 
 import test from "ava";
 
-import { getReadableStream, getReader } from "./utils";
+import { getReadableStream, getReader } from "./utils/index.js";
 
-import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../main";
+import { StatusAndHeadersParser, AsyncIterReader, WARCParser, WARCSerializer } from "../index.js";
 
-import { concatChunks } from "../main";
+import { concatChunks } from "../index.js";
 
 const decoder = new TextDecoder("utf-8");
 
@@ -391,9 +390,7 @@ text\r\n\
 
 
 test("warc1.1 response and request, status checks", async t => {
-  const fs = require("fs");
-  const path = require("path");
-  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
+  const input = fs.readFileSync(new URL("./data/redirect.warc", import.meta.url), "utf-8");
 
   let parser = new WARCParser(getReader([input]));
   let response;
@@ -444,9 +441,7 @@ test("warc1.1 response and request, status checks", async t => {
 
 
 test("warc1.1 serialize records match", async t => {
-  const fs = require("fs");
-  const path = require("path");
-  const input = fs.readFileSync(path.join(__dirname, "data", "redirect.warc"), "utf-8");
+  const input = fs.readFileSync(new URL("./data/redirect.warc", import.meta.url), "utf-8");
 
   const serialized = [];
   let size = 0;
@@ -465,9 +460,7 @@ test("warc1.1 serialize records match", async t => {
 
 
 test("chunked warc read", async t => {
-  const fs = require("fs");
-  const path = require("path");
-  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
+  const input = fs.createReadStream(new URL("./data/example-iana.org-chunked.warc", import.meta.url));
 
   const parser = new WARCParser(input);
 
@@ -492,9 +485,7 @@ test("chunked warc read", async t => {
 }); 
 
 test("no await catch errors", async t => {
-  const fs = require("fs");
-  const path = require("path");
-  const input = fs.createReadStream(path.join(__dirname, "data", "example-iana.org-chunked.warc"));
+  const input = fs.createReadStream(new URL("./data/example-iana.org-chunked.warc", import.meta.url));
 
   const parser = new WARCParser(input);
 

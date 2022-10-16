@@ -6,7 +6,7 @@ import { terser } from "rollup-plugin-terser";
 import license from "rollup-plugin-license";
 
 export default {
-  input: "main.js",
+  input: "index.js",
   output: [
     {
       file: "dist/warcio.min.js",

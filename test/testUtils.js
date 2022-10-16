@@ -1,7 +1,7 @@
 import test from "ava";
-import "./utils/";
+import "./utils/index.js";
 
-import { jsonToQueryString, postToGetUrl, getSurt } from "../src/utils";
+import { jsonToQueryString, postToGetUrl, getSurt } from "../src/utils.js";
 
 async function toQuery(t, json, expected) {
   const actual = jsonToQueryString(json);

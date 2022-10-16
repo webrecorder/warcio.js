@@ -1,16 +1,15 @@
 {
   "name": "warcio",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "main": "index.js",
   "type": "module",
-  "module": "main.js",
   "license": "Apache-2.0",
   "author": "Webrecorder Software, Ilya Kreymer",
   "bin": {
     "warcio.js": "./cli.js"
   },
   "exports": {
-    ".": "./main.js"
+    ".": "./index.js"
   },
   "homepage": "https://github.com/webrecorder/warcio.js#readme",
   "repository": {
@@ -25,40 +24,30 @@
     "web archiving"
   ],
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=18.0.0"
   },
   "files": [
     "/src",
     "/dist",
     "index.js",
-    "main.js",
     "cli.js"
   ],
   "dependencies": {
-    "@peculiar/webcrypto": "^1.1.1",
-    "esm": "^3.2.25",
     "hi-base32": "^0.5.0",
-    "node-fetch": "^2.6.1",
     "pako": "^1.0.11",
     "uuid-random": "^1.3.0",
     "yargs": "^15.3.1"
   },
   "scripts": {
-    "test": "nyc --reporter=lcov --reporter=text ava",
+    "test": "c8 ava",
     "coverage": "codecov",
     "build": "PRODUCTION=1 rollup -c",
     "lint": "eslint ./src/ ./test/ *.js"
-  },
-  "esm": {
-    "cjs": true
   },
   "ava": {
     "concurrency": 1,
     "verbose": true,
     "serial": true,
-    "require": [
-      "esm"
-    ],
     "files": [
       "test/*.js"
     ]
@@ -66,15 +55,14 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.1.0",
     "@rollup/plugin-node-resolve": "^7.1.3",
-    "ava": "^3.13.0",
+    "ava": "^4.3.3",
     "btoa": "^1.2.1",
+    "c8": "^7.12.0",
     "codecov": "^3.7.1",
     "eslint": "^7.24.0",
-    "nyc": "^15.1.0",
     "rollup": "^2.6.1",
     "rollup-plugin-license": "^2.1.0",
     "rollup-plugin-terser": "^5.3.0",
-    "stream-buffers": "^3.0.2",
-    "web-streams-node": "^0.4.0"
+    "stream-buffers": "^3.0.2"
   }
 }

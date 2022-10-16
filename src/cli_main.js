@@ -1,5 +1,10 @@
-/*eslint-env node */
-import { Indexer, CDXIndexer } from "./indexer";
+import fs from "node:fs";
+import path from "node:path";
+import { stdout, stderr } from "node:process";
+
+import yargs from "yargs";
+
+import { Indexer, CDXIndexer } from "./indexer.js";
 
 const BUFF_SIZE = 1024 * 128;
 
@@ -8,8 +13,8 @@ const BUFF_SIZE = 1024 * 128;
 function main(args, out) {
   let promise = Promise.resolve(true);
 
-  require("yargs").
-    usage("$0 [command]").
+  
+  yargs.usage("$0 [command]").
 
   // Basic Indexer
     command("index <filename..>", "Index WARC(s)", (yargs) => {
@@ -25,7 +30,7 @@ function main(args, out) {
         });
     }, async (args) => {
     /* istanbul ignore next */
-      out = out || process.stdout;
+      out = out || stdout;
       promise = new Indexer(args, out).run(loadStreams(args.filename));
     }).
 
@@ -52,7 +57,7 @@ function main(args, out) {
         });
     }, async (args) => {
     /* istanbul ignore next */
-      out = out || process.stdout;
+      out = out || stdout;
       promise = new CDXIndexer(args, out).run(loadStreams(args.filename));
     }).
 
@@ -66,14 +71,9 @@ function main(args, out) {
 
 
 function loadStreams(filenames) {
-  global.Headers = require("node-fetch").Headers;
-
-  const path = require("path");
-  const fs = require("fs");
-
   return filenames.map((filename) => {
     if (!fs.lstatSync(filename).isFile()) {
-      process.stderr.write(`Skipping ${filename}, not a file\n`);
+      stderr.write(`Skipping ${filename}, not a file\n`);
       return {};
     }
 

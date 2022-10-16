@@ -1,20 +1,15 @@
-/*eslint-env node */
 
-// eslint-disable-next-line no-global-assign
-require = require("esm")(module);
-module.exports = {
-  ...require("./main.js")
-};
+export { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./src/readers.js";
 
-// ensure global Headers object is set for node
-/* istanbul ignore next */
-if (typeof process !== "undefined" && typeof global === "object") {
-  if (typeof(global.Headers) === "undefined") {
-    global.Headers = require("node-fetch").Headers;
-  }
-  if (typeof(global.Crypto) === "undefined") {
-    const { Crypto } = require("@peculiar/webcrypto");
-    global.crypto = new Crypto();
-  }
-}
+export { StatusAndHeadersParser, StatusAndHeaders } from "./src/statusandheaders.js";
+
+export { WARCParser } from "./src/warcparser.js";
+
+export { WARCSerializer } from "./src/warcserializer.js";
+
+export { WARCRecord } from "./src/warcrecord.js";
+
+export { Indexer, CDXIndexer } from "./src/indexer.js";
+
+export * from "./src/utils.js";
 

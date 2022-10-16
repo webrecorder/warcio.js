@@ -1,10 +1,10 @@
 import base32 from "hi-base32";
-import { Deflate } from "pako/lib/deflate";
+import { Deflate } from "pako/lib/deflate.js";
 
-import { BaseAsyncIterReader } from "./readers";
-import { CRLF, CRLFCRLF } from "./statusandheaders";
+import { BaseAsyncIterReader } from "./readers.js";
+import { CRLF, CRLFCRLF } from "./statusandheaders.js";
 
-import { concatChunks } from "./utils";
+import { concatChunks } from "./utils.js";
 
 
 const encoder = new TextEncoder();

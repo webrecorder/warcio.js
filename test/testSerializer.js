@@ -1,16 +1,10 @@
-/*eslint-env node */
-"use strict";
-
 import test from "ava";
-// eslint-disable-next-line no-unused-vars
-import fetch from "node-fetch";
 
-import "./utils";
+import "./utils/index.js";
 
-import { WARCRecord, WARCParser, WARCSerializer } from "../main";
+import { WARCRecord, WARCParser, WARCSerializer } from "../index.js";
 
-import { inflate } from "pako";
-import { Deflate } from "pako/lib/deflate";
+import { inflate } from "pako/lib/inflate.js";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder("utf-8");
@@ -364,39 +358,7 @@ Foo: Bar\r\n\
 
 
 test("create record, gzipped, streaming", async t => {
-  const { TransformStream } = require("web-streams-node");
-
-  class CompressionStream extends TransformStream
-  {
-    constructor(format) {
-      const deflater = new Deflate({gzip: format === "gzip"});
-      let last = null;
-
-      super({
-        transform(chunk, controller) {
-          if (last && last.length > 0) {
-            deflater.push(last);
-          }
-          last = chunk;
-
-          while (deflater.chunks.length) {
-            controller.enqueue(deflater.chunks.shift());
-          }
-        },
-
-        flush(controller) {
-          deflater.push(last, true);
-          controller.enqueue(deflater.result);
-        }
-      });
-    }
-  }
-
-  global.CompressionStream = CompressionStream;
-
   await createRecordGzipped(t);
-
-
 });
 
 
