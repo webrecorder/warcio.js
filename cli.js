@@ -1,3 +1,8 @@
-import { main } from "./src/cli_main.js";
+#!/usr/bin/env node
 
-main();
+(async () => {
+  const {main} = await import("./src/cli_main.js");
+
+  main();
+
+})();
