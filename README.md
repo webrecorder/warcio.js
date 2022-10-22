@@ -166,9 +166,9 @@ The raw WARC content is also available using the following methods:
 
 ## Node Usage
 
-`warcio.js` can also be used in Node. Since 0.6.0 release, warcio uses native ESM modules and requires Node 18+. (Use warcio < 0.6.0 to support node 12+).
+`warcio.js` can also be used in Node. Since 1.6.0 release, warcio uses native ESM modules and requires Node 18.x. (Use warcio.js < 1.6.0 to support node 12+).
 
-warcio.js uses a number of web platform features, including web streams API, that are now supported natively in Node 18.
+warcio.js uses a number of web platform features, including web streams API, that are now supported natively in Node 18.x.
 
 After installing the package, for example, with `yarn add warcio`, the above example could be run as follows:
 
