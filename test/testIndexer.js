@@ -1,12 +1,13 @@
 /*eslint-env node */
-"use strict";
+
+import fs from "fs";
 
 import test from "ava";
-import "./utils/";
+import "./utils/index.js";
 
-import { main } from "../src/cli_main";
+import { main } from "../src/cli_main.js";
 
-import { Indexer, CDXIndexer } from "../src/indexer";
+import { Indexer, CDXIndexer } from "../src/indexer.js";
 
 import { WritableStreamBuffer } from "stream-buffers";
 
@@ -131,14 +132,11 @@ test("skip dir", index,
 
 
 test("test custom CDXIndexer", async t => {
-  const fs = require("fs");
-  const path = require("path");
-
   const entries = [];
   const indexer = new CDXIndexer();
 
   const files = [{
-    reader: fs.createReadStream(path.join(__dirname, "data/example.warc.gz")),
+    reader: fs.createReadStream(new URL("./data/example.warc.gz", import.meta.url)),
     filename: "example.warc.gz"
   }];
 
@@ -153,14 +151,11 @@ test("test custom CDXIndexer", async t => {
 });
 
 test("test custom Indexer", async t => {
-  const fs = require("fs");
-  const path = require("path");
-
   const entries = [];
   const indexer = new Indexer({fields: "warc-type,warc-target-uri"});
 
   const files = [{
-    reader: fs.createReadStream(path.join(__dirname, "data/example.warc.gz")),
+    reader: fs.createReadStream(new URL("./data/example.warc.gz", import.meta.url)),
     filename: "example.warc.gz"
   }];
 

@@ -16,7 +16,8 @@ warcio.js is designed to read WARC files incrementally using [async iterators](h
 
 Browser Streams API [ReadableStream](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) is also supported.
 
-Gzip-compressed WARC records are automatically decompressed using [pako](https://github.com/nodeca/pako) library.
+Gzip-compressed WARC records are automatically decompressed using [pako](https://github.com/nodeca/pako) library, while gzip compression uses
+native Compression Streams where available.
 
 <details>
   <summary>This example can be used in the browser to parse a streaming WARC file:</summary>
@@ -165,18 +166,19 @@ The raw WARC content is also available using the following methods:
 
 ## Node Usage
 
-`warcio.js` can also be used in Node, though it does not use the native zlib (due to a limitation with indexing multi-member gzip files).
+`warcio.js` can also be used in Node. Since 0.6.0 release, warcio uses native ESM modules and requires Node 18+. (Use warcio < 0.6.0 to support node 12+).
 
-After installing the package, for example, with `yarn add warcio`, the above example could be run as follows in Node:
+warcio.js uses a number of web platform features, including web streams API, that are now supported natively in Node 18.
+
+After installing the package, for example, with `yarn add warcio`, the above example could be run as follows:
 
 
 <details>
   <summary>warcio in Node:</summary>
 
   ```javascript
-  const { WARCParser } = require('warcio');
-  const fs = require('fs');
-
+  import { WARCParser } from 'warcio';
+  import fs from 'fs';
 
   async function readWARC(filename) {
     const nodeStream = fs.createReadStream(filename);
@@ -348,7 +350,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
   <summary>An example of generating WARCs in Node:</summary>
 
   ```javascript
-    const { WARCRecord, WARCSerializer } = require("warcio");
+    import { WARCRecord, WARCSerializer } from 'warcio';
 
     async function main() {
 

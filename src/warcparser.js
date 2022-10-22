@@ -1,6 +1,6 @@
-import { StatusAndHeadersParser } from "./statusandheaders";
-import { WARCRecord } from "./warcrecord";
-import { AsyncIterReader, LimitReader } from "./readers";
+import { StatusAndHeadersParser } from "./statusandheaders.js";
+import { WARCRecord } from "./warcrecord.js";
+import { AsyncIterReader, LimitReader } from "./readers.js";
 
 
 const decoder = new TextDecoder();

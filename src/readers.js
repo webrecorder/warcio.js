@@ -1,8 +1,8 @@
 /*eslint no-constant-condition: ["error", { "checkLoops": false }]*/
 
-import { Inflate } from "pako/lib/inflate";
+import { Inflate } from "pako/lib/inflate.js";
 
-import { splitChunk, concatChunks } from "./utils";
+import { splitChunk, concatChunks } from "./utils.js";
 
 const decoder = new TextDecoder("utf-8");
 

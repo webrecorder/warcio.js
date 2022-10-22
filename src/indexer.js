@@ -1,8 +1,8 @@
-import { WARCParser } from "./warcparser";
+import { WARCParser } from "./warcparser.js";
 
 const DEFAULT_FIELDS = "offset,warc-type,warc-target-uri".split(",");
 
-import { postToGetUrl, getSurt } from "./utils";
+import { postToGetUrl, getSurt } from "./utils.js";
 
 
 // ===========================================================================

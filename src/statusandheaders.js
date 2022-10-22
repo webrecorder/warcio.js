@@ -1,4 +1,4 @@
-import { concatChunks, splitChunk } from "./utils";
+import { concatChunks, splitChunk } from "./utils.js";
 
 
 const CRLF = new Uint8Array([13, 10]);
