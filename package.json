@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "main": "index.js",
   "type": "module",
   "license": "Apache-2.0",
@@ -23,9 +23,6 @@
     "WARC",
     "web archiving"
   ],
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "files": [
     "/src",
     "/dist",
