@@ -136,6 +136,7 @@ export class AsyncIterReader<
     if (streamOrIter instanceof ReadableStream) {
       source = AsyncIterReader.fromReadable(streamOrIter.getReader());
     } else if (
+      typeof streamOrIter === "object" &&
       "read" in streamOrIter &&
       typeof streamOrIter.read === "function"
     ) {
