@@ -1,0 +1,68 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Jest: debug text-selected test name",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/node_modules/.bin/jest",
+        "--runInBand",
+        "--testTimeout=3600000", // 1 hour timeout
+        "--runTestsByPath",
+        "${file}",
+        "-t",
+        "${selectedText}"
+      ],
+      "pauseForSourceMap": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Jest: debug specific test in current file",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/node_modules/.bin/jest",
+        "--runInBand",
+        "--testTimeout=3600000", // 1 hour timeout
+        "--runTestsByPath",
+        "${file}",
+        "-t",
+        "${input:debug specific test}"
+      ],
+      "pauseForSourceMap": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Jest: debug specific test",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/node_modules/.bin/jest",
+        "--runInBand",
+        "--testTimeout=3600000", // 1 hour timeout
+        "-t",
+        "${input:debug specific test}"
+      ],
+      "pauseForSourceMap": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "debug specific test",
+      "type": "promptString",
+      "description": "test name pattern to debug",
+      "default": ""
+    }
+  ]
+}
