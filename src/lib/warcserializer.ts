@@ -2,7 +2,7 @@ import base32 from "hi-base32";
 import { Deflate } from "pako";
 
 import { WARCRecord } from "./warcrecord";
-import { BaseAsyncIterReader, LimitReader } from "./readers";
+import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 import { CompressionStream } from "stream/web";
 import { concatChunks } from "./utils";
@@ -18,16 +18,8 @@ type WARCSerializerOpts = {
     base32?: boolean;
   };
 };
-export class WARCSerializer<
-  T extends
-    | AsyncGenerator<Uint8Array, void, unknown>
-    | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
-> extends BaseAsyncIterReader {
-  static async serialize<
-    T extends
-      | AsyncGenerator<Uint8Array, void, unknown>
-      | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
-  >(record: WARCRecord<T>, opts?: WARCSerializerOpts) {
+export class WARCSerializer extends BaseAsyncIterReader {
+  static async serialize(record: WARCRecord, opts?: WARCSerializerOpts) {
     const s = new WARCSerializer(record, opts);
     return await s.readFully();
   }
@@ -37,13 +29,13 @@ export class WARCSerializer<
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   }
 
-  record: WARCRecord<T>;
+  record: WARCRecord;
   gzip = false;
   digestAlgo: AlgorithmIdentifier = "";
   digestAlgoPrefix = "";
   digestBase32 = false;
 
-  constructor(record: WARCRecord<T>, opts: WARCSerializerOpts = {}) {
+  constructor(record: WARCRecord, opts: WARCSerializerOpts = {}) {
     super();
     this.record = record;
     this.gzip = Boolean(opts.gzip);

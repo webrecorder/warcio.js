@@ -99,7 +99,7 @@ export class StatusAndHeaders {
 // ===========================================================================
 export class StatusAndHeadersParser {
   async parse(
-    reader: AsyncIterReader<any>,
+    reader: AsyncIterReader,
     {
       headersClass,
       firstLine,
@@ -232,7 +232,7 @@ export async function indexOfDoubleCRLF(
 }
 
 // ===========================================================================
-export async function readToDoubleCRLF(reader: AsyncIterReader<any>) {
+export async function readToDoubleCRLF(reader: AsyncIterReader) {
   const chunks = [];
   let size = 0;
 

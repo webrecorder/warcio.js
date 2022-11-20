@@ -1,5 +1,4 @@
 import { Request } from "./types";
-import type { ReadStream } from "fs";
 
 export function binaryToString(data: Uint8Array | string) {
   let string;

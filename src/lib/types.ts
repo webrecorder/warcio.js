@@ -1,11 +1,11 @@
-import { ReadStream } from "fs";
+export type Source =
+  | { read: Function }
+  | AsyncIterable<Uint8Array>
+  | Iterable<Uint8Array>;
 
 export type StreamResult = {
   filename: string;
-  reader:
-    | ReadStream
-    | ReadableStream<Uint8Array>
-    | AsyncGenerator<Uint8Array, void, unknown>;
+  reader: AsyncIterable<Uint8Array>;
 };
 export type StreamResults = StreamResult[];
 

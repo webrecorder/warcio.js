@@ -1,5 +1,5 @@
 import { inflate, Deflate } from "pako";
-import { WARCRecord, WARCParser, WARCSerializer, LimitReader } from "../lib";
+import { WARCRecord, WARCParser, WARCSerializer } from "../lib";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();

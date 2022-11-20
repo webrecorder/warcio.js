@@ -50,7 +50,7 @@ abstract class BaseIndexer {
     }
   }
 
-  async *iterRecords(parser: WARCParser<any>, filename: string) {
+  async *iterRecords(parser: WARCParser, filename: string) {
     for await (const record of parser) {
       await record.skipFully();
       const result = this.indexRecord(record, parser, filename);
@@ -60,11 +60,11 @@ abstract class BaseIndexer {
     }
   }
 
-  filterRecord?(record: WARCRecord<LimitReader>): boolean;
+  filterRecord?(record: WARCRecord): boolean;
 
   indexRecord(
-    record: WARCRecord<LimitReader>,
-    parser: WARCParser<any>,
+    record: WARCRecord,
+    parser: WARCParser,
     filename: string
   ): Record<string, any> | null {
     if (this.filterRecord && !this.filterRecord(record)) {
@@ -89,18 +89,14 @@ abstract class BaseIndexer {
     return result;
   }
 
-  setField(
-    field: string,
-    record: WARCRecord<LimitReader>,
-    result: Record<string, any>
-  ) {
+  setField(field: string, record: WARCRecord, result: Record<string, any>) {
     const value = this.getField(field, record);
     if (value != null) {
       result[field] = value;
     }
   }
 
-  getField(field: string, record: WARCRecord<LimitReader>) {
+  getField(field: string, record: WARCRecord) {
     if (field === "http:status") {
       if (
         record.httpHeaders &&
@@ -151,7 +147,7 @@ const DEFAULT_LEGACY_CDX_FIELDS =
 export class CDXIndexer extends Indexer {
   includeAll: boolean;
   noSurt: boolean;
-  _lastRecord: WARCRecord<LimitReader> | null;
+  _lastRecord: WARCRecord | null;
 
   constructor(
     opts?: Partial<CdxIndexCommandArgs>,
@@ -180,7 +176,7 @@ export class CDXIndexer extends Indexer {
     }
   }
 
-  override async *iterRecords(parser: WARCParser<any>, filename: string) {
+  override async *iterRecords(parser: WARCParser, filename: string) {
     this._lastRecord = null;
 
     for await (const record of parser) {
@@ -197,7 +193,7 @@ export class CDXIndexer extends Indexer {
     }
   }
 
-  override filterRecord(record: WARCRecord<LimitReader>) {
+  override filterRecord(record: WARCRecord) {
     if (this.includeAll) {
       return true;
     }
@@ -211,8 +207,8 @@ export class CDXIndexer extends Indexer {
   }
 
   override indexRecord(
-    record: WARCRecord<LimitReader> | null,
-    parser: WARCParser<any>,
+    record: WARCRecord | null,
+    parser: WARCParser,
     filename: string
   ) {
     if (this.includeAll) {
@@ -255,9 +251,9 @@ export class CDXIndexer extends Indexer {
   }
 
   indexRecordPair(
-    record: WARCRecord<LimitReader>,
-    reqRecord: WARCRecord<LimitReader> | null,
-    parser: WARCParser<any>,
+    record: WARCRecord,
+    reqRecord: WARCRecord | null,
+    parser: WARCParser,
     filename: string
   ) {
     let method;
@@ -324,7 +320,7 @@ export class CDXIndexer extends Indexer {
     return value.join(" ") + "\n";
   }
 
-  override getField(field: string, record: WARCRecord<LimitReader>) {
+  override getField(field: string, record: WARCRecord) {
     let value = null;
 
     switch (field) {

@@ -19,4 +19,4 @@ export {
   concatChunks,
 } from "./utils";
 
-export type { StreamResults } from "./types";
+export type { Source, StreamResults } from "./types";

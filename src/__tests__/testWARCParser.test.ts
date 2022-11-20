@@ -402,7 +402,8 @@ text\r\n\
   expect(record.getResponseInfo()).toBe(null);
 
   const statusline = "HTTP/1.0 200 OK\r\n";
-  expect(await record.reader.readline()).toBe(statusline);
+  expect(record.reader).toBeInstanceOf(LimitReader);
+  expect(await (record.reader as LimitReader).readline()).toBe(statusline);
 
   for await (const chunk of record) {
     expect(chunk.length).toBe(268 - statusline.length);
@@ -430,7 +431,7 @@ test("warc1.1 response and request, status checks", async () => {
   );
 
   let parser = new WARCParser(getReader([input]));
-  let response: WARCRecord<LimitReader> | null = null;
+  let response: WARCRecord | null = null;
 
   for await (response of parser) {
     break;
@@ -532,7 +533,8 @@ test("chunked warc read", async () => {
 
   expect(text.split("\n")[0]).toBe("<html>");
 
-  await expect(async () => await record.reader.readFully()).rejects.toThrow(
+  const busyRecord = record as any as { reader: LimitReader };
+  await expect(async () => await busyRecord.reader.readFully()).rejects.toThrow(
     "WARC Record decoding already started, but requesting raw payload"
   );
 
@@ -546,7 +548,7 @@ test("no await catch errors", async () => {
 
   const parser = new WARCParser(input);
 
-  async function* readLines(record: WARCRecord<any>) {
+  async function* readLines(record: WARCRecord) {
     for await (const chunk of record) {
       yield chunk;
     }

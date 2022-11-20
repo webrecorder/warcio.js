@@ -1,7 +1,7 @@
-import { ReadStream } from "fs";
 import { StatusAndHeadersParser, StatusAndHeaders } from "./statusandheaders";
 import { WARCRecord } from "./warcrecord";
-import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
+import { AsyncIterReader, LimitReader } from "./readers";
+import { Source } from "./types";
 
 const decoder = new TextDecoder();
 const EMPTY = new Uint8Array([]);
@@ -12,36 +12,12 @@ type WarcParserOpts = {
 };
 
 // ===========================================================================
-export class WARCParser<
-  T extends
-    | { read: Function }
-    | ReadableStream<Uint8Array>
-    | AsyncGenerator<Uint8Array, void, unknown>
-    | BaseAsyncIterReader
-    | Uint8Array[]
-    | Generator<Uint8Array, void, unknown>
-> {
-  static parse<
-    T extends
-      | { read: Function }
-      | ReadableStream<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>
-      | BaseAsyncIterReader
-      | Uint8Array[]
-      | Generator<Uint8Array, void, unknown>
-  >(source: T, options?: WarcParserOpts) {
+export class WARCParser {
+  static parse(source: Source, options?: WarcParserOpts) {
     return new WARCParser(source, options).parse();
   }
 
-  static iterRecords<
-    T extends
-      | { read: Function }
-      | ReadableStream<Uint8Array>
-      | AsyncGenerator<Uint8Array, void, unknown>
-      | BaseAsyncIterReader
-      | Uint8Array[]
-      | Generator<Uint8Array, void, unknown>
-  >(source: T, options?: WarcParserOpts) {
+  static iterRecords(source: Source, options?: WarcParserOpts) {
     return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
@@ -53,12 +29,12 @@ export class WARCParser<
 
   _atRecordBoundary: boolean;
 
-  _reader: AsyncIterReader<any>;
+  _reader: AsyncIterReader;
 
-  _record: WARCRecord<LimitReader> | null;
+  _record: WARCRecord | null;
 
   constructor(
-    source: T,
+    source: Source,
     { keepHeadersCase = false, parseHttp = true }: WarcParserOpts = {}
   ) {
     this._offset = 0;
@@ -196,7 +172,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
   }
 
   async _addHttpHeaders(
-    record: WARCRecord<LimitReader>,
+    record: WARCRecord,
     headersParser: StatusAndHeadersParser
   ) {
     const httpHeaders = await headersParser.parse(this._reader, {
@@ -205,7 +181,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
     record.httpHeaders = httpHeaders;
 
     const headersLen = this._reader.getReadOffset() - this._warcHeadersLength;
-    if (record.reader.setLimitSkip) {
+    if (record.reader instanceof LimitReader) {
       record.reader.setLimitSkip(record.warcContentLength - headersLen);
     }
   }

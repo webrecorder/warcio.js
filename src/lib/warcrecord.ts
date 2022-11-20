@@ -1,6 +1,7 @@
 import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
 import { StatusAndHeaders } from "./statusandheaders";
 import uuid from "uuid-random";
+import { Source } from "./types";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -45,11 +46,7 @@ type WARCRecordOpts = {
   refersToUrl?: string;
   refersToDate?: string;
 };
-export class WARCRecord<
-  T extends
-    | AsyncGenerator<Uint8Array, void, unknown>
-    | BaseAsyncIterReader = AsyncGenerator<Uint8Array, void, unknown>
-> extends BaseAsyncIterReader {
+export class WARCRecord extends BaseAsyncIterReader {
   static create(
     {
       url,
@@ -64,7 +61,7 @@ export class WARCRecord<
       refersToUrl = undefined,
       refersToDate = undefined,
     }: WARCRecordOpts = {},
-    reader?: AsyncGenerator<Uint8Array, void, unknown>
+    reader?: AsyncIterable<Uint8Array>
   ) {
     function checkDate(d: string) {
       const date = d;
@@ -162,7 +159,7 @@ export class WARCRecord<
   }
 
   warcHeaders: StatusAndHeaders;
-  _reader: T;
+  _reader: AsyncIterable<Uint8Array>;
   _contentReader: BaseAsyncIterReader | null;
   payload: Uint8Array | null;
   httpHeaders: StatusAndHeaders | null;
@@ -180,7 +177,7 @@ export class WARCRecord<
     reader,
   }: {
     warcHeaders: StatusAndHeaders;
-    reader: T;
+    reader: AsyncIterable<Uint8Array>;
   }) {
     super();
 
@@ -278,12 +275,7 @@ export class WARCRecord<
     return this._contentReader;
   }
 
-  _createDecodingReader(
-    source:
-      | AsyncGenerator<Uint8Array, void, unknown>
-      | BaseAsyncIterReader
-      | Uint8Array[]
-  ) {
+  _createDecodingReader(source: Source) {
     // only called if this.httpHeaders !== null
     if (!this.httpHeaders) {
       throw new Error(
@@ -313,11 +305,11 @@ export class WARCRecord<
         "Record already consumed. Perhaps a promise was not awaited?"
       );
     }
-    if ("readlineRaw" in this.contentReader) {
+    if (this.contentReader instanceof BaseAsyncIterReader) {
       return this.contentReader.readlineRaw(maxLength);
     }
     throw new Error(
-      "WARCRecord cannot call readlineRaw on this.contentReader if it does not have the function"
+      "WARCRecord cannot call readlineRaw on this.contentReader if it does not extend BaseAsyncIterReader"
     );
   }
 

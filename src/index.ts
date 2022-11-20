@@ -17,4 +17,4 @@ export {
   concatChunks,
 } from "./lib";
 
-export type { StreamResults } from "./lib";
+export type { Source, StreamResults } from "./lib";
