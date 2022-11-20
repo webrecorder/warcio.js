@@ -302,7 +302,7 @@ export class WARCRecord extends BaseAsyncIterReader {
   async readlineRaw(maxLength?: number) {
     if (this.consumed) {
       throw new Error(
-        "Record already consumed. Perhaps a promise was not awaited?"
+        "Record already consumed.. Perhaps a promise was not awaited?"
       );
     }
     if (this.contentReader instanceof BaseAsyncIterReader) {
