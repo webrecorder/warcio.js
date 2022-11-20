@@ -354,11 +354,7 @@ export class WARCRecord extends BaseAsyncIterReader {
   }
 
   get warcTargetURI() {
-    const uri = this.warcHeaders.headers.get("WARC-Target-URI");
-    if (!uri) {
-      throw new Error("WARCRecord headers do not contain WARC-Target-URI");
-    }
-    return uri;
+    return this.warcHeaders.headers.get("WARC-Target-URI");
   }
 
   get warcDate() {

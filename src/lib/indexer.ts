@@ -2,7 +2,6 @@ import { WritableStreamBuffer } from "stream-buffers";
 
 import { WARCParser } from "./warcparser";
 import { WARCRecord } from "./warcrecord";
-import { LimitReader } from "./readers";
 import { postToGetUrl, getSurt } from "./utils";
 import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
 import { StreamResults, Request } from "./types";
@@ -91,7 +90,7 @@ abstract class BaseIndexer {
 
   setField(field: string, record: WARCRecord, result: Record<string, any>) {
     const value = this.getField(field, record);
-    if (value != null) {
+    if (value !== null) {
       result[field] = value;
     }
   }
@@ -114,7 +113,7 @@ abstract class BaseIndexer {
       return null;
     }
 
-    return record.warcHeaders.headers.get(field);
+    return record.warcHeaders.headers.get(field) || null;
   }
 }
 
@@ -258,7 +257,7 @@ export class CDXIndexer extends Indexer {
   ) {
     let method;
     let requestBody;
-    let url = record.warcTargetURI;
+    let url = record.warcTargetURI || "";
 
     if (
       reqRecord &&
@@ -325,8 +324,8 @@ export class CDXIndexer extends Indexer {
 
     switch (field) {
       case "urlkey":
-        value = record._urlkey ? record._urlkey : record.warcTargetURI;
-        return this.noSurt ? value : getSurt(value);
+        value = record._urlkey || record.warcTargetURI || null;
+        return this.noSurt || value === null ? value : getSurt(value);
 
       case "timestamp":
         value = record.warcDate ?? "";
