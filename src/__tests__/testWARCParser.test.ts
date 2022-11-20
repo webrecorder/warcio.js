@@ -515,9 +515,8 @@ test("chunked warc read", async () => {
 
   const parser = new WARCParser(input);
 
-  // FIXME: remove debug from parse
-  await parser.parse("chunked warc read 1");
-  const record = (await parser.parse("chunked warc read 1"))!;
+  await parser.parse();
+  const record = (await parser.parse())!;
 
   expect(record).not.toBeNull();
   expect(record.warcType).toBe("response");

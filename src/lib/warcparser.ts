@@ -107,15 +107,12 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
     );
   }
 
-  async parse(debug = "") {
+  async parse() {
     const firstLine = await this.readToNextRecord();
 
     this._offset = this._reader.getRawOffset() - firstLine.length;
 
     const headersParser = new StatusAndHeadersParser();
-    if (debug) {
-      console.log({ debug, firstLine });
-    }
     const warcHeaders = await headersParser.parse(this._reader, {
       firstLine,
       headersClass: this._headersClass,
