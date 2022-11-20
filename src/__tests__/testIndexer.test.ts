@@ -96,6 +96,9 @@ com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMS
   });
 
   test("cdx11 warc bad lengths", async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementationOnce(() => {});
     await index(
       [
         "cdx-index",
@@ -107,6 +110,9 @@ com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMS
 com,example)/ 20170306040206 http://example.com/ text/html 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 1364 1197 example-bad-length.warc
 com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK - - 944 3370 example-bad-length.warc
 `
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Content-Length Too Small: Record not followed by newline, Remainder Length: 1, Offset: 2561"
     );
   });
 
