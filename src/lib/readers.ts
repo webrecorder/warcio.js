@@ -262,10 +262,10 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   _push(value: Uint8Array) {
-    // only called if this.compressed === true
+    // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _push when this.compressed === true"
+        "AsyncIterReader cannot call _push when this.compressed is null"
       );
     }
     this.lastValue = value;
@@ -292,10 +292,10 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   _getNextChunk(original?: Uint8Array) {
-    // only called if this.compressed === true
+    // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _getNextChunk when this.compressed === true"
+        "AsyncIterReader cannot call _getNextChunk when this.compressed is null"
       );
     }
     while (true) {
