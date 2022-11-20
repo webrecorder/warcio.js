@@ -19,24 +19,24 @@ export function main(
     .usage("$0 [command]")
     // Basic Indexer
     .command({
-      command: "index <filename..>",
+      command: "index <filenames..>",
       describe: "Index WARC(s)",
       builder: (yargs) => {
         return indexCommandArgs;
       },
       handler: async (args) => {
-        promise = new Indexer(args, out).run(loadStreams([args.filename]));
+        promise = new Indexer(args, out).run(loadStreams(args.filenames));
       },
     })
     // CDX Indexer
     .command({
-      command: "cdx-index <filename..>",
+      command: "cdx-index <filenames..>",
       describe: "CDX(J) Index of WARC(s)",
       builder: (yargs) => {
         return cdxIndexCommandArgs;
       },
       handler: async (args) => {
-        promise = new CDXIndexer(args, out).run(loadStreams([args.filename]));
+        promise = new CDXIndexer(args, out).run(loadStreams(args.filenames));
       },
     })
     .demandCommand(1, "Please specify a command")

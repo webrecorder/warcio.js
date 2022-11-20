@@ -1,9 +1,10 @@
 import yargs from "yargs";
 
 export const indexCommandArgs = yargs
-  .positional("filename", {
+  .positional("filenames", {
     describe: "WARC file(s) to index",
     type: "string",
+    array: true,
     demandOption: "true",
   })
   .option("f", {
@@ -15,9 +16,10 @@ export const indexCommandArgs = yargs
 export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
 
 export const cdxIndexCommandArgs = yargs
-  .positional("filename", {
+  .positional("filenames", {
     describe: "WARC file(s) to index",
     type: "string",
+    array: true,
     demandOption: "true",
   })
   .option("a", {
