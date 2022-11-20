@@ -315,7 +315,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
   async contentText() {
     const payload = await this.readFully(true);
-    return decoder.decode(payload.buffer);
+    return decoder.decode(payload);
   }
 
   async *[Symbol.asyncIterator]() {
