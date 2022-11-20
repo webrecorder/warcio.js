@@ -117,16 +117,16 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     this.inflator = compressed ? new NoConcatInflator(this.opts, this) : null;
 
     let source: AsyncIterable<Uint8Array>;
-    if (streamOrIter instanceof ReadableStream) {
-      source = AsyncIterReader.fromReadable(streamOrIter.getReader());
+    if (isAsyncIterable(streamOrIter)) {
+      source = streamOrIter;
     } else if (
       typeof streamOrIter === "object" &&
       "read" in streamOrIter &&
       typeof streamOrIter.read === "function"
     ) {
       source = AsyncIterReader.fromReadable(streamOrIter);
-    } else if (isAsyncIterable(streamOrIter)) {
-      source = streamOrIter;
+    } else if (streamOrIter instanceof ReadableStream) {
+      source = AsyncIterReader.fromReadable(streamOrIter.getReader());
     } else if (isIterable(streamOrIter)) {
       source = AsyncIterReader.fromIter(streamOrIter);
     } else {
