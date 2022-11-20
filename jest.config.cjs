@@ -7,4 +7,8 @@ module.exports = {
     "jest-expect-message",
     path.join(__dirname, "src/polyfills.cjs"),
   ],
+  testPathIgnorePatterns: [
+    'data',
+    'utils',
+  ]
 };
