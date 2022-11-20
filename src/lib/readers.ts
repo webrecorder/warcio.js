@@ -58,9 +58,7 @@ export abstract class BaseAsyncIterReader {
   }
 
   async readFully(): Promise<Uint8Array> {
-    return (
-      await BaseAsyncIterReader.readFully(this[Symbol.asyncIterator]())
-    )[1];
+    return (await BaseAsyncIterReader.readFully(this))[1];
   }
 
   abstract readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
@@ -134,7 +132,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     }
 
     if (dechunk) {
-      this._sourceIter = this.dechunk(source[Symbol.asyncIterator]());
+      this._sourceIter = this.dechunk(source);
     } else {
       this._sourceIter = source[Symbol.asyncIterator]();
     }
