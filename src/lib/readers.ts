@@ -158,7 +158,9 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     source: AsyncIterable<Uint8Array>
   ): AsyncIterator<Uint8Array | null> {
     const reader =
-      source instanceof AsyncIterReader ? source : new AsyncIterReader(source);
+      source instanceof AsyncIterReader
+        ? source
+        : new AsyncIterReader(source, null);
 
     let size = -1;
     let newSize = -1;
