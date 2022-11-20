@@ -21,7 +21,7 @@ abstract class BaseIndexer {
   ) {
     this.opts = opts;
     this.out = out;
-    this.fields = opts && opts.f ? opts.f.split(",") : DEFAULT_FIELDS;
+    this.fields = opts && opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
 
@@ -154,7 +154,7 @@ export class CDXIndexer extends Indexer {
     out?: WritableStreamBuffer | NodeJS.WriteStream
   ) {
     super(opts as unknown as IndexCommandArgs, out);
-    this.includeAll = Boolean(opts?.a);
+    this.includeAll = Boolean(opts?.all);
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
     this.noSurt = Boolean(opts?.noSurt);

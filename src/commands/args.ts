@@ -7,8 +7,8 @@ export const indexCommandArgs = yargs
     array: true,
     demandOption: "true",
   })
-  .option("f", {
-    alias: "fields",
+  .option("fields", {
+    alias: "f",
     describe: "fields to include in index",
     type: "string",
   });
@@ -22,8 +22,8 @@ export const cdxIndexCommandArgs = yargs
     array: true,
     demandOption: "true",
   })
-  .option("a", {
-    alias: "all",
+  .option("all", {
+    alias: "a",
     describe: "index all WARC records",
     type: "boolean",
   })
