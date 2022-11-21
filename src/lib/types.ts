@@ -1,5 +1,8 @@
 export type Source =
+  // ReadableStreamReader
   | { read: Function }
+  // ReadableStream
+  | { getReader: (...args: any) => { read: Function } }
   | AsyncIterable<Uint8Array>
   | Iterable<Uint8Array>;
 
