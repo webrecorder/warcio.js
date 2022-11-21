@@ -108,6 +108,7 @@ async function _readDecomp(
 
   // try parsing each chunk individually
   if (chunks.length > 1) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length already checked
     const first = offsets[0]!;
     const newOffsets = offsets.slice(1).map((offset) => offset - first);
     await readDecomp(chunks.slice(1), newOffsets, splitSize);
@@ -396,7 +397,7 @@ Next`
     expect(await res2.readline()).toBe("test\n");
     expect(await res2.readline()).toBe("data\n");
 
-    // @ts-expect-error
+    // @ts-expect-error test invalid stream source
     expect(() => new AsyncIterReader(123)).toThrow({
       message: "Invalid Stream Source",
     });

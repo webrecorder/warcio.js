@@ -15,7 +15,7 @@ export function binaryToString(data: Uint8Array | string) {
   } else {
     string = "";
   }
-  return "__wb_post_data=" + btoa(string);
+  return "__wb_post_data=" + Buffer.from(string, "latin1").toString("base64");
 }
 
 export function rxEscape(string: string) {
@@ -57,7 +57,7 @@ export function getSurt(url: string) {
 }
 
 export function postToGetUrl(request: Request) {
-  let { method, headers, postData } = request;
+  const { method, headers, postData } = request;
 
   if (method === "GET") {
     return false;
@@ -91,7 +91,7 @@ export function postToGetUrl(request: Request) {
       }
       break;
 
-    case "multipart/form-data":
+    case "multipart/form-data": {
       const content_type = headers.get("content-type");
       if (!content_type) {
         throw new Error(
@@ -100,6 +100,7 @@ export function postToGetUrl(request: Request) {
       }
       query = mfdToQueryString(decodeIfNeeded(postData), content_type);
       break;
+    }
 
     default:
       query = binaryToString(postData);
@@ -125,6 +126,7 @@ export function appendRequestQuery(url: string, query: string, method: string) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
   if (typeof json === "string") {
     try {
@@ -179,9 +181,10 @@ export function mfdToQueryParams(
 
     const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
 
-    for (let i = 0; i < parts.length; i++) {
-      const m = parts[i]!.trim().match(/name="([^"]+)"\r\n\r\n(.*)/im);
+    for (const part of parts) {
+      const m = part.trim().match(/name="([^"]+)"\r\n\r\n(.*)/im);
       if (m) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- match checked
         params.set(m[1]!, m[2]!);
       }
     }
@@ -192,6 +195,7 @@ export function mfdToQueryParams(
   return params;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function jsonToQueryString(json: any, ignoreInvalid = true) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
 }

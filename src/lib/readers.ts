@@ -1,5 +1,5 @@
 import { Inflate, InflateOptions, ReturnCodes } from "pako";
-import { Source } from "./types";
+import { Source, SourceReader } from "./types";
 import { splitChunk, concatChunks } from "./utils";
 
 const decoder = new TextDecoder("utf-8");
@@ -63,12 +63,12 @@ export abstract class BaseAsyncIterReader {
 
   abstract readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
 
-  async readline(maxLength: number = 0) {
+  async readline(maxLength = 0) {
     const lineBuff = await this.readlineRaw(maxLength);
     return lineBuff ? decoder.decode(lineBuff) : "";
   }
 
-  async *iterLines(maxLength: number = 0) {
+  async *iterLines(maxLength = 0) {
     let line = null;
 
     while ((line = await this.readline(maxLength))) {
@@ -81,9 +81,11 @@ type AsyncIterReaderOpts = {
   raw: boolean;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- type guard
 function isIterable(input: any): input is Iterable<Uint8Array> {
   return input && Symbol.iterator in Object(input);
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- type guard
 function isAsyncIterable(input: any): input is AsyncIterable<Uint8Array> {
   return input && Symbol.asyncIterator in Object(input);
 }
@@ -163,7 +165,6 @@ export class AsyncIterReader extends BaseAsyncIterReader {
         : new AsyncIterReader(source, null);
 
     let size = -1;
-    let newSize = -1;
     let first = true;
 
     while (size != 0) {
@@ -181,7 +182,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
           break;
         }
       } else {
-        [newSize, chunk] = await reader.readSize(size);
+        chunk = (await reader.readSize(size))[1];
         if (chunk.length != size) {
           if (!first) {
             this.errored = true;
@@ -298,6 +299,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
         "AsyncIterReader cannot call _getNextChunk when this.compressed is null"
       );
     }
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (this.inflator.chunks.length > 0) {
         this.numChunks++;
@@ -426,13 +428,14 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   getRawLength(prevOffset: number): number {
-    return this.compressed
-      ? // @ts-expect-error strm is not implemented in typescript types
-        this.inflator.strm.total_in
-      : this._readOffset - prevOffset;
+    if (this.compressed) {
+      // @ts-expect-error strm is not implemented in typescript types
+      return this.inflator.strm.total_in;
+    }
+    return this._readOffset - prevOffset;
   }
 
-  static fromReadable<Readable extends { read: Function }>(source: Readable) {
+  static fromReadable<Readable extends SourceReader>(source: Readable) {
     const iterable = {
       async *[Symbol.asyncIterator]() {
         let res = null;

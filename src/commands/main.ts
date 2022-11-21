@@ -22,7 +22,7 @@ export function main(
     .command({
       command: "index <filenames..>",
       describe: "Index WARC(s)",
-      builder: (yargs) => {
+      builder: () => {
         return indexCommandArgs;
       },
       handler: async (args) => {
@@ -33,7 +33,7 @@ export function main(
     .command({
       command: "cdx-index <filenames..>",
       describe: "CDX(J) Index of WARC(s)",
-      builder: (yargs) => {
+      builder: () => {
         return cdxIndexCommandArgs;
       },
       handler: async (args) => {

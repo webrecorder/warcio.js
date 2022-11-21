@@ -83,6 +83,7 @@ test("StatusAndHeaders test empty", async () => {
 
 test("Load WARC Records", async () => {
   const input =
+    // eslint-disable-next-line quotes -- inner double quote
     '\
 WARC/1.0\r\n\
 WARC-Type: warcinfo\r\n\
@@ -135,12 +136,12 @@ text\r\n\
 \r\n\
 ';
 
-  let reader = new AsyncIterReader(getReader([input]));
+  const reader = new AsyncIterReader(getReader([input]));
 
   let parser = new WARCParser(reader);
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record0 = (await parser.parse())!;
-
   expect(record0).not.toBeNull();
   expect(record0.warcType).toBe("warcinfo");
 
@@ -153,6 +154,7 @@ text\r\n\
   }
 
   expect(warcinfo).toBe(
+    // eslint-disable-next-line quotes -- inner double quote
     '\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
@@ -160,16 +162,17 @@ json-metadata: {"foo": "bar"}\r\n\
 '
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
-
   expect(record).not.toBeNull();
   expect(record.warcTargetURI, "http://example.com/");
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record2 = (await parser.parse())!;
-
   expect(record2).not.toBeNull();
+
   expect(decoder.decode(await record2.readFully())).toBe("more\ntext");
 
   expect(await parser.parse()).toBeNull();
@@ -180,7 +183,7 @@ json-metadata: {"foo": "bar"}\r\n\
   // iterate should return null
   let count = 0;
 
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for await (const chunk of record) {
     count++;
   }
@@ -189,8 +192,10 @@ json-metadata: {"foo": "bar"}\r\n\
   // reread via getReadableStream
   parser = new WARCParser(getReader([input]));
   await parser.parse();
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record4 = (await parser.parse())!;
   expect(record4).not.toBeNull();
+
   const reader2 = new AsyncIterReader(record4.getReadableStream().getReader());
   expect(decoder.decode(await reader2.readFully())).toBe("some\ntext");
 
@@ -222,6 +227,7 @@ Content-Length: 0\r\n\
   const parser = new WARCParser(getReadableStream([input]), {
     keepHeadersCase: true,
   });
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
 
@@ -277,8 +283,8 @@ Foo: Bar\r\n\
     keepHeadersCase: true,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
-
   expect(record).not.toBeNull();
   expect(record.warcHeaders.protocol).toBe("WARC/1.0");
   expect(record.warcHeader("WARC-Record-ID")).toBe(
@@ -295,13 +301,15 @@ Foo: Bar\r\n\
   expect(record.warcContentType).toBe("application/http; msgtype=response");
   expect(record.warcContentLength).toBe(54);
 
-  expect(record.httpHeaders).not.toBeNull();
-  expect(record.httpHeaders!.protocol).toBe("HTTP/1.1");
-  expect(record.httpHeaders!.statusCode).toBe(200);
-  expect(record.httpHeaders!.statusText).toBe("OK");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const httpHeaders = record.httpHeaders!;
+  expect(httpHeaders).not.toBeNull();
+  expect(httpHeaders.protocol).toBe("HTTP/1.1");
+  expect(httpHeaders.statusCode).toBe(200);
+  expect(httpHeaders.statusText).toBe("OK");
 
-  expect(record.httpHeaders!.headers.get("Foo")).toBe("Bar");
-  expect(record.httpHeaders!.headers.get("Content-Type")).toBe("text/html");
+  expect(httpHeaders.headers.get("Foo")).toBe("Bar");
+  expect(httpHeaders.headers.get("Content-Type")).toBe("text/html");
 
   expect(await record.contentText()).toBe("");
 
@@ -339,6 +347,7 @@ Foo: Bar\r\n\
     keepHeadersCase: true,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
 
@@ -351,6 +360,7 @@ Foo: Bar\r\n\
   expect(record.warcType).toBe("revisit");
   expect(record.warcContentLength).toBe(82);
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const httpHeaders = record.httpHeaders!;
   expect(httpHeaders).not.toBeNull();
   expect(httpHeaders.protocol).toBe("HTTP/1.1");
@@ -391,6 +401,7 @@ text\r\n\
 
   const parser = new WARCParser(getReader([input]), { parseHttp: false });
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
 
@@ -410,11 +421,13 @@ text\r\n\
   }
 
   // check headers case
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record2 = (await WARCParser.parse(getReader([input]), {
     keepHeadersCase: true,
   }))!;
   expect(record2).not.toBeNull();
   expect(record2.warcHeaders.protocol).toBe("WARC/1.0");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const httpHeaders = record2.httpHeaders!;
   expect(httpHeaders).not.toBeNull();
   expect(input.indexOf(httpHeaders.toString())).toBeGreaterThan(0);
@@ -438,21 +451,26 @@ test("warc1.1 response and request, status checks", async () => {
   }
 
   expect(response).not.toBeNull();
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   expect(response!.warcHeaders.protocol).toBe("WARC/1.1");
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const responseHttpHeaders = response!.httpHeaders!;
   expect(responseHttpHeaders).not.toBeNull();
   expect(responseHttpHeaders.protocol).toBe("HTTP/1.1");
   expect(responseHttpHeaders.statusCode).toBe(301);
   expect(responseHttpHeaders.statusText).toBe("Moved Permanently");
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   expect(response!.warcDate).toBe("2020-04-12T18:42:50.696509Z");
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   let request = (await parser.parse())!;
   expect(request).not.toBeNull();
 
   expect(request.warcHeaders.protocol).toBe("WARC/1.1");
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const requestHttpHeaders = request.httpHeaders!;
   expect(requestHttpHeaders).not.toBeNull();
   expect(requestHttpHeaders.method).toBe("GET");
@@ -462,6 +480,7 @@ test("warc1.1 response and request, status checks", async () => {
   // read again, access in different order
   parser = new WARCParser(getReader([input]));
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   response = (await parser.parse())!;
   expect(response).not.toBeNull();
 
@@ -473,13 +492,15 @@ test("warc1.1 response and request, status checks", async () => {
 
   expect(response.getResponseInfo()).not.toBeNull();
 
-  const responseInfo = response.getResponseInfo();
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const responseInfo = response.getResponseInfo()!;
   expect(responseInfo).not.toBeNull();
-  const { status, statusText, headers } = responseInfo!;
+  const { status, statusText, headers } = responseInfo;
   expect(status).toBe(301);
   expect(statusText).toBe("Moved Permanently");
   expect(headers).toBe(response?.httpHeaders?.headers);
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   request = (await parser.parse())!;
   expect(request).not.toBeNull();
   expect(request?.httpHeaders?.requestPath).toBe("/domains/example");
@@ -487,8 +508,6 @@ test("warc1.1 response and request, status checks", async () => {
 });
 
 test("warc1.1 serialize records match", async () => {
-  const fs = require("fs");
-  const path = require("path");
   const input = fs.readFileSync(
     path.join(__dirname, "data/redirect.warc"),
     "utf-8"
@@ -516,6 +535,7 @@ test("chunked warc read", async () => {
   const parser = new WARCParser(input);
 
   await parser.parse();
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
 
   expect(record).not.toBeNull();
@@ -532,6 +552,7 @@ test("chunked warc read", async () => {
 
   expect(text.split("\n")[0]).toBe("<html>");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- checking invalid type
   const busyRecord = record as any as { reader: LimitReader };
   await expect(async () => await busyRecord.reader.readFully()).rejects.toThrow(
     "WARC Record decoding already started, but requesting raw payload"
@@ -553,11 +574,13 @@ test("no await catch errors", async () => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record0 = (await parser.parse())!;
   expect(record0).not.toBeNull();
   const iter = readLines(record0);
   await iter.next();
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record1 = (await parser.parse())!;
   expect(record1).not.toBeNull();
   await expect(async () => await iter.next()).rejects.toThrow(
@@ -568,7 +591,7 @@ test("no await catch errors", async () => {
   );
 
   let count = 0;
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for await (const chunk of record1) {
     count++;
   }
@@ -576,7 +599,7 @@ test("no await catch errors", async () => {
   expect(record1.consumed).not.toBeNull();
 
   count = 0;
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for await (const chunk of record1) {
     count++;
   }

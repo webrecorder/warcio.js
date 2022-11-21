@@ -37,6 +37,7 @@ type WARCRecordOpts = {
   url?: string;
   date?: string;
   type?: WARCType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   warcHeaders?: any;
   filename?: string;
   httpHeaders?: Record<string, string>;
@@ -66,6 +67,7 @@ export class WARCRecord extends BaseAsyncIterReader {
     function checkDate(d: string) {
       const date = d;
       if (warcVersion === WARC_1_0) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- constant
         d = d.split(".")[0]!;
         if (d.charAt(date.length - 1) != "Z") {
           d += "Z";
@@ -117,6 +119,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
     if (!reader) {
       const emptyReader: () => AsyncGenerator<never, void, unknown> =
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         async function* () {};
       reader = emptyReader();
     }
@@ -284,7 +287,7 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
 
     let contentEnc = this.httpHeaders.headers.get("Content-Encoding") as string;
-    let transferEnc = this.httpHeaders.headers.get(
+    const transferEnc = this.httpHeaders.headers.get(
       "Transfer-Encoding"
     ) as string;
 

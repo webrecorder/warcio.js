@@ -24,10 +24,12 @@ abstract class BaseIndexer {
     this.parseHttp = false;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serialize(result: Record<string, any>) {
     return JSON.stringify(result) + "\n";
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   write(result: Record<string, any>) {
     // @ts-expect-error incompatible function signatures are actually the same
     this.out.write(this.serialize(result));
@@ -65,11 +67,13 @@ abstract class BaseIndexer {
     record: WARCRecord,
     parser: WARCParser,
     filename: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Record<string, any> | null {
     if (this.filterRecord && !this.filterRecord(record)) {
       return null;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, any> = {};
 
     const offset = parser.offset;
@@ -88,6 +92,7 @@ abstract class BaseIndexer {
     return result;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setField(field: string, record: WARCRecord, result: Record<string, any>) {
     const value = this.getField(field, record);
     if (value !== null) {
@@ -300,6 +305,7 @@ export class CDXIndexer extends Indexer {
     return res;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serializeCDXJ(result: Record<string, any>) {
     const { urlkey, timestamp } = result;
     delete result["urlkey"];
@@ -308,6 +314,7 @@ export class CDXIndexer extends Indexer {
     return `${urlkey} ${timestamp} ${JSON.stringify(result)}\n`;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serializeCDX11(result: Record<string, any>) {
     const value = [];
 

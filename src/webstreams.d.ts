@@ -2,6 +2,7 @@
 
 import * as WebStreams from "node:stream/web";
 
+/* eslint-disable no-var, @typescript-eslint/no-empty-interface, @typescript-eslint/no-explicit-any */
 declare module "stream/web" {
   interface CompressionStream
     extends ReadableWritablePair<string | BufferSource, Uint8Array> {}
@@ -10,7 +11,7 @@ declare module "stream/web" {
     prototype: CompressionStream;
   };
 
-  interface ReadableStreamDefaultReader<R extends any>
+  interface ReadableStreamDefaultReader<R>
     extends WebStreams.ReadableStreamDefaultReader<R> {
     read(): Promise<ReadableStreamReadResult<R>>;
   }
@@ -28,5 +29,7 @@ declare global {
   var CompressionStream: typeof WebStreams.CompressionStream;
   interface CompressionStream extends WebStreams.CompressionStream {}
 }
+
+/* eslint-enable no-var, @typescript-eslint/no-empty-interface, @typescript-eslint/no-explicit-any */
 
 export {};

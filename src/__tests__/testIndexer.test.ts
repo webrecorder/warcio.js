@@ -108,6 +108,7 @@ com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMS
   test("cdx11 warc bad lengths", async () => {
     const consoleWarnSpy = jest
       .spyOn(console, "warn")
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- mocking
       .mockImplementationOnce(() => {});
     await index(
       [
@@ -205,9 +206,6 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
   });
 
   test("test custom Indexer", async () => {
-    const fs = require("fs");
-    const path = require("path");
-
     const entries = [];
     const indexer = new Indexer({ fields: "warc-type,warc-target-uri" });
 

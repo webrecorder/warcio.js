@@ -71,6 +71,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override async readlineRaw(maxLength?: number): Promise<Uint8Array | null> {
     return null;
   }
@@ -152,11 +153,13 @@ export class WARCSerializer extends BaseAsyncIterReader {
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
       const payloadDigest = await this.digestMessage(payload);
+      /* eslint-disable indent -- offsetTernaryExpressions is broken */
       const blockDigest = httpHeadersBuff
         ? await this.digestMessage(
             concatChunks([httpHeadersBuff, payload], size)
           )
         : payloadDigest;
+      /* eslint-enable indent */
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
