@@ -421,39 +421,6 @@ Foo: Bar\r\n\
   });
 
   test("create record, gzipped, streaming", async () => {
-    let originalCompressionStream = globalThis.CompressionStream;
-
-    class CompressionStream extends TransformStream {
-      constructor(format: string) {
-        const deflater = new Deflate({ gzip: format === "gzip" });
-        let last: Uint8Array | null = null;
-
-        super({
-          transform(chunk: Uint8Array, controller) {
-            if (last && last.length > 0) {
-              deflater.push(last);
-            }
-            last = chunk;
-
-            // @ts-expect-error Deflate has property chunks in implementation
-            while (deflater.chunks.length) {
-              // @ts-expect-error Deflate has property chunks in implementation
-              controller.enqueue(deflater.chunks.shift());
-            }
-          },
-
-          flush(controller) {
-            if (last) {
-              deflater.push(last, true);
-            }
-            controller.enqueue(deflater.result);
-          },
-        });
-      }
-    }
-
-    globalThis.CompressionStream = CompressionStream;
     await createRecordGzipped();
-    globalThis.CompressionStream = originalCompressionStream;
   });
 });

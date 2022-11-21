@@ -426,7 +426,7 @@ text\r\n\
 
 test("warc1.1 response and request, status checks", async () => {
   const input = fs.readFileSync(
-    path.join(__dirname, "data", "redirect.warc"),
+    path.join(__dirname, "data/redirect.warc"),
     "utf-8"
   );
 
@@ -490,7 +490,7 @@ test("warc1.1 serialize records match", async () => {
   const fs = require("fs");
   const path = require("path");
   const input = fs.readFileSync(
-    path.join(__dirname, "data", "redirect.warc"),
+    path.join(__dirname, "data/redirect.warc"),
     "utf-8"
   );
 
@@ -510,7 +510,7 @@ test("warc1.1 serialize records match", async () => {
 
 test("chunked warc read", async () => {
   const input = fs.createReadStream(
-    path.join(__dirname, "data", "example-iana.org-chunked.warc")
+    path.join(__dirname, "data/example-iana.org-chunked.warc")
   );
 
   const parser = new WARCParser(input);
@@ -542,7 +542,7 @@ test("chunked warc read", async () => {
 
 test("no await catch errors", async () => {
   const input = fs.createReadStream(
-    path.join(__dirname, "data", "example-iana.org-chunked.warc")
+    path.join(__dirname, "data/example-iana.org-chunked.warc")
   );
 
   const parser = new WARCParser(input);

@@ -1,2 +1,0 @@
-var o=(e=>typeof require<"u"?require:typeof Proxy<"u"?new Proxy(e,{get:(i,r)=>(typeof require<"u"?require:i)[r]}):e)(function(e){if(typeof require<"u")return require.apply(this,arguments);throw new Error('Dynamic require of "'+e+'" is not supported')});typeof process<"u"&&typeof global=="object"&&(globalThis.fetch||o("cross-fetch/polyfill"),globalThis.crypto||(globalThis.crypto=o("crypto").webcrypto));
-//# sourceMappingURL=polyfills.js.map

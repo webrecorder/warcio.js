@@ -302,7 +302,6 @@ export class CDXIndexer extends Indexer {
 
   serializeCDXJ(result: Record<string, any>) {
     const { urlkey, timestamp } = result;
-    // FIXME: does this work?
     delete result["urlkey"];
     delete result["timestamp"];
 
