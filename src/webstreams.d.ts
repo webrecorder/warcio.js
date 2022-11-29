@@ -2,27 +2,18 @@
 
 import * as WebStreams from "node:stream/web";
 
-/* eslint-disable no-var, @typescript-eslint/no-empty-interface, @typescript-eslint/no-explicit-any */
+/* eslint-disable no-var, @typescript-eslint/no-empty-interface */
 declare module "stream/web" {
-  interface CompressionStream
-    extends ReadableWritablePair<string | BufferSource, Uint8Array> {}
-  var CompressionStream: {
-    new (format: "deflate" | "gzip"): CompressionStream;
+  // https://wicg.github.io/compression/
+  // https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream/CompressionStream
+  // https://chromium.googlesource.com/devtools/devtools-frontend/+/581bfa00fd962837c51e2284dc78303446088c67/test/unittests/front_end/models/bindings/FileUtils_test.ts
+  interface CompressionStream extends GenericTransformStream {
+    readonly format: "gzip" | "deflate" | "deflate-raw";
+  }
+  declare const CompressionStream: {
     prototype: CompressionStream;
+    new (format: "gzip" | "deflate" | "deflate-raw"): CompressionStream;
   };
-
-  interface ReadableStreamDefaultReader<R>
-    extends WebStreams.ReadableStreamDefaultReader<R> {
-    read(): Promise<ReadableStreamReadResult<R>>;
-  }
-
-  interface ReadableStream<R = any> extends WebStreams.ReadableStream<R> {
-    getReader(): ReadableStreamDefaultReader<R>;
-    pipeThrough<T>(
-      transform: ReadableWritablePair<T, R>,
-      options?: StreamPipeOptions
-    ): ReadableStream<T>;
-  }
 }
 
 declare global {
