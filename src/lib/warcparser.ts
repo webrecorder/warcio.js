@@ -6,18 +6,18 @@ import { Source } from "./types";
 const decoder = new TextDecoder();
 const EMPTY = new Uint8Array([]);
 
-type WarcParserOpts = {
+export type WARCParserOpts = {
   keepHeadersCase?: boolean;
   parseHttp?: boolean;
 };
 
 // ===========================================================================
 export class WARCParser {
-  static parse(source: Source, options?: WarcParserOpts) {
+  static parse(source: Source, options?: WARCParserOpts) {
     return new WARCParser(source, options).parse();
   }
 
-  static iterRecords(source: Source, options?: WarcParserOpts) {
+  static iterRecords(source: Source, options?: WARCParserOpts) {
     return new WARCParser(source, options)[Symbol.asyncIterator]();
   }
 
@@ -35,7 +35,7 @@ export class WARCParser {
 
   constructor(
     source: Source,
-    { keepHeadersCase = false, parseHttp = true }: WarcParserOpts = {}
+    { keepHeadersCase = false, parseHttp = true }: WARCParserOpts = {}
   ) {
     this._offset = 0;
     this._warcHeadersLength = 0;

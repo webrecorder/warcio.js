@@ -7,7 +7,7 @@ declare module "stream/web" {
   // https://wicg.github.io/compression/
   // https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream/CompressionStream
   // https://chromium.googlesource.com/devtools/devtools-frontend/+/581bfa00fd962837c51e2284dc78303446088c67/test/unittests/front_end/models/bindings/FileUtils_test.ts
-  interface CompressionStream extends GenericTransformStream {
+  export interface CompressionStream extends GenericTransformStream {
     readonly format: "gzip" | "deflate" | "deflate-raw";
   }
   declare const CompressionStream: {
@@ -17,7 +17,7 @@ declare module "stream/web" {
 }
 
 declare global {
-  var CompressionStream: typeof WebStreams.CompressionStream;
+  export var CompressionStream: typeof WebStreams.CompressionStream;
   interface CompressionStream extends WebStreams.CompressionStream {}
 }
 

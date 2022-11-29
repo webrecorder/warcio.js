@@ -1,8 +1,8 @@
-import { lstatSync, createReadStream } from "fs";
-import { basename } from "path";
-import yargs from "yargs";
-import { WritableStreamBuffer } from "stream-buffers";
+import { lstatSync, createReadStream } from "node:fs";
+import { basename } from "node:path";
 import { stdout, stderr } from "node:process";
+import { WritableStreamBuffer } from "stream-buffers";
+import yargs from "yargs";
 
 import { indexCommandArgs, cdxIndexCommandArgs } from "./args";
 import { Indexer, CDXIndexer, StreamResults } from "../lib";

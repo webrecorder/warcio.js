@@ -4,13 +4,12 @@ import { Deflate } from "pako";
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
-import { CompressionStream } from "stream/web";
 import { concatChunks } from "./utils";
 
 const encoder = new TextEncoder();
 
 // ===========================================================================
-type WARCSerializerOpts = {
+export type WARCSerializerOpts = {
   gzip?: boolean;
   digest?: {
     algo?: AlgorithmIdentifier;

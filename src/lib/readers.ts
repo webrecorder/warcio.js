@@ -5,7 +5,7 @@ import { splitChunk, concatChunks } from "./utils";
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
-class NoConcatInflator<T extends BaseAsyncIterReader> extends Inflate {
+export class NoConcatInflator<T extends BaseAsyncIterReader> extends Inflate {
   reader: T;
   ended = false;
   chunks: Uint8Array[] = [];
@@ -77,7 +77,7 @@ export abstract class BaseAsyncIterReader {
   }
 }
 
-type AsyncIterReaderOpts = {
+export type AsyncIterReaderOpts = {
   raw: boolean;
 };
 

@@ -1,20 +1,20 @@
+import uuid from "uuid-random";
 import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
 import { StatusAndHeaders } from "./statusandheaders";
-import uuid from "uuid-random";
 import { Source } from "./types";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
-const WARC_1_1 = "WARC/1.1";
-const WARC_1_0 = "WARC/1.0";
+export const WARC_1_1 = "WARC/1.1";
+export const WARC_1_0 = "WARC/1.0";
 
 const REVISIT_PROFILE_1_0 =
   "http://netpreserve.org/warc/1.0/revisit/identical-payload-digest";
 const REVISIT_PROFILE_1_1 =
   "http://netpreserve.org/warc/1.1/revisit/identical-payload-digest";
 
-type WARCType =
+export type WARCType =
   | "warcinfo"
   | "response"
   | "resource"
@@ -33,7 +33,7 @@ const defaultRecordCT: Partial<Record<WARCType, string>> = {
 };
 
 // ===========================================================================
-type WARCRecordOpts = {
+export type WARCRecordOpts = {
   url?: string;
   date?: string;
   type?: WARCType;
