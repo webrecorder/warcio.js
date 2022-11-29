@@ -2,7 +2,6 @@
 
 import * as WebStreams from "node:stream/web";
 
-/* eslint-disable no-var, @typescript-eslint/no-empty-interface */
 declare module "stream/web" {
   // https://wicg.github.io/compression/
   // https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream/CompressionStream
@@ -17,10 +16,8 @@ declare module "stream/web" {
 }
 
 declare global {
+  // eslint-disable-next-line no-var
   export var CompressionStream: typeof WebStreams.CompressionStream;
+  // eslint-disable-next-line @typescript-eslint/no-empty-interface
   interface CompressionStream extends WebStreams.CompressionStream {}
 }
-
-/* eslint-enable no-var, @typescript-eslint/no-empty-interface, @typescript-eslint/no-explicit-any */
-
-export {};
