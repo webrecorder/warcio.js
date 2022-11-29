@@ -39,5 +39,3 @@ export type {
   StreamResults,
   Request,
 } from "./lib";
-
-export type { CompressionStream };
