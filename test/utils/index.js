@@ -2,7 +2,13 @@
 
 import crypto from "node:crypto";
 
-global.crypto = crypto;
+try {
+  if (!global.crypto) {
+    global.crypto = crypto;
+  }
+} catch(e) {
+  // ignore if crypto already set
+}
 
 const encoder = new TextEncoder("utf-8");
 
