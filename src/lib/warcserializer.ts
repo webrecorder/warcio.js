@@ -1,5 +1,5 @@
 import base32 from "hi-base32";
-import { Deflate } from "pako";
+import pako from "pako";
 
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
@@ -76,7 +76,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
   }
 
   async *pakoCompress() {
-    const deflater = new Deflate({ gzip: true });
+    const deflater = new pako.Deflate({ gzip: true });
 
     let lastChunk: Uint8Array | null = null;
 

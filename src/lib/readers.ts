@@ -1,21 +1,21 @@
-import { Inflate, InflateOptions, ReturnCodes } from "pako";
+import pako from "pako";
 import { Source, SourceReader } from "./types";
 import { splitChunk, concatChunks } from "./utils";
 
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
-export class NoConcatInflator<T extends BaseAsyncIterReader> extends Inflate {
+export class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflate {
   reader: T;
   ended = false;
   chunks: Uint8Array[] = [];
 
-  constructor(options: InflateOptions, reader: T) {
+  constructor(options: pako.InflateOptions, reader: T) {
     super(options);
     this.reader = reader;
   }
 
-  override onEnd(status: ReturnCodes) {
+  override onEnd(status: pako.ReturnCodes) {
     this.err = status;
     if (!this.err) {
       // @ts-expect-error strm is not implemented in typescript types

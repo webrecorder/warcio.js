@@ -15,9 +15,12 @@ export {
   postToGetUrl,
   getSurt,
   appendRequestQuery,
+  jsonToQueryParams,
   jsonToQueryString,
+  mfdToQueryParams,
   mfdToQueryString,
   concatChunks,
+  splitChunk,
 } from "./lib";
 
 export type {
@@ -26,9 +29,6 @@ export type {
   WARCRecordOpts,
   WARCType,
 } from "./lib";
-
-export { main, indexCommandArgs, cdxIndexCommandArgs } from "./commands";
-export type { IndexCommandArgs, CdxIndexCommandArgs } from "./commands";
 
 export type {
   AsyncIterReaderOpts,
