@@ -47,6 +47,8 @@ export type WARCRecordOpts = {
   refersToUrl?: string;
   refersToDate?: string;
 };
+
+// ===========================================================================
 export class WARCRecord extends BaseAsyncIterReader {
   static create(
     {
@@ -249,7 +251,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       this.payload = await super.readFully();
       this.consumed = "content";
     } else {
-      this.payload = (await WARCRecord.readFully(this._reader))[1];
+      this.payload = await WARCRecord.readFully(this._reader);
       this.consumed = "raw";
     }
 

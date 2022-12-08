@@ -179,7 +179,7 @@ async function readChunkSizes(
       if (size === "line") {
         chunk = await reader.readline();
       } else {
-        chunk = decoder.decode((await reader.readSize(size))[1]);
+        chunk = decoder.decode(await reader.readSize(size));
       }
       readChunks.push(chunk);
     }
@@ -405,9 +405,9 @@ Next`
 
   test("skip fully", async () => {
     const res = new AsyncIterReader(getReader(["abc"]));
-    expect((await res.readSize(-1, true))[0]).toBe(3);
-    expect((await res.readSize(-1, true))[0]).toBe(0);
-    expect((await res.readSize(-1, false))[1]).toEqual(new Uint8Array());
+    expect(await res.skipSize(-1)).toBe(3);
+    expect(await res.skipSize(-1)).toBe(0);
+    expect(await res.readSize(-1)).toEqual(new Uint8Array());
   });
 
   test("getReadableStream", async () => {
@@ -429,9 +429,9 @@ Next`
   test("readsize + readsize", async () => {
     const reader = new AsyncIterReader(getReader(["test\ndata"]));
 
-    expect(decoder.decode((await reader.readSize(3))[1])).toBe("tes");
+    expect(decoder.decode(await reader.readSize(3))).toBe("tes");
     expect(await reader.readline()).toBe("t\n");
-    expect(decoder.decode((await reader.readSize(2))[1])).toBe("da");
+    expect(decoder.decode(await reader.readSize(2))).toBe("da");
     expect(await reader.readline()).toBe("ta");
   });
 
@@ -444,9 +444,9 @@ Next`
 
     expect(await reader.readline()).toBe("test\n");
     expect(await reader.readline()).toBe("data\n");
-    expect(decoder.decode((await reader.readSize(3))[1])).toBe("dat");
+    expect(decoder.decode(await reader.readSize(3))).toBe("dat");
     expect(await reader.readline()).toBe("a");
-    expect(decoder.decode((await reader.readSize(2))[1])).toBe("");
+    expect(decoder.decode(await reader.readSize(2))).toBe("");
   });
 
   test("test chunks", async () => {

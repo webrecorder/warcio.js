@@ -84,7 +84,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
       }
 
       if (this._reader.compressed) {
-        await this._reader.readSize(2, true);
+        await this._reader.skipSize(2);
         nextline = EMPTY;
       } else {
         nextline = await this._reader.readlineRaw();

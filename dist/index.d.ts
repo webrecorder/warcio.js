@@ -12,7 +12,7 @@ declare class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Infla
     onEnd(status: pako.ReturnCodes): void;
 }
 declare abstract class BaseAsyncIterReader {
-    static readFully(iter: AsyncIterable<Uint8Array>): Promise<readonly [number, Uint8Array]>;
+    static readFully(iter: AsyncIterable<Uint8Array>): Promise<Uint8Array>;
     abstract [Symbol.asyncIterator](): AsyncIterator<Uint8Array>;
     getReadableStream(): ReadableStream<any>;
     readFully(): Promise<Uint8Array>;
@@ -44,7 +44,9 @@ declare class AsyncIterReader extends BaseAsyncIterReader {
     [Symbol.asyncIterator](): AsyncGenerator<Uint8Array, void, unknown>;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
     readFully(): Promise<Uint8Array>;
-    readSize(sizeLimit?: number, skip?: boolean): Promise<readonly [number, Uint8Array]>;
+    readSize(sizeLimit: number): Promise<Uint8Array>;
+    skipSize(sizeLimit: number): Promise<number>;
+    _readOrSkip(sizeLimit?: number, skip?: boolean): Promise<readonly [number, Uint8Array]>;
     getReadOffset(): number;
     getRawOffset(): number;
     getRawLength(prevOffset: number): number;
