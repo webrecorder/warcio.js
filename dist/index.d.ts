@@ -214,7 +214,7 @@ declare abstract class BaseIndexer {
     out: WritableStreamBuffer | NodeJS.WriteStream;
     fields: string[];
     parseHttp: boolean;
-    constructor(opts?: Partial<IndexCommandArgs>, out?: WritableStreamBuffer | NodeJS.WriteStream);
+    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<IndexCommandArgs>);
     serialize(result: Record<string, any>): string;
     write(result: Record<string, any>): void;
     run(files: StreamResults): Promise<void>;
@@ -226,13 +226,13 @@ declare abstract class BaseIndexer {
     getField(field: string, record: WARCRecord): string | number | null | undefined;
 }
 declare class Indexer extends BaseIndexer {
-    constructor(opts?: Partial<IndexCommandArgs>, out?: WritableStreamBuffer | NodeJS.WriteStream);
+    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<IndexCommandArgs>);
 }
 declare class CDXIndexer extends Indexer {
     includeAll: boolean;
     noSurt: boolean;
     _lastRecord: WARCRecord | null;
-    constructor(opts?: Partial<CdxIndexCommandArgs>, out?: WritableStreamBuffer | NodeJS.WriteStream);
+    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<CdxIndexCommandArgs>);
     iterRecords(parser: WARCParser, filename: string): AsyncGenerator<Record<string, any>, void, unknown>;
     filterRecord(record: WARCRecord): boolean;
     indexRecord(record: WARCRecord | null, parser: WARCParser, filename: string): Record<string, any> | null;

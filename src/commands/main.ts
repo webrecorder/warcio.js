@@ -30,7 +30,7 @@ export function main(
       describe: "Index WARC(s)",
       builder: indexCommandArgs,
       handler: async (args) => {
-        promise = new Indexer(args, out).run(loadStreams(args.filenames));
+        promise = new Indexer(out, args).run(loadStreams(args.filenames));
       },
     })
     // CDX Indexer
@@ -39,7 +39,7 @@ export function main(
       describe: "CDX(J) Index of WARC(s)",
       builder: cdxIndexCommandArgs,
       handler: async (args) => {
-        promise = new CDXIndexer(args, out).run(loadStreams(args.filenames));
+        promise = new CDXIndexer(out, args).run(loadStreams(args.filenames));
       },
     })
     .demandCommand(1, "Please specify a command")

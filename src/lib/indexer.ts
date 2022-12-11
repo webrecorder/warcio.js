@@ -15,8 +15,8 @@ abstract class BaseIndexer {
   parseHttp: boolean;
 
   constructor(
+    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts: Partial<IndexCommandArgs> = {},
-    out: WritableStreamBuffer | NodeJS.WriteStream = process.stdout
   ) {
     this.opts = opts;
     this.out = out;
@@ -125,10 +125,10 @@ abstract class BaseIndexer {
 // ===========================================================================
 export class Indexer extends BaseIndexer {
   constructor(
+    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts?: Partial<IndexCommandArgs>,
-    out?: WritableStreamBuffer | NodeJS.WriteStream
   ) {
-    super(opts, out);
+    super(out, opts);
 
     for (const field of this.fields) {
       if (field.startsWith("http:")) {
@@ -154,10 +154,10 @@ export class CDXIndexer extends Indexer {
   _lastRecord: WARCRecord | null;
 
   constructor(
+    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts?: Partial<CdxIndexCommandArgs>,
-    out?: WritableStreamBuffer | NodeJS.WriteStream
   ) {
-    super(opts as unknown as IndexCommandArgs, out);
+    super(out, opts);
     this.includeAll = Boolean(opts?.all);
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
