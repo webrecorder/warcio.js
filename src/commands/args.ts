@@ -1,7 +1,7 @@
 import yargs from "yargs";
 
-export const indexCommandArgs = yargs
-  .positional("filenames", {
+export const indexCommandArgs = (yarg: yargs.Argv) => {
+  return yarg.positional("filenames", {
     describe: "WARC file(s) to index",
     type: "string",
     array: true,
@@ -12,11 +12,14 @@ export const indexCommandArgs = yargs
     describe: "fields to include in index",
     type: "string",
   });
+}
 
-export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
+//export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
+// todo: fix types?
+export type IndexCommandArgs = any;
 
-export const cdxIndexCommandArgs = yargs
-  .positional("filenames", {
+export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
+  return yarg.positional("filenames", {
     describe: "WARC file(s) to index",
     type: "string",
     array: true,
@@ -37,5 +40,8 @@ export const cdxIndexCommandArgs = yargs
       "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
     type: "boolean",
   });
+}
 
-export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
+//export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
+// todo: fix types?
+export type CdxIndexCommandArgs = any;//ReturnType<cdxIndexCommandArgs>;

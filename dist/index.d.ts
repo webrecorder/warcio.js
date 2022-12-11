@@ -2,7 +2,6 @@ import pako from 'pako';
 import { S as Source, a as SourceReader, b as StreamResults } from './utils-dbe382cb.js';
 export { R as Request, S as Source, h as SourceReadable, a as SourceReader, i as StreamResult, b as StreamResults, c as appendRequestQuery, f as concatChunks, g as getSurt, j as jsonToQueryParams, d as jsonToQueryString, m as mfdToQueryParams, e as mfdToQueryString, p as postToGetUrl, s as splitChunk } from './utils-dbe382cb.js';
 import { WritableStreamBuffer } from 'stream-buffers';
-import yargs from 'yargs';
 
 declare class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflate {
     reader: T;
@@ -207,22 +206,8 @@ declare class WARCSerializer extends BaseAsyncIterReader {
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
-declare const indexCommandArgs: yargs.Argv<{
-    filenames: string[];
-} & {
-    fields: string | undefined;
-}>;
-type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
-declare const cdxIndexCommandArgs: yargs.Argv<{
-    filenames: string[];
-} & {
-    all: boolean | undefined;
-} & {
-    format: string;
-} & {
-    noSurt: boolean | undefined;
-}>;
-type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
+type IndexCommandArgs = any;
+type CdxIndexCommandArgs = any;
 
 declare abstract class BaseIndexer {
     opts: Partial<IndexCommandArgs>;

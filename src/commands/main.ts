@@ -3,28 +3,32 @@ import { basename } from "node:path";
 import { stdout, stderr } from "node:process";
 import { WritableStreamBuffer } from "stream-buffers";
 import yargs from "yargs";
+import { hideBin } from "yargs/helpers"; 
 
 import { indexCommandArgs, cdxIndexCommandArgs } from "./args";
 import { Indexer, CDXIndexer, StreamResults } from "../lib";
+
+import * as pkg from "../../package.json";
 
 const BUFF_SIZE = 1024 * 128;
 
 // ===========================================================================
 export function main(
-  args: string[] = [],
-  out: WritableStreamBuffer | NodeJS.WriteStream = stdout
+  out: WritableStreamBuffer | NodeJS.WriteStream = stdout,
+  args?: string[]
 ) {
   let promise = Promise.resolve();
 
-  yargs
+  args = args || hideBin(process.argv);
+
+  yargs()
+    .version(pkg.version)
     .usage("$0 [command]")
     // Basic Indexer
     .command({
       command: "index <filenames..>",
       describe: "Index WARC(s)",
-      builder: () => {
-        return indexCommandArgs;
-      },
+      builder: indexCommandArgs,
       handler: async (args) => {
         promise = new Indexer(args, out).run(loadStreams(args.filenames));
       },
@@ -33,9 +37,7 @@ export function main(
     .command({
       command: "cdx-index <filenames..>",
       describe: "CDX(J) Index of WARC(s)",
-      builder: () => {
-        return cdxIndexCommandArgs;
-      },
+      builder: cdxIndexCommandArgs,
       handler: async (args) => {
         promise = new CDXIndexer(args, out).run(loadStreams(args.filenames));
       },

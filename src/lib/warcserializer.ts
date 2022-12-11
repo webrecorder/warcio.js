@@ -1,4 +1,5 @@
-import base32 from "hi-base32";
+//import base32 from "hi-base32";
+import base32Encode from 'base32-encode';
 import pako from "pako";
 
 import { WARCRecord } from "./warcrecord";
@@ -129,7 +130,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
     return (
       this.digestAlgoPrefix +
       (this.digestBase32
-        ? base32.encode(hashBuffer)
+        ? base32Encode(hashBuffer, 'RFC4648')
         : WARCSerializer.base16(hashBuffer))
     );
   }

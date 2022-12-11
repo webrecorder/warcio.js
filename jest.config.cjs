@@ -2,6 +2,7 @@ const path = require("path");
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
   preset: "ts-jest",
+  extensionsToTreatAsEsm: ['.ts'],
   testEnvironment: "node",
   setupFilesAfterEnv: [
     "jest-expect-message",
@@ -10,5 +11,15 @@ module.exports = {
   testPathIgnorePatterns: [
     'data',
     'utils',
-  ]
+  ],
+  transform: {
+    // '^.+\\.[tj]sx?$' to process js/ts with `ts-jest`
+    // '^.+\\.m?[tj]sx?$' to process js/ts/mjs/mts with `ts-jest`
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        useESM: true,
+      },
+    ],
+  },
 };

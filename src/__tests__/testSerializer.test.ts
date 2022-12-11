@@ -1,4 +1,4 @@
-import { inflate } from "pako";
+import pako from "pako";
 import { WARCRecord, WARCParser, WARCSerializer } from "../lib";
 
 const decoder = new TextDecoder("utf-8");
@@ -202,7 +202,7 @@ text\r\n\r\n'
     expect(record.warcType).toBe("response");
 
     const gzipped = await WARCSerializer.serialize(record, { gzip: true });
-    const res = decoder.decode(inflate(gzipped));
+    const res = decoder.decode(pako.inflate(gzipped));
 
     expect(res).toBe(
       // eslint-disable-next-line quotes -- inner double quote
@@ -253,7 +253,7 @@ text\r\n\r\n'
     expect(record.warcType).toBe("request");
 
     const gzipped = await WARCSerializer.serialize(record, { gzip: true });
-    const res = decoder.decode(inflate(gzipped));
+    const res = decoder.decode(pako.inflate(gzipped));
 
     expect(res).toBe(
       "\
