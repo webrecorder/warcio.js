@@ -1,4 +1,4 @@
-import { jsonToQueryString, postToGetUrl, getSurt } from "../lib";
+import { jsonToQueryString, postToGetUrl, getSurt } from "../src/lib";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toQuery(json: Record<string, any>) {

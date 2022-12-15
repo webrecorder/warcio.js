@@ -1,6 +1,6 @@
 import pako from "pako";
 import { getReader } from "./utils";
-import { LimitReader, AsyncIterReader } from "../lib";
+import { LimitReader, AsyncIterReader } from "../src/lib";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();

@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { jest } from '@jest/globals';
-import { main } from "../commands";
-import { Indexer, CDXIndexer } from "../lib";
+import { main } from "../src/commands";
+import { Indexer, CDXIndexer } from "../src/lib";
 import { WritableStreamBuffer } from "stream-buffers";
 
 

@@ -6,7 +6,7 @@ import {
   concatChunks,
   WARCRecord,
   LimitReader,
-} from "../lib";
+} from "../src/lib";
 import { getReader, getReadableStream } from "./utils";
 import fs from "fs";
 import path from "path";
