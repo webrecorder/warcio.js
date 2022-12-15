@@ -60,6 +60,10 @@ export class WARCParser {
     if (!this._atRecordBoundary && this._reader && this._record) {
       await this._record.skipFully();
 
+      if (this._reader.compressed) {
+        this._offset = this._reader.getRawOffset();
+      }
+
       let lineLen = 0;
 
       nextline = await this._reader.readlineRaw();
@@ -93,6 +97,11 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
         while (nextline && nextline.byteLength === 2) {
           nextline = await this._reader.readlineRaw();
         }
+
+        this._offset = this._reader.getRawOffset();
+        if (nextline) {
+          this._offset -= nextline.length;
+        }
       }
     }
 
@@ -109,8 +118,6 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
 
   async parse() {
     const firstLine = await this.readToNextRecord();
-
-    this._offset = this._reader.getRawOffset() - firstLine.length;
 
     const headersParser = new StatusAndHeadersParser();
     const warcHeaders = await headersParser.parse(this._reader, {
