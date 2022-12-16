@@ -53,6 +53,16 @@ describe("indexer", () => {
     );
   });
 
+  test("index no line breaks", async () => {
+    await index(
+      ["index", get_warc_path("data/example-url-agnostic-revisit.warc.gz")],
+      `\
+{"offset":0,"warc-type":"warcinfo"}
+{"offset":355,"warc-type":"revisit","warc-target-uri":"http://test@example.com/"}
+`
+    );
+  });
+
   test("index wget", async () => {
     await index(
       [

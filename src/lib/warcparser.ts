@@ -27,8 +27,6 @@ export class WARCParser {
   _headersClass: typeof Map | typeof Headers;
   _parseHttp: boolean;
 
-  _atRecordBoundary: boolean;
-
   _reader: AsyncIterReader;
 
   _record: WARCRecord | null;
@@ -43,8 +41,6 @@ export class WARCParser {
     this._headersClass = keepHeadersCase ? Map : Headers;
     this._parseHttp = parseHttp;
 
-    this._atRecordBoundary = true;
-
     if (!(source instanceof AsyncIterReader)) {
       this._reader = new AsyncIterReader(source);
     } else {
@@ -55,26 +51,37 @@ export class WARCParser {
   }
 
   async readToNextRecord() {
-    let nextline;
+    if (!this._reader || !this._record) {
+      return EMPTY;
+    }
 
-    if (!this._atRecordBoundary && this._reader && this._record) {
-      await this._record.skipFully();
+    await this._record.skipFully();
 
-      let lineLen = 0;
+    if (this._reader.compressed) {
+      this._offset = this._reader.getRawOffset();
+    }
 
-      nextline = await this._reader.readlineRaw();
-      if (!nextline) {
-        nextline = EMPTY;
-      } else {
-        lineLen = nextline.byteLength - 1;
+    let nextline = await this._reader.readlineRaw();
 
-        while (lineLen >= 0) {
-          const value = nextline[lineLen - 1];
-          if (value !== 10 && value !== 13) {
-            break;
-          }
-          lineLen--;
+    let lineLen = 0;
+
+    if (!nextline) {
+      nextline = EMPTY;
+    } else {
+      lineLen = nextline.byteLength - 1;
+
+      // if line starts with WARC/, we're actually in a new record, return immediately
+      if (lineLen === 9 && decoder.decode(nextline).startsWith("WARC/")) {
+        return nextline;
+      }
+
+      // otherwise, detect leftover data
+      while (lineLen > 0) {
+        const value = nextline[lineLen - 1];
+        if (value !== 10 && value !== 13) {
+          break;
         }
+        lineLen--;
       }
 
       if (lineLen) {
@@ -82,22 +89,26 @@ export class WARCParser {
 Remainder Length: ${lineLen}, \
 Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
       }
+    }
 
-      if (this._reader.compressed) {
-        await this._reader.skipSize(2);
-        nextline = EMPTY;
-      } else {
+    if (this._reader.compressed) {
+      await this._reader.skipSize(2);
+      nextline = EMPTY;
+    } else {
+      nextline = await this._reader.readlineRaw();
+
+      // consume remaining new lines
+      while (nextline && nextline.byteLength === 2) {
         nextline = await this._reader.readlineRaw();
+      }
 
-        // consume remaining new lines
-        while (nextline && nextline.byteLength === 2) {
-          nextline = await this._reader.readlineRaw();
-        }
+      this._offset = this._reader.getRawOffset();
+      if (nextline) {
+        this._offset -= nextline.length;
       }
     }
 
-    this._atRecordBoundary = true;
-    return nextline ? decoder.decode(nextline) : "";
+    return nextline;
   }
 
   _initRecordReader(warcHeaders: StatusAndHeaders) {
@@ -108,9 +119,8 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
   }
 
   async parse() {
-    const firstLine = await this.readToNextRecord();
-
-    this._offset = this._reader.getRawOffset() - firstLine.length;
+    const firstLineBuff = await this.readToNextRecord();
+    const firstLine = firstLineBuff ? decoder.decode(firstLineBuff) : "";
 
     const headersParser = new StatusAndHeadersParser();
     const warcHeaders = await headersParser.parse(this._reader, {
@@ -129,7 +139,6 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
       reader: this._initRecordReader(warcHeaders),
     });
 
-    this._atRecordBoundary = false;
     this._record = record;
 
     if (this._parseHttp) {

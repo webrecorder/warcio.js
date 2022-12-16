@@ -15,7 +15,12 @@ export function binaryToString(data: Uint8Array | string) {
   } else {
     string = "";
   }
-  return "__wb_post_data=" + Buffer.from(string, "latin1").toString("base64");
+  // try btoa, if it fails, just ignore the binary data string
+  try {
+    return "__wb_post_data=" + btoa(string);
+  } catch (e) {
+    return "__wb_post_data=";
+  }
 }
 
 export function rxEscape(string: string) {
