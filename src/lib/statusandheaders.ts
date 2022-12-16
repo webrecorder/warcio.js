@@ -1,15 +1,23 @@
-import { concatChunks, splitChunk } from "./utils.js";
+import { concatChunks, splitChunk } from "./utils";
+import { AsyncIterReader } from "./readers";
 
-
-const CRLF = new Uint8Array([13, 10]);
-const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
+export const CRLF = new Uint8Array([13, 10]);
+export const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
 
 const decoder = new TextDecoder("utf-8");
 
-
 // ===========================================================================
-class StatusAndHeaders {
-  constructor({statusline, headers}) {
+export class StatusAndHeaders {
+  statusline: string;
+  headers: Map<string, string> | Headers;
+
+  constructor({
+    statusline,
+    headers,
+  }: {
+    statusline: string;
+    headers: Map<string, string> | Headers;
+  }) {
     this.statusline = statusline;
     this.headers = headers;
   }
@@ -24,7 +32,7 @@ class StatusAndHeaders {
     return buff.join("\r\n") + "\r\n";
   }
 
-  async* iterSerialize(encoder) {
+  async *iterSerialize(encoder: TextEncoder) {
     yield encoder.encode(this.statusline);
     yield CRLF;
     for (const [name, value] of this.headers) {
@@ -32,11 +40,17 @@ class StatusAndHeaders {
     }
   }
 
+  _protocol!: string;
+  _statusCode!: number | string;
+  _statusText!: string;
+
   _parseResponseStatusLine() {
     const parts = splitRemainder(this.statusline, " ", 2);
-    this._protocol = parts[0];
-    this._statusCode = parts.length > 1 ? Number(parts[1]): "";
-    this._statusText = parts.length > 2 ? parts[2] : "";
+    this._protocol = parts[0] ?? "";
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
+    this._statusCode = parts.length > 1 ? Number(parts[1]) : "";
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
+    this._statusText = parts.length > 2 ? parts[2]! : "";
   }
 
   get statusCode() {
@@ -60,10 +74,14 @@ class StatusAndHeaders {
     return this._statusText;
   }
 
+  _method!: string;
+  _requestPath!: string;
+
   _parseRequestStatusLine() {
     const parts = this.statusline.split(" ", 2);
-    this._method = parts[0];
-    this._requestPath = parts.length > 1 ? parts[1] : "";
+    this._method = parts[0] ?? "";
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
+    this._requestPath = parts.length > 1 ? parts[1]! : "";
   }
 
   get method() {
@@ -82,8 +100,16 @@ class StatusAndHeaders {
 }
 
 // ===========================================================================
-class StatusAndHeadersParser {
-  async parse(reader, {headersClass = Map, firstLine} = {}) {
+export class StatusAndHeadersParser {
+  async parse(
+    reader: AsyncIterReader,
+    {
+      headersClass,
+      firstLine,
+    }: { firstLine?: string; headersClass: typeof Map | typeof Headers } = {
+      headersClass: Map,
+    }
+  ) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
     if (!fullStatusLine) {
@@ -102,19 +128,21 @@ class StatusAndHeadersParser {
 
     let start = 0;
     let nameEnd, valueStart, valueEnd;
-    let name, value;
+    let name = "";
+    let value;
 
     while (start < headerBuff.length) {
       valueEnd = headerBuff.indexOf("\n", start);
 
       if (value && (headerBuff[start] === " " || headerBuff[start] === "\t")) {
-        value += headerBuff.slice(start, valueEnd < 0 ? undefined : valueEnd).trimEnd();
-
+        value += headerBuff
+          .slice(start, valueEnd < 0 ? undefined : valueEnd)
+          .trimEnd();
       } else {
         if (value) {
           try {
             headers.set(name, value);
-          } catch(e) {
+          } catch (e) {
             // ignore
           }
           value = null;
@@ -126,7 +154,9 @@ class StatusAndHeadersParser {
 
         if (nameEnd >= 0 && nameEnd < valueEnd) {
           name = headerBuff.slice(start, nameEnd).trimStart();
-          value = headerBuff.slice(valueStart, valueEnd < 0 ? undefined : valueEnd).trim();
+          value = headerBuff
+            .slice(valueStart, valueEnd < 0 ? undefined : valueEnd)
+            .trim();
         } else {
           value = null;
         }
@@ -142,18 +172,20 @@ class StatusAndHeadersParser {
     if (value) {
       try {
         headers.set(name, value);
-      } catch(e) {
+      } catch (e) {
         // ignore
       }
     }
 
-    return new StatusAndHeaders({statusline, headers, totalRead: this.totalRead});
+    return new StatusAndHeaders({
+      statusline,
+      headers,
+    });
   }
 }
 
-
 // ===========================================================================
-function splitRemainder(str, sep, limit) {
+function splitRemainder(str: string, sep: string, limit: number) {
   const parts = str.split(sep);
   const newParts = parts.slice(0, limit);
   const rest = parts.slice(limit);
@@ -163,9 +195,11 @@ function splitRemainder(str, sep, limit) {
   return newParts;
 }
 
-
 // ===========================================================================
-export async function indexOfDoubleCRLF(buffer, iter) {
+export async function indexOfDoubleCRLF(
+  buffer: Uint8Array,
+  iter: AsyncIterator<Uint8Array, void, unknown>
+) {
   let start = 0;
 
   for (let i = 0; i < buffer.length - 4; i++) {
@@ -175,7 +209,7 @@ export async function indexOfDoubleCRLF(buffer, iter) {
     }
 
     if (inx + 3 >= buffer.length) {
-      const {value} = await iter.next();
+      const { value } = await iter.next();
       if (!value) {
         break;
       }
@@ -186,23 +220,26 @@ export async function indexOfDoubleCRLF(buffer, iter) {
       buffer = newBuff;
     }
 
-    if (buffer[inx + 1] === 10 && buffer[inx + 2] === 13 && buffer[inx + 3] === 10) {
-      return [inx + 3, buffer];
+    if (
+      buffer[inx + 1] === 10 &&
+      buffer[inx + 2] === 13 &&
+      buffer[inx + 3] === 10
+    ) {
+      return [inx + 3, buffer] as const;
     }
 
     start = inx + 1;
   }
 
-  return [-1, buffer];
+  return [-1, buffer] as const;
 }
 
-
 // ===========================================================================
-async function readToDoubleCRLF(reader) {
+export async function readToDoubleCRLF(reader: AsyncIterReader) {
   const chunks = [];
   let size = 0;
 
-  let inx;
+  let inx = 0;
 
   let lastChunk = null;
 
@@ -233,6 +270,4 @@ async function readToDoubleCRLF(reader) {
   return decoder.decode(concatChunks(chunks, size));
 }
 
-
 // ===========================================================================
-export { StatusAndHeaders, StatusAndHeadersParser, CRLF, CRLFCRLF, readToDoubleCRLF };
