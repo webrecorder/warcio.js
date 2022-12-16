@@ -168,11 +168,10 @@ declare class WARCParser {
     _warcHeadersLength: number;
     _headersClass: typeof Map | typeof Headers;
     _parseHttp: boolean;
-    _atRecordBoundary: boolean;
     _reader: AsyncIterReader;
     _record: WARCRecord | null;
     constructor(source: Source, { keepHeadersCase, parseHttp }?: WARCParserOpts);
-    readToNextRecord(): Promise<string>;
+    readToNextRecord(): Promise<Uint8Array | null>;
     _initRecordReader(warcHeaders: StatusAndHeaders): LimitReader;
     parse(): Promise<WARCRecord | null>;
     get offset(): number;
