@@ -1,10 +1,43 @@
-export default {
-  clean: true,
+import { defineConfig } from 'tsup';
+
+const sharedConfig = {
   dts: true,
-  entry: ["src/index.ts", "src/cli.ts", "src/util.ts"],
-  format: ["esm", "cjs"],
   minify: true,
   shims: true,
+  splitting: false
+}
+
+
+const nodeConfig = {
+  ...sharedConfig,
+  clean: true,
+  entry: ["src/index.ts", "src/cli.ts", "src/utils.ts"],
+  platform: "node",
+  format: ["esm", "cjs"],
+}
+
+
+const browserConfig = {
+  ...sharedConfig,
+  clean: false,
+  entry: ["src/index.ts"],
+  platform: "browser",
+  format: ["esm"],
+  outExtension() {
+    return {
+      js: `.all.js`,
+    }
+  },
   sourcemap: true,
-  splitting: false,
+  noExternal: ["pako", "uuid-random", "base32-encode"]
 };
+
+
+export default defineConfig((options) => {
+  console.log(options);
+  if (options.define && options.define.browser) {
+    return browserConfig;
+  } else {
+    return nodeConfig;
+  }
+});

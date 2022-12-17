@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "keywords": [
     "WARC",
     "web archiving"
@@ -39,7 +39,7 @@
     "/dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts src/utils.ts",
+    "build": "tsup && tsup --define.browser",
     "lint": "eslint 'src/**/*.ts'",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest --collectCoverage"
   },
