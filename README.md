@@ -11,12 +11,12 @@ This package represents an approximate port TypeScript port of the Python [warci
 <details>
   <summary>With 2.0, warcio.js has been ported to TypeScript. The package contains the following distribution files for use:</summary>
 
-- dist/index.js - ESM module for the package, no external dependencies
-- dist/index.cjs - CJS module for the package
-- dist/index.all.js - ESM module with all external dependencies, ready to be imported directly in the browser, eg. `import { ... } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js"`
+- dist/index.js - ESM module for the package, external dependencies not bundled.
+- dist/index.cjs - CJS module for the package, external dependencies not bundled.
+- dist/index.all.js - ESM module with all external dependencies included, ready to be imported directly in the browser, eg. `import { ... } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js"`
 - dist/utils.js - ESM module for just the utils module, can be imported with just `import "warcio/utils"` in node or browser.
 - dist/utils.cjs - CJS module for the utils module
-- dist/cli.js - ESM module for the CLI script, running as `warcio.js ...`
+- dist/cli.js - ESM module for the CLI script, installed as `warcio.js` executable.
 - dist/cli.cjs - CJS module for the CLI script.
 </details>
 
