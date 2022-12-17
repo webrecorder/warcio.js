@@ -5,11 +5,11 @@ Streaming web archive (WARC) file support for modern browsers and Node.
 This package represents an approximate port TypeScript port of the Python [warcio](https://github.com/webrecorder/warcio) module.
 
 [![Node.js CI](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml/badge.svg)](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/webrecorder/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/webrecorder/warcio.js)
 
-## Dist Files
+## Package Contents
 
-With 2.0, warcio.js has been ported to TypeScript. The build generates the following output files for use:
+<details>
+  <summary>With 2.0, warcio.js has been ported to TypeScript. The package contains the following distribution files for use:</summary>
 
 - dist/index.js - ESM module for the package, no external dependencies
 - dist/index.cjs - CJS module for the package
@@ -18,6 +18,7 @@ With 2.0, warcio.js has been ported to TypeScript. The build generates the follo
 - dist/utils.cjs - CJS module for the utils module
 - dist/cli.js - ESM module for the CLI script, running as `warcio.js ...`
 - dist/cli.cjs - CJS module for the CLI script.
+</details>
 
 ## Browser Usage
 
