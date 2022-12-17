@@ -1,7 +1,27 @@
 import pako from 'pako';
-import { S as Source, a as SourceReader, b as StreamResults } from './utils-dbe382cb.js';
-export { R as Request, S as Source, h as SourceReadable, a as SourceReader, i as StreamResult, b as StreamResults, c as appendRequestQuery, f as concatChunks, g as getSurt, j as jsonToQueryParams, d as jsonToQueryString, m as mfdToQueryParams, e as mfdToQueryString, p as postToGetUrl, s as splitChunk } from './utils-dbe382cb.js';
 import { WritableStreamBuffer } from 'stream-buffers';
+
+type SourceReader = {
+    read: Function;
+};
+type SourceReadable = {
+    getReader: (...args: any) => {
+        read: Function;
+    };
+};
+type Source = SourceReader | SourceReadable | AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
+type StreamResult = {
+    filename: string;
+    reader: AsyncIterable<Uint8Array>;
+};
+type StreamResults = StreamResult[];
+type Request = {
+    method: string;
+    url: string;
+    headers: Map<string, string> | Headers;
+    postData?: any;
+    requestBody?: any;
+};
 
 declare class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflate {
     reader: T;
@@ -210,13 +230,12 @@ type CdxIndexCommandArgs = any;
 
 declare abstract class BaseIndexer {
     opts: Partial<IndexCommandArgs>;
-    out: WritableStreamBuffer | NodeJS.WriteStream;
     fields: string[];
     parseHttp: boolean;
-    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<IndexCommandArgs>);
+    constructor(opts?: Partial<IndexCommandArgs>);
     serialize(result: Record<string, any>): string;
-    write(result: Record<string, any>): void;
-    run(files: StreamResults): Promise<void>;
+    write(result: Record<string, any>, out: WritableStreamBuffer | NodeJS.WriteStream): void;
+    writeAll(files: StreamResults, out: WritableStreamBuffer | NodeJS.WriteStream): Promise<void>;
     iterIndex(files: StreamResults): AsyncGenerator<Record<string, any>, void, unknown>;
     iterRecords(parser: WARCParser, filename: string): AsyncGenerator<Record<string, any>, void, unknown>;
     filterRecord?(record: WARCRecord): boolean;
@@ -225,13 +244,13 @@ declare abstract class BaseIndexer {
     getField(field: string, record: WARCRecord): string | number | null | undefined;
 }
 declare class Indexer extends BaseIndexer {
-    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<IndexCommandArgs>);
+    constructor(opts?: Partial<IndexCommandArgs>);
 }
 declare class CDXIndexer extends Indexer {
     includeAll: boolean;
     noSurt: boolean;
     _lastRecord: WARCRecord | null;
-    constructor(out: WritableStreamBuffer | NodeJS.WriteStream, opts?: Partial<CdxIndexCommandArgs>);
+    constructor(opts?: Partial<CdxIndexCommandArgs>);
     iterRecords(parser: WARCParser, filename: string): AsyncGenerator<Record<string, any>, void, unknown>;
     filterRecord(record: WARCRecord): boolean;
     indexRecord(record: WARCRecord | null, parser: WARCParser, filename: string): Record<string, any> | null;
@@ -241,4 +260,14 @@ declare class CDXIndexer extends Indexer {
     getField(field: string, record: WARCRecord): string | number | null | undefined;
 }
 
-export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, NoConcatInflator, StatusAndHeaders, StatusAndHeadersParser, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1 };
+declare function getSurt(url: string): string;
+declare function postToGetUrl(request: Request): boolean;
+declare function appendRequestQuery(url: string, query: string, method: string): string;
+declare function jsonToQueryParams(json: string | any, ignoreInvalid?: boolean): URLSearchParams;
+declare function mfdToQueryParams(mfd: string | Uint8Array, contentType: string): URLSearchParams;
+declare function jsonToQueryString(json: any, ignoreInvalid?: boolean): string;
+declare function mfdToQueryString(mfd: string | Uint8Array, contentType: string): string;
+declare function concatChunks(chunks: Uint8Array[], size: number): Uint8Array;
+declare function splitChunk(chunk: Uint8Array, inx: number): [Uint8Array, Uint8Array];
+
+export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };

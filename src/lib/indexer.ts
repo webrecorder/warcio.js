@@ -10,16 +10,13 @@ const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 // ===========================================================================
 abstract class BaseIndexer {
   opts: Partial<IndexCommandArgs>;
-  out: WritableStreamBuffer | NodeJS.WriteStream;
   fields: string[];
   parseHttp: boolean;
 
   constructor(
-    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts: Partial<IndexCommandArgs> = {},
   ) {
     this.opts = opts;
-    this.out = out;
     this.fields = opts && opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
@@ -30,14 +27,14 @@ abstract class BaseIndexer {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  write(result: Record<string, any>) {
+  write(result: Record<string, any>, out: WritableStreamBuffer | NodeJS.WriteStream) {
     // @ts-expect-error incompatible function signatures are actually the same
-    this.out.write(this.serialize(result));
+    out.write(this.serialize(result));
   }
 
-  async run(files: StreamResults) {
+  async writeAll(files: StreamResults, out: WritableStreamBuffer | NodeJS.WriteStream) {
     for await (const result of this.iterIndex(files)) {
-      this.write(result);
+      this.write(result, out);
     }
   }
 
@@ -125,10 +122,9 @@ abstract class BaseIndexer {
 // ===========================================================================
 export class Indexer extends BaseIndexer {
   constructor(
-    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts?: Partial<IndexCommandArgs>,
   ) {
-    super(out, opts);
+    super(opts);
 
     for (const field of this.fields) {
       if (field.startsWith("http:")) {
@@ -154,10 +150,9 @@ export class CDXIndexer extends Indexer {
   _lastRecord: WARCRecord | null;
 
   constructor(
-    out: WritableStreamBuffer | NodeJS.WriteStream,
     opts?: Partial<CdxIndexCommandArgs>,
   ) {
-    super(out, opts);
+    super(opts);
     this.includeAll = Boolean(opts?.all);
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;

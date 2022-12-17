@@ -201,7 +201,7 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
 
   test("test custom CDXIndexer", async () => {
     const entries = [];
-    const indexer = new CDXIndexer(process.stdout);
+    const indexer = new CDXIndexer();
 
     const files = [
       {
@@ -224,7 +224,7 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
 
   test("test custom Indexer", async () => {
     const entries = [];
-    const indexer = new Indexer(process.stdout, { fields: "warc-type,warc-target-uri" });
+    const indexer = new Indexer({ fields: "warc-type,warc-target-uri" });
 
     const files = [
       {
@@ -248,7 +248,7 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
     ]);
 
     // default fields
-    for await (const cdx of new Indexer(process.stdout).iterIndex(files)) {
+    for await (const cdx of new Indexer().iterIndex(files)) {
       expect(cdx["offset"]).toBeDefined();
     }
   });

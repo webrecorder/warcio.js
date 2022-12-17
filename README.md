@@ -5,7 +5,20 @@ Streaming web archive (WARC) file support for modern browsers and Node.
 This package represents an approximate port TypeScript port of the Python [warcio](https://github.com/webrecorder/warcio) module.
 
 [![Node.js CI](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml/badge.svg)](https://github.com/webrecorder/warcio.js/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/webrecorder/warcio.js/branch/master/graph/badge.svg)](https://codecov.io/gh/webrecorder/warcio.js)
+
+## Package Contents
+
+<details>
+  <summary>With 2.0, warcio.js has been ported to TypeScript. The package contains the following distribution files for use:</summary>
+
+- dist/index.js - ESM module for the package, external dependencies not bundled.
+- dist/index.cjs - CJS module for the package, external dependencies not bundled.
+- dist/index.all.js - ESM module with all external dependencies included, ready to be imported directly in the browser, eg. `import { ... } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js"`
+- dist/utils.js - ESM module for just the utils module, can be imported with just `import "warcio/utils"` in node or browser.
+- dist/utils.cjs - CJS module for the utils module
+- dist/cli.js - ESM module for the CLI script, installed as `warcio.js` executable.
+- dist/cli.cjs - CJS module for the CLI script.
+</details>
 
 ## Browser Usage
 
@@ -23,7 +36,7 @@ native Compression Streams where available.
 
 ```html
 <script type="module">
-  import { WARCParser } from 'https://unpkg.com/warcio/dist/warcio.js';
+  import { WARCParser } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
 
 
   async function readWARC(url) {
@@ -35,8 +48,8 @@ native Compression Streams where available.
       // ways to access warc data
       console.log(record.warcType);
       console.log(record.warcTargetURI);
-      console.log(record.warcHeader('WARC-Target-URI'));
-      console.log(record.warcHeaders.headers.get('WARC-Record-ID'));
+      console.log(record.warcHeader("WARC-Target-URI"));
+      console.log(record.warcHeaders.headers.get("WARC-Record-ID"));
 
       // iterator over WARC content one chunk at a time (as Uint8Array)
       for await (const chunk of record) {
@@ -48,7 +61,7 @@ native Compression Streams where available.
     }
   }
 
-  readWARC('https://example.com/path/to/mywarc.warc');
+  readWARC("https://example.com/path/to/mywarc.warc");
 </script>
 ```
 
@@ -70,7 +83,7 @@ The response continues reading from the upstream source.
   <summary>Streaming Example</summary>
 
 ```javascript
-import { WARCParser } from "https://unpkg.com/warcio/dist/warcio.js";
+import { WARCParser } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
 
 async function streamWARCRecord(url, offset, length) {
   const response = await fetch(url, {
@@ -172,14 +185,14 @@ const fullDecoded = await record.readFully(true);
 
 warcio.js uses a number of web platform features, including web streams API, that are now supported natively in Node 18.x.
 
-After installing the package, for example, with `yarn add warcio`, the above example could be run as follows:
+After installing the package, for example, with `npm add warcio`, the above example could be run as follows:
 
 <details>
   <summary>warcio in Node:</summary>
 
 ```javascript
-import { WARCParser } from 'warcio';
-import fs from 'fs';
+import { WARCParser } from "warcio";
+import fs from "fs";
 
 async function readWARC(filename) {
   const nodeStream = fs.createReadStream(filename);
@@ -190,8 +203,8 @@ async function readWARC(filename) {
     // ways to access warc data
     console.log(record.warcType);
     console.log(record.warcTargetURI);
-    console.log(record.warcHeader('WARC-Target-URI'));
-    console.log(record.warcHeaders.headers.get('WARC-Record-ID'));
+    console.log(record.warcHeader("WARC-Target-URI"));
+    console.log(record.warcHeaders.headers.get("WARC-Record-ID"));
 
     // iterator over WARC content one chunk at a time (as Uint8Array)
     for await (const chunk of record) {
@@ -206,11 +219,13 @@ async function readWARC(filename) {
 
 </details>
 
-To build the browser-packaged files in `dist/`, run `yarn run build`.
+To build the browser-packaged files in `dist/`, run `npm run build`.
 
-To run tests, run `yarn run test`.
+To run tests, run `npm run test`.
 
 ## CLI Indexing Tools
+
+warcio.js also includes a command-line interface, installed as `warcio.js` (or by running `node ./dist/cli.js`)
 
 ### index
 
@@ -266,7 +281,7 @@ For example, the following snippet demonstrates a writer that logs all HTML file
 
 ```html
 <script type="module">
-  import { CDXIndexer } from "https://unpkg.com/warcio/dist/warcio.js";
+  import { CDXIndexer } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
 
   async function indexWARC(url) {
     const response = await fetch(url);
@@ -305,7 +320,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
   import {
     WARCRecord,
     WARCSerializer,
-  } from "https://unpkg.com/warcio/dist/warcio.js";
+  } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
 
   async function main() {
     // First, create a warcinfo record
