@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { jest } from '@jest/globals';
 import { main } from "../src/commands";
-import { Indexer, CDXIndexer } from "../src/lib";
+import { Indexer, CDXIndexer, CDXAndRecordIndexer } from "../src/lib";
 import { WritableStreamBuffer } from "stream-buffers";
 
 
@@ -221,6 +221,92 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
       { offset: 2621, length: 586 },
     ]);
   });
+
+  test("test custom CDXIndexer with all records", async () => {
+    const entries = [];
+    const indexer = new CDXIndexer({all: true});
+
+    const files = [
+      {
+        reader: fs.createReadStream(
+          get_warc_path("data/example.warc.gz")
+        ),
+        filename: "example.warc.gz",
+      },
+    ];
+
+    for await (const cdx of indexer.iterIndex(files)) {
+      entries.push({ offset: cdx["offset"], length: cdx["length"] });
+    }
+
+    expect(entries).toEqual([
+      { offset: 0, length: 353 },
+      { offset: 353, length: 431 },
+      { offset: 784, length: 1228 },
+      { offset: 2012, length: 609 },
+      { offset: 2621, length: 586 },
+      { offset: 3207, length: 609 },
+    ]);
+  });
+
+  test("test custom CDXAndRecordIndexer", async () => {
+    const entries = [];
+    const indexer = new CDXAndRecordIndexer();
+
+    const files = [
+      {
+        reader: fs.createReadStream(
+          get_warc_path("data/example.warc.gz")
+        ),
+        filename: "example.warc.gz",
+      },
+    ];
+
+    for await (const {cdx, record, reqRecord} of indexer.iterIndex(files)) {
+      const cdxOffset = cdx?.offset;
+      const cdxLength = cdx?.length;
+      const hasRequest = !!reqRecord;
+      const contentType = record?.httpHeaders?.headers.get("Content-Type") || null;
+      const dataLength = (await record?.contentText()).length;
+      entries.push({ cdxOffset, cdxLength, dataLength, contentType, hasRequest });
+    }
+
+    expect(entries).toEqual([
+      { cdxOffset: 784, cdxLength: 1228, dataLength: 1270, contentType: "text/html", hasRequest: true },
+      { cdxOffset: 2621, cdxLength: 586, dataLength: 0, contentType: "text/html", hasRequest: true },
+    ]);
+  });
+
+  test("test custom CDXAndRecordIndexer with all records", async () => {
+    const entries = [];
+    const indexer = new CDXAndRecordIndexer({all: true});
+
+    const files = [
+      {
+        reader: fs.createReadStream(
+          get_warc_path("data/example.warc.gz")
+        ),
+        filename: "example.warc.gz",
+      },
+    ];
+
+    for await (const {cdx, record, reqRecord} of indexer.iterIndex(files)) {
+      const offset = cdx?.offset;
+      const length = cdx?.length;
+      const hasRequest = !!reqRecord;
+      const contentType = record?.httpHeaders?.headers.get("Content-Type") || null;
+      entries.push({ offset, length, contentType, hasRequest });
+    }
+
+    expect(entries).toEqual([
+      { offset: 0, length: 353, contentType: null, hasRequest: false },
+      { offset: 353, length: 431, contentType: null, hasRequest: false },
+      { offset: 784, length: 1228, contentType: "text/html", hasRequest: true },
+      { offset: 2621, length: 586, contentType: "text/html", hasRequest: true },
+    ]);
+  });
+
+
 
   test("test custom Indexer", async () => {
     const entries = [];

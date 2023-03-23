@@ -274,24 +274,28 @@ The indexers can also be used programmatically, both in the browser and in Node 
 
 The indexer provide an async iterator which yields the index data as an object instead of writing it anywhere.
 
+With 2.1.0, CDXAndRecordIndexer also provides access to each WARC record and (corresponding request record, for `response` and `revisit` records)
+during the iteration.
+
 For example, the following snippet demonstrates a writer that logs all HTML files in a WARC:
 
 <details>
-  <summary>Using CDXIndexer programmatically:</summary>
+  <summary>Using CDXAndRecordIndexer programmatically:</summary>
 
 ```html
 <script type="module">
-  import { CDXIndexer } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
+  import { CDXAndRecordIndexer } from "https://cdn.jsdelivr.net/npm/warcio/dist/index.all.js";
 
   async function indexWARC(url) {
     const response = await fetch(url);
-    const indexer = new CDXIndexer();
+    const indexer = new CDXAndRecordIndexer();
 
     const files = [{ reader: response.body, filename: url }];
 
-    for await (const cdx of indexer.iterIndex(files)) {
-      if (cdx["mime"] === "text/html") {
-        console.log(cdx["url"] + " is an HTML page");
+    for await (const {cdx, record, reqRecord} of indexer.iterIndex(files)) {
+      if (cdx.mime === "text/html") {
+        const text = await record.contentText();
+        console.log(`${cdx.url} is an HTML page of size: ${text.length}`);
       }
     }
   }
@@ -342,7 +346,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
     const url = "http://example.com/";
     const date = "2000-01-01T00:00:00Z";
     const type = "response";
-    const headers = {
+    const httpHeaders = {
       "Custom-Header": "somevalue",
       "Content-Type": 'text/plain; charset="UTF-8"',
     };
@@ -353,7 +357,7 @@ The payload can be provided as an async iterator. The `WARC-Payload-Digest` and 
     }
 
     const record = await WARCRecord.create(
-      { url, date, type, warcVersion, headers },
+      { url, date, type, warcVersion, httpHeaders },
       content()
     );
 
@@ -395,7 +399,7 @@ async function main() {
   const url = "http://example.com/";
   const date = "2000-01-01T00:00:00Z";
   const type = "response";
-  const headers = {
+  const httpHeaders = {
     "Custom-Header": "somevalue",
     "Content-Type": 'text/plain; charset="UTF-8"',
   };
@@ -406,7 +410,7 @@ async function main() {
   }
 
   const record = await WARCRecord.create(
-    { url, date, type, warcVersion, headers },
+    { url, date, type, warcVersion, httpHeaders },
     content()
   );
 

@@ -143,9 +143,18 @@ const DEFAULT_LEGACY_CDX_FIELDS =
     ","
   );
 
+
+// ===========================================================================
+export interface CDXAndRecord {
+  cdx: Record<string, any>,
+  record: WARCRecord,
+  reqRecord: WARCRecord | null
+}
+
 // ===========================================================================
 export class CDXIndexer extends Indexer {
   includeAll: boolean;
+  overrideIndexForAll: boolean;
   noSurt: boolean;
   _lastRecord: WARCRecord | null;
 
@@ -154,6 +163,7 @@ export class CDXIndexer extends Indexer {
   ) {
     super(opts);
     this.includeAll = Boolean(opts?.all);
+    this.overrideIndexForAll = Boolean(opts?.all);
     this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
     this.noSurt = Boolean(opts?.noSurt);
@@ -180,6 +190,7 @@ export class CDXIndexer extends Indexer {
 
     for await (const record of parser) {
       await record.readFully();
+
       const result = this.indexRecord(record, parser, filename);
       if (result) {
         yield result;
@@ -210,7 +221,8 @@ export class CDXIndexer extends Indexer {
     parser: WARCParser,
     filename: string
   ) {
-    if (this.includeAll) {
+
+    if (this.overrideIndexForAll) {
       if (!record) {
         return null;
       }
@@ -218,6 +230,7 @@ export class CDXIndexer extends Indexer {
     }
 
     const lastRecord = this._lastRecord;
+    this._lastRecord = record;
 
     if (record) {
       record._offset = parser.offset;
@@ -225,26 +238,23 @@ export class CDXIndexer extends Indexer {
     }
 
     if (!lastRecord) {
-      this._lastRecord = record;
       return null;
     }
 
     if (!record || lastRecord.warcTargetURI != record.warcTargetURI) {
-      this._lastRecord = record;
       return this.indexRecordPair(lastRecord, null, parser, filename);
     }
 
-    if (record.warcType === "request" && lastRecord.warcType === "response") {
+    const warcType = record.warcType;
+    const lastWarcType = lastRecord.warcType;
+
+    if (warcType === "request" && (lastWarcType === "response" || lastWarcType === "revisit")) {
       this._lastRecord = null;
       return this.indexRecordPair(lastRecord, record, parser, filename);
-    } else if (
-      record.warcType === "response" &&
-      lastRecord.warcType === "request"
-    ) {
+    } else if ((warcType === "response" || warcType === "revisit") && lastWarcType === "request") {
       this._lastRecord = null;
       return this.indexRecordPair(record, lastRecord, parser, filename);
     } else {
-      this._lastRecord = record;
       return this.indexRecordPair(lastRecord, null, parser, filename);
     }
   }
@@ -361,5 +371,26 @@ export class CDXIndexer extends Indexer {
       default:
         return null;
     }
+  }
+}
+
+// ===========================================================================
+export class CDXAndRecordIndexer extends CDXIndexer
+{
+  constructor(
+    opts?: Partial<CdxIndexCommandArgs>
+  ) {
+    super(opts);
+    this.overrideIndexForAll = false;
+  }
+
+  override indexRecordPair(
+    record: WARCRecord,
+    reqRecord: WARCRecord | null,
+    parser: WARCParser,
+    filename: string
+  ) : CDXAndRecord | null {
+    const cdx = super.indexRecordPair(record, reqRecord, parser, filename);
+    return cdx && {cdx, record, reqRecord};
   }
 }
