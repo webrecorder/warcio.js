@@ -49,6 +49,7 @@ describe("indexer", () => {
 {"offset":2566,"length":800,"warc-type":"request"}
 {"offset":3370,"length":942,"warc-type":"revisit","http:status":200,"http:content-type":"text/html"}
 {"offset":4316,"length":800,"warc-type":"request"}
+{"offset":5120,"length":429,"warc-type":"metadata"}
 `
     );
   });
