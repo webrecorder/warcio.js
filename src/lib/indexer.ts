@@ -213,9 +213,10 @@ export class CDXIndexer extends Indexer {
       return false;
     }
 
-    if (record.warcHeader('WARC-Type') === "metadata" || 
-        record?.httpHeaders?.headers?.get('content-type') === "application/warc-field") {
-      return false;
+    if (type === "metadata" || type === "resource") {
+      if (record.warcContentType === "application/warc-fields") {
+        return false;
+      }
     }
 
     return true;
