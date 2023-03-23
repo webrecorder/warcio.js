@@ -375,7 +375,7 @@ export class CDXIndexer extends Indexer {
 }
 
 // ===========================================================================
-export class CDXRecordIndexer extends CDXIndexer
+export class CDXAndRecordIndexer extends CDXIndexer
 {
   constructor(
     opts?: Partial<CdxIndexCommandArgs>

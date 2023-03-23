@@ -12,7 +12,7 @@ export {
   WARC_1_1,
   Indexer,
   CDXIndexer,
-  CDXRecordIndexer,
+  CDXAndRecordIndexer,
   postToGetUrl,
   getSurt,
   appendRequestQuery,
