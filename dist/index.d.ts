@@ -246,8 +246,14 @@ declare abstract class BaseIndexer {
 declare class Indexer extends BaseIndexer {
     constructor(opts?: Partial<IndexCommandArgs>);
 }
+interface CDXAndRecord {
+    cdx: Record<string, any>;
+    record: WARCRecord;
+    reqRecord: WARCRecord | null;
+}
 declare class CDXIndexer extends Indexer {
     includeAll: boolean;
+    overrideIndexForAll: boolean;
     noSurt: boolean;
     _lastRecord: WARCRecord | null;
     constructor(opts?: Partial<CdxIndexCommandArgs>);
@@ -258,6 +264,10 @@ declare class CDXIndexer extends Indexer {
     serializeCDXJ(result: Record<string, any>): string;
     serializeCDX11(result: Record<string, any>): string;
     getField(field: string, record: WARCRecord): string | number | null | undefined;
+}
+declare class CDXRecordIndexer extends CDXIndexer {
+    constructor(opts?: Partial<CdxIndexCommandArgs>);
+    indexRecordPair(record: WARCRecord, reqRecord: WARCRecord | null, parser: WARCParser, filename: string): CDXAndRecord | null;
 }
 
 declare function getSurt(url: string): string;
@@ -270,4 +280,4 @@ declare function mfdToQueryString(mfd: string | Uint8Array, contentType: string)
 declare function concatChunks(chunks: Uint8Array[], size: number): Uint8Array;
 declare function splitChunk(chunk: Uint8Array, inx: number): [Uint8Array, Uint8Array];
 
-export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
+export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXIndexer, CDXRecordIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
