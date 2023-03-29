@@ -1,4 +1,5 @@
 import pako from 'pako';
+import { IHasher } from 'hash-wasm/dist/lib/WASMInterface';
 import { WritableStreamBuffer } from 'stream-buffers';
 
 type SourceReader = {
@@ -225,6 +226,22 @@ declare class WARCSerializer extends BaseAsyncIterReader {
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
+declare abstract class WARCRecordBuffer {
+    write(chunk: Uint8Array): Promise<void>;
+    readAll(): AsyncIterable<Uint8Array>;
+}
+declare class StreamingWARCSerializer extends WARCSerializer {
+    recordbuffer: WARCRecordBuffer;
+    blockHasher: IHasher | null;
+    payloadHasher: IHasher | null;
+    httpHeadersBuff: Uint8Array | null;
+    warcHeadersBuff: Uint8Array | null;
+    constructor(record: WARCRecord, recordbuffer: WARCRecordBuffer, opts?: WARCSerializerOpts);
+    getDigest(hasher: IHasher): string;
+    bufferRecord(record: WARCRecord, recordBuffer: WARCRecordBuffer): Promise<void>;
+    generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
+}
+
 type IndexCommandArgs = any;
 type CdxIndexCommandArgs = any;
 
@@ -280,4 +297,4 @@ declare function mfdToQueryString(mfd: string | Uint8Array, contentType: string)
 declare function concatChunks(chunks: Uint8Array[], size: number): Uint8Array;
 declare function splitChunk(chunk: Uint8Array, inx: number): [Uint8Array, Uint8Array];
 
-export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXAndRecordIndexer, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
+export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXAndRecordIndexer, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, StreamingWARCSerializer, WARCParser, WARCParserOpts, WARCRecord, WARCRecordBuffer, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };

@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "keywords": [
     "WARC",
     "web archiving"
@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "base32-encode": "^2.0.0",
+    "hash-wasm": "^4.9.0",
     "pako": "^1.0.11",
     "uuid-random": "^1.3.2",
     "yargs": "^17.6.2"
