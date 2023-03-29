@@ -70,15 +70,6 @@ export class StreamingWARCSerializer extends WARCSerializer {
       size += chunk.length;
     }
 
-    for await (const chunk of this.record) {
-      this.blockHasher?.update(chunk);
-      this.payloadHasher?.update(chunk);
-
-      await this.recordBuffer.write(chunk);
-
-      size += chunk.length;
-    }
-
     if (this.payloadHasher) {
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(this.payloadHasher));
     }
