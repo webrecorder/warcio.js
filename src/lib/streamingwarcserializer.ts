@@ -17,7 +17,8 @@ export abstract class WARCRecordBuffer {
 
 // ===========================================================================
 export class StreamingWARCSerializer extends BaseWARCSerializer {
-  recordBuffer: WARCRecordBuffer;
+  externalBuffer: WARCRecordBuffer | null = null;
+
   blockHasher: IHasher | null = null;
   payloadHasher: IHasher | null = null;
 
@@ -25,14 +26,11 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
   warcHeadersBuff: Uint8Array | null = null;
 
   memBuff: Array<Uint8Array> = [];
-  externalBuffUsed = false;
 
   _initing: Promise<void>;
 
-  constructor(recordBuffer: WARCRecordBuffer, opts: WARCSerializerOpts = {}) {
+  constructor(opts: WARCSerializerOpts = {}) {
     super(opts);
-
-    this.recordBuffer = recordBuffer;
     this._initing = this.init();
   }
 
@@ -55,7 +53,7 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     );
   }
 
-  async bufferRecord(record: WARCRecord, inMemoryMaxSize = 10000000) {
+  async bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer, maxInMemorySize = 100000000) {
     await this._initing;
 
     let size = 0;
@@ -73,18 +71,18 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     }
 
     let memBuffSize = 0;
-    this.externalBuffUsed = false;
+    this.externalBuffer = null;
 
     for await (const chunk of record.reader) {
       this.blockHasher?.update(chunk);
       this.payloadHasher?.update(chunk);
 
-      if ((memBuffSize + chunk.length) < inMemoryMaxSize) {
+      if ((memBuffSize + chunk.length) < maxInMemorySize) {
+        await externalBuffer.write(chunk);
+        this.externalBuffer = externalBuffer;
+      } else {
         this.memBuff.push(chunk);
         memBuffSize += chunk.length;
-      } else {
-        this.externalBuffUsed = true;
-        await this.recordBuffer.write(chunk);
       }
 
       size += chunk.length;
@@ -118,8 +116,8 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
       yield chunk;
     }
 
-    if (this.externalBuffUsed) {
-      for await (const chunk of this.recordBuffer.readAll()) {
+    if (this.externalBuffer) {
+      for await (const chunk of this.externalBuffer.readAll()) {
         yield chunk;
       }
     }

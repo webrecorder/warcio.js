@@ -235,18 +235,17 @@ declare abstract class WARCRecordBuffer {
     abstract readAll(): AsyncIterable<Uint8Array>;
 }
 declare class StreamingWARCSerializer extends BaseWARCSerializer {
-    recordBuffer: WARCRecordBuffer;
+    externalBuffer: WARCRecordBuffer | null;
     blockHasher: IHasher | null;
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;
     warcHeadersBuff: Uint8Array | null;
     memBuff: Array<Uint8Array>;
-    externalBuffUsed: boolean;
     _initing: Promise<void>;
-    constructor(recordBuffer: WARCRecordBuffer, opts?: WARCSerializerOpts);
+    constructor(opts?: WARCSerializerOpts);
     init(): Promise<void>;
     getDigest(hasher: IHasher): string;
-    bufferRecord(record: WARCRecord, inMemoryMaxSize?: number): Promise<void>;
+    bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer, maxInMemorySize?: number): Promise<void>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
