@@ -5,7 +5,7 @@ import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
 import { WARCRecord } from "./warcrecord";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
-import { BaseWARCSerializer, WARCSerializerOpts } from "./warcserializer";
+import { BaseWARCSerializer } from "./warcserializer";
 
 const encoder = new TextEncoder();
 
@@ -25,22 +25,16 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
   httpHeadersBuff: Uint8Array | null = null;
   warcHeadersBuff: Uint8Array | null = null;
 
-  memBuff: Array<Uint8Array> = [];
+  newHasher() {
+    switch (this.digestAlgo) {
+      case "sha-256":
+        return createSHA256();
 
-  _initing: Promise<void>;
+      case "sha-1":
+        return createSHA1();
 
-  constructor(opts: WARCSerializerOpts = {}) {
-    super(opts);
-    this._initing = this.init();
-  }
-
-  async init() {
-    if (this.digestAlgo === "sha-256") {
-      this.blockHasher = await createSHA256();
-      this.payloadHasher = await createSHA256();
-    } else {
-      this.blockHasher = await createSHA1();
-      this.payloadHasher = await createSHA1();
+      default:
+        return createSHA256();
     }
   }
 
@@ -53,13 +47,11 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     );
   }
 
-  async bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer, maxInMemorySize = 100000000) {
-    await this._initing;
-
+  async bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer) {
+    const blockHasher = await this.newHasher();
+    const payloadHasher = await this.newHasher();
+  
     let size = 0;
-
-    this.blockHasher?.init();
-    this.payloadHasher?.init();
 
     if (record.httpHeaders) {
       this.httpHeadersBuff = encoder.encode(
@@ -67,33 +59,26 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
       );
       size += this.httpHeadersBuff.length;
 
-      this.blockHasher?.update(this.httpHeadersBuff);
+      blockHasher?.update(this.httpHeadersBuff);
     }
 
-    let memBuffSize = 0;
-    this.externalBuffer = null;
+    this.externalBuffer = externalBuffer;
 
     for await (const chunk of record.reader) {
-      this.blockHasher?.update(chunk);
-      this.payloadHasher?.update(chunk);
+      blockHasher?.update(chunk);
+      payloadHasher?.update(chunk);
 
-      if ((memBuffSize + chunk.length) < maxInMemorySize) {
-        await externalBuffer.write(chunk);
-        this.externalBuffer = externalBuffer;
-      } else {
-        this.memBuff.push(chunk);
-        memBuffSize += chunk.length;
-      }
+      await externalBuffer.write(chunk);
 
       size += chunk.length;
     }
 
-    if (this.payloadHasher) {
-      record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(this.payloadHasher));
+    if (payloadHasher) {
+      record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(payloadHasher));
     }
 
-    if (this.blockHasher) {
-      record.warcHeaders.headers.set("WARC-Block-Digest", this.getDigest(this.blockHasher));
+    if (blockHasher) {
+      record.warcHeaders.headers.set("WARC-Block-Digest", this.getDigest(blockHasher));
     }
 
     record.warcHeaders.headers.set("Content-Length", size.toString());
@@ -110,10 +95,6 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
 
     if (this.httpHeadersBuff) {
       yield this.httpHeadersBuff;
-    }
-
-    for (const chunk of this.memBuff) {
-      yield chunk;
     }
 
     if (this.externalBuffer) {

@@ -240,12 +240,9 @@ declare class StreamingWARCSerializer extends BaseWARCSerializer {
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;
     warcHeadersBuff: Uint8Array | null;
-    memBuff: Array<Uint8Array>;
-    _initing: Promise<void>;
-    constructor(opts?: WARCSerializerOpts);
-    init(): Promise<void>;
+    newHasher(): Promise<IHasher>;
     getDigest(hasher: IHasher): string;
-    bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer, maxInMemorySize?: number): Promise<void>;
+    bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer): Promise<void>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
