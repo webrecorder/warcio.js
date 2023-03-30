@@ -26,9 +26,15 @@ export class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflat
 
 // ===========================================================================
 export abstract class BaseAsyncIterReader {
-  static async readFully(iter: AsyncIterable<Uint8Array>) : Promise<Uint8Array> {
-    const chunks = [];
+  static async readFully(iter: AsyncIterable<Uint8Array>, chunksStart: Array<Uint8Array> = []) : Promise<Uint8Array> {
+    const chunks = chunksStart;
     let size = 0;
+
+    if (chunksStart) {
+      for (const chunk of chunksStart) {
+        size += chunk.length;
+      }
+    }
 
     for await (const chunk of iter) {
       chunks.push(chunk);
@@ -57,8 +63,8 @@ export abstract class BaseAsyncIterReader {
     });
   }
 
-  async readFully(): Promise<Uint8Array> {
-    return await BaseAsyncIterReader.readFully(this);
+  async readFully(chunksStart : Array<Uint8Array> = []): Promise<Uint8Array> {
+    return await BaseAsyncIterReader.readFully(this, chunksStart);
   }
 
   abstract readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
@@ -379,8 +385,8 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     return concatChunks(chunks, size);
   }
 
-  override async readFully() : Promise<Uint8Array> {
-    return (await this._readOrSkip())[1];
+  override async readFully(chunksStart : Array<Uint8Array> = []) : Promise<Uint8Array> {
+    return (await this._readOrSkip(-1, false, chunksStart))[1];
   }
 
   async readSize(sizeLimit: number) : Promise<Uint8Array> {
@@ -391,8 +397,8 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     return (await this._readOrSkip(sizeLimit, true))[0];
   }
 
-  async _readOrSkip(sizeLimit = -1, skip = false) {
-    const chunks: Uint8Array[] = [];
+  async _readOrSkip(sizeLimit = -1, skip = false, chunksStart : Array<Uint8Array> = []) {
+    const chunks: Uint8Array[] = chunksStart;
     let size = 0;
 
     //while ((res = await this._readiter.next()) && (chunk = res.value)) {

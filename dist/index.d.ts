@@ -32,10 +32,10 @@ declare class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Infla
     onEnd(status: pako.ReturnCodes): void;
 }
 declare abstract class BaseAsyncIterReader {
-    static readFully(iter: AsyncIterable<Uint8Array>): Promise<Uint8Array>;
+    static readFully(iter: AsyncIterable<Uint8Array>, chunksStart?: Array<Uint8Array>): Promise<Uint8Array>;
     abstract [Symbol.asyncIterator](): AsyncIterator<Uint8Array>;
     getReadableStream(): ReadableStream<any>;
-    readFully(): Promise<Uint8Array>;
+    readFully(chunksStart?: Array<Uint8Array>): Promise<Uint8Array>;
     abstract readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
     readline(maxLength?: number): Promise<string>;
     iterLines(maxLength?: number): AsyncGenerator<string, void, unknown>;
@@ -63,10 +63,10 @@ declare class AsyncIterReader extends BaseAsyncIterReader {
     _getNextChunk(original?: Uint8Array): Uint8Array | null | undefined;
     [Symbol.asyncIterator](): AsyncGenerator<Uint8Array, void, unknown>;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
-    readFully(): Promise<Uint8Array>;
+    readFully(chunksStart?: Array<Uint8Array>): Promise<Uint8Array>;
     readSize(sizeLimit: number): Promise<Uint8Array>;
     skipSize(sizeLimit: number): Promise<number>;
-    _readOrSkip(sizeLimit?: number, skip?: boolean): Promise<readonly [number, Uint8Array]>;
+    _readOrSkip(sizeLimit?: number, skip?: boolean, chunksStart?: Array<Uint8Array>): Promise<readonly [number, Uint8Array]>;
     getReadOffset(): number;
     getRawOffset(): number;
     getRawLength(prevOffset: number): number;
@@ -158,7 +158,7 @@ declare class WARCRecord extends BaseAsyncIterReader {
         statusText: string;
     } | null;
     fixUp(): void;
-    readFully(isContent?: boolean): Promise<Uint8Array>;
+    readFully(isContent?: any, chunksStart?: Array<Uint8Array>): Promise<Uint8Array>;
     get reader(): AsyncIterable<Uint8Array>;
     get contentReader(): AsyncIterable<Uint8Array>;
     _createDecodingReader(source: Source): AsyncIterReader;
@@ -209,36 +209,44 @@ type WARCSerializerOpts = {
         base32?: boolean;
     };
 };
-declare class WARCSerializer extends BaseAsyncIterReader {
-    static serialize(record: WARCRecord, opts?: WARCSerializerOpts): Promise<Uint8Array>;
-    static base16(hashBuffer: ArrayBuffer): string;
-    record: WARCRecord;
+declare class BaseWARCSerializer extends BaseAsyncIterReader {
     gzip: boolean;
     digestAlgo: AlgorithmIdentifier;
     digestAlgoPrefix: string;
     digestBase32: boolean;
-    constructor(record: WARCRecord, opts?: WARCSerializerOpts);
+    constructor(opts?: WARCSerializerOpts);
+    generateRecord(): AsyncGenerator<Uint8Array>;
     [Symbol.asyncIterator](): AsyncGenerator<any, void, unknown>;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
     pakoCompress(): AsyncGenerator<any, void, unknown>;
     streamCompress(cs: CompressionStream): AsyncGenerator<any, void, unknown>;
+}
+declare class WARCSerializer extends BaseWARCSerializer {
+    static serialize(record: WARCRecord, opts?: WARCSerializerOpts): Promise<Uint8Array>;
+    static base16(hashBuffer: ArrayBuffer): string;
+    record: WARCRecord;
+    constructor(record: WARCRecord, opts?: WARCSerializerOpts);
     digestMessage(chunk: BufferSource): Promise<string>;
-    generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
+    generateRecord(): AsyncGenerator<Uint8Array>;
 }
 
 declare abstract class WARCRecordBuffer {
-    write(chunk: Uint8Array): Promise<void>;
-    readAll(): AsyncIterable<Uint8Array>;
+    abstract write(chunk: Uint8Array): void;
+    abstract readAll(): AsyncIterable<Uint8Array>;
 }
-declare class StreamingWARCSerializer extends WARCSerializer {
+declare class StreamingWARCSerializer extends BaseWARCSerializer {
     recordBuffer: WARCRecordBuffer;
     blockHasher: IHasher | null;
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;
     warcHeadersBuff: Uint8Array | null;
-    constructor(record: WARCRecord, recordBuffer: WARCRecordBuffer, opts?: WARCSerializerOpts);
+    memBuff: Array<Uint8Array>;
+    externalBuffUsed: boolean;
+    _initing: Promise<void>;
+    constructor(recordBuffer: WARCRecordBuffer, opts?: WARCSerializerOpts);
+    init(): Promise<void>;
     getDigest(hasher: IHasher): string;
-    bufferRecord(): Promise<void>;
+    bufferRecord(record: WARCRecord, inMemoryMaxSize?: number): Promise<void>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 

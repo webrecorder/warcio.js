@@ -222,12 +222,12 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
   }
 
-  override async readFully(isContent = false) {
+  override async readFully(isContent: any = false, chunksStart : Array<Uint8Array> = []) {
     // if have httpHeaders, need to consider transfer and content decoding is decoding content vs raw data
     if (this.httpHeaders) {
       // if payload is empty, just return
       if (this.payload && !this.payload.length) {
-        return this.payload;
+        return (chunksStart && chunksStart[0]) || this.payload;
       }
 
       // otherwise, can't serialize payload as raw if already started reading
@@ -239,7 +239,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
       // reading content, but already consumed raw data, convert
       if (isContent && this.consumed === "raw" && this.payload) {
-        return await this._createDecodingReader([this.payload]).readFully();
+        return await this._createDecodingReader([this.payload]).readFully(chunksStart);
       }
     }
 
@@ -248,10 +248,10 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
 
     if (isContent) {
-      this.payload = await super.readFully();
+      this.payload = await super.readFully(chunksStart);
       this.consumed = "content";
     } else {
-      this.payload = await WARCRecord.readFully(this._reader);
+      this.payload = await BaseAsyncIterReader.readFully(this._reader, chunksStart);
       this.consumed = "raw";
     }
 

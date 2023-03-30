@@ -5,17 +5,18 @@ import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
 import { WARCRecord } from "./warcrecord";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
-import { WARCSerializer, WARCSerializerOpts } from "./warcserializer";
+import { BaseWARCSerializer, WARCSerializerOpts } from "./warcserializer";
 
 const encoder = new TextEncoder();
 
 // ===========================================================================
 export abstract class WARCRecordBuffer {
-  async write(chunk: Uint8Array) {}
-  async* readAll() : AsyncIterable<Uint8Array> {}
+  abstract write(chunk: Uint8Array): void;
+  abstract readAll() : AsyncIterable<Uint8Array>;
 }
 
-export class StreamingWARCSerializer extends WARCSerializer {
+// ===========================================================================
+export class StreamingWARCSerializer extends BaseWARCSerializer {
   recordBuffer: WARCRecordBuffer;
   blockHasher: IHasher | null = null;
   payloadHasher: IHasher | null = null;
@@ -23,10 +24,26 @@ export class StreamingWARCSerializer extends WARCSerializer {
   httpHeadersBuff: Uint8Array | null = null;
   warcHeadersBuff: Uint8Array | null = null;
 
-  constructor(record: WARCRecord, recordBuffer: WARCRecordBuffer, opts: WARCSerializerOpts = {}) {
-    super(record, opts);
+  memBuff: Array<Uint8Array> = [];
+  externalBuffUsed = false;
+
+  _initing: Promise<void>;
+
+  constructor(recordBuffer: WARCRecordBuffer, opts: WARCSerializerOpts = {}) {
+    super(opts);
 
     this.recordBuffer = recordBuffer;
+    this._initing = this.init();
+  }
+
+  async init() {
+    if (this.digestAlgo === "sha-256") {
+      this.blockHasher = await createSHA256();
+      this.payloadHasher = await createSHA256();
+    } else {
+      this.blockHasher = await createSHA1();
+      this.payloadHasher = await createSHA1();
+    }
   }
 
   getDigest(hasher: IHasher) {
@@ -38,49 +55,52 @@ export class StreamingWARCSerializer extends WARCSerializer {
     );
   }
 
-  async bufferRecord() {
-    let size = 0;
+  async bufferRecord(record: WARCRecord, inMemoryMaxSize = 10000000) {
+    await this._initing;
 
-    if (this.digestAlgo === "sha-256") {
-      this.blockHasher = await createSHA256();
-      this.payloadHasher = await createSHA256();
-    } else {
-      this.blockHasher = await createSHA1();
-      this.payloadHasher = await createSHA1();
-    }
+    let size = 0;
 
     this.blockHasher?.init();
     this.payloadHasher?.init();
 
-    if (this.record.httpHeaders) {
+    if (record.httpHeaders) {
       this.httpHeadersBuff = encoder.encode(
-        this.record.httpHeaders.toString() + "\r\n"
+        record.httpHeaders.toString() + "\r\n"
       );
       size += this.httpHeadersBuff.length;
 
       this.blockHasher?.update(this.httpHeadersBuff);
     }
 
-    for await (const chunk of this.record) {
+    let memBuffSize = 0;
+    this.externalBuffUsed = false;
+
+    for await (const chunk of record.reader) {
       this.blockHasher?.update(chunk);
       this.payloadHasher?.update(chunk);
 
-      await this.recordBuffer.write(chunk);
+      if ((memBuffSize + chunk.length) < inMemoryMaxSize) {
+        this.memBuff.push(chunk);
+        memBuffSize += chunk.length;
+      } else {
+        this.externalBuffUsed = true;
+        await this.recordBuffer.write(chunk);
+      }
 
       size += chunk.length;
     }
 
     if (this.payloadHasher) {
-      this.record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(this.payloadHasher));
+      record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(this.payloadHasher));
     }
 
     if (this.blockHasher) {
-      this.record.warcHeaders.headers.set("WARC-Block-Digest", this.getDigest(this.blockHasher));
+      record.warcHeaders.headers.set("WARC-Block-Digest", this.getDigest(this.blockHasher));
     }
 
-    this.record.warcHeaders.headers.set("Content-Length", size.toString());
+    record.warcHeaders.headers.set("Content-Length", size.toString());
 
-    this.warcHeadersBuff = encoder.encode(this.record.warcHeaders.toString());
+    this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
   }
 
   override async *generateRecord() {
@@ -94,8 +114,14 @@ export class StreamingWARCSerializer extends WARCSerializer {
       yield this.httpHeadersBuff;
     }
 
-    for await (const chunk of this.recordBuffer.readAll()) {
+    for (const chunk of this.memBuff) {
       yield chunk;
+    }
+
+    if (this.externalBuffUsed) {
+      for await (const chunk of this.recordBuffer.readAll()) {
+        yield chunk;
+      }
     }
 
     yield CRLFCRLF;
