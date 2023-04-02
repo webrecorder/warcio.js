@@ -25,15 +25,28 @@ export class BaseWARCSerializer extends BaseAsyncIterReader
   digestAlgo: AlgorithmIdentifier = "";
   digestAlgoPrefix = "";
   digestBase32 = false;
+  record: WARCRecord;
 
-  constructor(opts : WARCSerializerOpts = {}) {
+  constructor(record: WARCRecord, opts : WARCSerializerOpts = {}) {
     super();
     this.gzip = Boolean(opts.gzip);
+
+    this.record = record;
 
     const digestOpts = (opts && opts.digest) || {};
     this.digestAlgo = digestOpts?.algo || "sha-256";
     this.digestAlgoPrefix = digestOpts?.prefix || "sha256:";
     this.digestBase32 = Boolean(digestOpts?.base32);
+
+    if (BaseWARCSerializer.noComputeDigest(record)) {
+      this.digestAlgo = "";
+    }
+  }
+
+  static noComputeDigest(record: WARCRecord) {
+    return record.warcType === "revisit" ||
+           record.warcType === "warcinfo" ||
+      (record.warcPayloadDigest && record.warcBlockDigest);
   }
 
   async *generateRecord() : AsyncGenerator<Uint8Array> {
@@ -123,22 +136,6 @@ export class WARCSerializer extends BaseWARCSerializer {
   static base16(hashBuffer: ArrayBuffer) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  }
-
-  record: WARCRecord;
-
-  constructor(record: WARCRecord, opts: WARCSerializerOpts = {}) {
-    super(opts);
-
-    this.record = record;
-
-    if (
-      record.warcType === "revisit" ||
-      record.warcType === "warcinfo" ||
-      (record.warcPayloadDigest && record.warcBlockDigest)
-    ) {
-      this.digestAlgo = "";
-    }
   }
 
   async digestMessage(chunk: BufferSource) {

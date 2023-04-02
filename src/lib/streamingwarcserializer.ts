@@ -2,7 +2,6 @@ import base32Encode from "base32-encode";
 import { createSHA1, createSHA256 } from "hash-wasm";
 import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
 
-import { WARCRecord } from "./warcrecord";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
 import { BaseWARCSerializer } from "./warcserializer";
@@ -33,6 +32,9 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
       case "sha-1":
         return createSHA1();
 
+      case "":
+        return null;
+
       default:
         return createSHA256();
     }
@@ -47,7 +49,9 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     );
   }
 
-  async bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer) {
+  async bufferRecord(externalBuffer: WARCRecordBuffer) {
+    const record = this.record;
+
     const blockHasher = await this.newHasher();
     const payloadHasher = await this.newHasher();
   

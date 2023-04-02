@@ -214,7 +214,9 @@ declare class BaseWARCSerializer extends BaseAsyncIterReader {
     digestAlgo: AlgorithmIdentifier;
     digestAlgoPrefix: string;
     digestBase32: boolean;
-    constructor(opts?: WARCSerializerOpts);
+    record: WARCRecord;
+    constructor(record: WARCRecord, opts?: WARCSerializerOpts);
+    static noComputeDigest(record: WARCRecord): string | true | null | undefined;
     generateRecord(): AsyncGenerator<Uint8Array>;
     [Symbol.asyncIterator](): AsyncGenerator<any, void, unknown>;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
@@ -224,8 +226,6 @@ declare class BaseWARCSerializer extends BaseAsyncIterReader {
 declare class WARCSerializer extends BaseWARCSerializer {
     static serialize(record: WARCRecord, opts?: WARCSerializerOpts): Promise<Uint8Array>;
     static base16(hashBuffer: ArrayBuffer): string;
-    record: WARCRecord;
-    constructor(record: WARCRecord, opts?: WARCSerializerOpts);
     digestMessage(chunk: BufferSource): Promise<string>;
     generateRecord(): AsyncGenerator<Uint8Array>;
 }
@@ -240,9 +240,9 @@ declare class StreamingWARCSerializer extends BaseWARCSerializer {
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;
     warcHeadersBuff: Uint8Array | null;
-    newHasher(): Promise<IHasher>;
+    newHasher(): Promise<IHasher> | null;
     getDigest(hasher: IHasher): string;
-    bufferRecord(record: WARCRecord, externalBuffer: WARCRecordBuffer): Promise<void>;
+    bufferRecord(externalBuffer: WARCRecordBuffer): Promise<void>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
