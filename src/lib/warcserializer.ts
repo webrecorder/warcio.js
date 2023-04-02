@@ -6,6 +6,9 @@ import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
+import { createSHA256, createSHA1 } from "hash-wasm";
+import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
+
 const encoder = new TextEncoder();
 
 // ===========================================================================
@@ -16,15 +19,17 @@ export type WARCSerializerOpts = {
     prefix?: string;
     base32?: boolean;
   };
+  preferPako?: boolean;
 };
 
 // ===========================================================================
-export class BaseWARCSerializer extends BaseAsyncIterReader
+export abstract class BaseWARCSerializer extends BaseAsyncIterReader
 {
   gzip = false;
   digestAlgo: AlgorithmIdentifier = "";
   digestAlgoPrefix = "";
   digestBase32 = false;
+  preferPako = false;
   record: WARCRecord;
 
   constructor(record: WARCRecord, opts : WARCSerializerOpts = {}) {
@@ -37,6 +42,7 @@ export class BaseWARCSerializer extends BaseAsyncIterReader
     this.digestAlgo = digestOpts?.algo || "sha-256";
     this.digestAlgoPrefix = digestOpts?.prefix || "sha256:";
     this.digestBase32 = Boolean(digestOpts?.base32);
+    this.preferPako = Boolean(opts?.preferPako);
 
     if (BaseWARCSerializer.noComputeDigest(record)) {
       this.digestAlgo = "";
@@ -49,10 +55,7 @@ export class BaseWARCSerializer extends BaseAsyncIterReader
       (record.warcPayloadDigest && record.warcBlockDigest);
   }
 
-  async *generateRecord() : AsyncGenerator<Uint8Array> {
-    throw new Error("Not Implemented");
-    yield new Uint8Array();
-  }
+  abstract generateRecord() : AsyncGenerator<Uint8Array>;
 
   async *[Symbol.asyncIterator]() {
     if (!this.gzip) {
@@ -62,7 +65,7 @@ export class BaseWARCSerializer extends BaseAsyncIterReader
 
     let cs = null;
 
-    if ("CompressionStream" in globalThis) {
+    if ("CompressionStream" in globalThis && !this.preferPako) {
       cs = new globalThis.CompressionStream("gzip");
       yield* this.streamCompress(cs);
     } else {
@@ -189,3 +192,138 @@ export class WARCSerializer extends BaseWARCSerializer {
     yield CRLFCRLF;
   }
 }
+
+// ===========================================================================
+export abstract class StreamingBufferIO {
+  abstract write(chunk: Uint8Array): void;
+  abstract readAll() : AsyncIterable<Uint8Array>;
+}
+
+// ===========================================================================
+export class StreamingInMemBuffer extends StreamingBufferIO
+{
+  buffers: Array<Uint8Array> = [];
+
+  write(chunk: Uint8Array): void {
+    this.buffers.push(chunk);
+  }
+
+  async* readAll(): AsyncIterable<Uint8Array> {
+    for (const buff of this.buffers) {
+      yield buff;
+    }
+  }
+};
+
+// ===========================================================================
+export class StreamingWARCSerializer extends BaseWARCSerializer {
+  externalBuffer: StreamingBufferIO;
+  buffered = false;
+
+  blockHasher: IHasher | null = null;
+  payloadHasher: IHasher | null = null;
+
+  httpHeadersBuff: Uint8Array | null = null;
+  warcHeadersBuff: Uint8Array | null = null;
+
+  constructor(record: WARCRecord, opts : WARCSerializerOpts = {},
+    externalBuffer: StreamingBufferIO = new StreamingInMemBuffer()) {
+      super(record, opts);
+      this.externalBuffer = externalBuffer;
+  }
+
+  newHasher() {
+    switch (this.digestAlgo) {
+      case "sha-256":
+        return createSHA256();
+
+      case "sha-1":
+        return createSHA1();
+
+      case "":
+        return null;
+
+      default:
+        return createSHA256();
+    }
+  }
+
+  getDigest(hasher: IHasher) {
+    return (
+      this.digestAlgoPrefix + 
+      (this.digestBase32
+        ? base32Encode(hasher.digest("binary"), "RFC4648")
+        : hasher.digest("hex"))
+    );
+  }
+
+  async bufferRecord() {
+    if (this.buffered) {
+      return;
+    }
+
+    const record = this.record;
+
+    const blockHasher = await this.newHasher();
+    const payloadHasher = await this.newHasher();
+  
+    let size = 0;
+
+    if (record.httpHeaders) {
+      this.httpHeadersBuff = encoder.encode(
+        record.httpHeaders.toString() + "\r\n"
+      );
+      size += this.httpHeadersBuff.length;
+
+      blockHasher?.update(this.httpHeadersBuff);
+    }
+
+    for await (const chunk of record.reader) {
+      blockHasher?.update(chunk);
+      payloadHasher?.update(chunk);
+
+      await this.externalBuffer.write(chunk);
+
+      size += chunk.length;
+    }
+
+    if (payloadHasher) {
+      record.warcHeaders.headers.set("WARC-Payload-Digest", this.getDigest(payloadHasher));
+    }
+
+    if (blockHasher) {
+      record.warcHeaders.headers.set("WARC-Block-Digest", this.getDigest(blockHasher));
+    }
+
+    record.warcHeaders.headers.set("Content-Length", size.toString());
+
+    this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
+
+    this.buffered = true;
+  }
+
+  override async *generateRecord() {
+    if (!this.buffered) {
+      await this.bufferRecord();
+    }
+
+    if (this.warcHeadersBuff) {
+      yield this.warcHeadersBuff;
+    }
+
+    yield CRLF;
+
+    if (this.httpHeadersBuff) {
+      yield this.httpHeadersBuff;
+    }
+
+    if (this.externalBuffer) {
+      for await (const chunk of this.externalBuffer.readAll()) {
+        yield chunk;
+      }
+    }
+
+    yield CRLFCRLF;
+  }
+}
+

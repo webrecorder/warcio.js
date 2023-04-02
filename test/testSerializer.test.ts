@@ -1,5 +1,5 @@
 import pako from "pako";
-import { WARCRecord, WARCParser, WARCSerializer } from "../src/lib";
+import { WARCRecord, WARCParser, WARCSerializer, StreamingWARCSerializer } from "../src/lib";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -201,7 +201,7 @@ text\r\n\r\n'
 
     expect(record.warcType).toBe("response");
 
-    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true, preferPako: true });
     const res = decoder.decode(pako.inflate(gzipped));
 
     expect(res).toBe(
@@ -430,4 +430,182 @@ Foo: Bar\r\n\
   test("create record, gzipped, streaming", async () => {
     await createRecordGzipped();
   });
+});
+
+
+describe("streaming serializer", () => {
+  test("streaming serialize, response with sha-1", async () => {
+    const input =
+    // eslint-disable-next-line quotes -- inner double quote
+    '\
+WARC/1.0\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 97\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Custom-Header: somevalue\r\n\
+\r\n\
+some\n\
+text\r\n\r\n';
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const record = (await WARCParser.parse(iter(input), {
+    keepHeadersCase: true,
+  }))!;
+
+  const serializer = new StreamingWARCSerializer(record, {
+    digest: { algo: "sha-1", prefix: "sha1:", base32: true },
+  });
+
+  const buffs = [];
+
+  for await (const chunk of serializer) {
+    buffs.push(chunk);
+  }
+
+  expect(decoder.decode(Buffer.concat(buffs))).toBe(
+    // eslint-disable-next-line quotes -- inner double quote
+    '\
+WARC/1.0\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 97\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:OS3OKGCWQIJOAOC3PKXQOQFD52NECQ74\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Custom-Header: somevalue\r\n\
+\r\n\
+some\n\
+text\r\n\r\n'
+  );
+  });
+
+  test("streaming serialize, response sha-256", async () => {
+    const input =
+    // eslint-disable-next-line quotes -- inner double quote
+    '\
+WARC/1.1\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 97\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Custom-Header: somevalue\r\n\
+\r\n\
+some\n\
+text\r\n\r\n';
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const record = (await WARCParser.parse(iter(input), {
+    keepHeadersCase: true,
+  }))!;
+
+  const serializer = new StreamingWARCSerializer(record);
+
+  const buffs = [];
+
+  for await (const chunk of serializer) {
+    buffs.push(chunk);
+  }
+
+  expect(decoder.decode(Buffer.concat(buffs))).toBe(
+    // eslint-disable-next-line quotes -- inner double quote
+    '\
+WARC/1.1\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 97\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Block-Digest: sha256:387687ea0b0e53cea58a060a31d584eb262d5afa4a570cc9388f7fd1159118ce\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Custom-Header: somevalue\r\n\
+\r\n\
+some\n\
+text\r\n\r\n'
+  );
+  });
+
+  test("revisit with http header, sha-256", async () => {
+    const url = "https://example.com/another/file.html";
+    const type = "revisit";
+    const date = "2020-06-06T07:07:04.923Z";
+    const refersToDate = "2020-12-26T07:07:04.12";
+    const refersToUrl = "https://example.com/";
+
+    const warcHeaders = {
+      "WARC-Payload-Digest":
+        "sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253",
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+
+    const httpHeaders = { "Content-Type": "text/html", Foo: "Bar" };
+
+    const record = await WARCRecord.create(
+      {
+        url,
+        date,
+        type,
+        warcHeaders,
+        refersToUrl,
+        refersToDate,
+        httpHeaders,
+      },
+      iter("")
+    );
+
+    const serializer = new StreamingWARCSerializer(record);
+
+    // multiple bufferRecord calls ignored
+    await serializer.bufferRecord();
+    await serializer.bufferRecord();
+
+    const buffs = [];
+  
+    for await (const chunk of serializer) {
+      buffs.push(chunk);
+    }
+  
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(
+      "\
+WARC/1.0\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: https://example.com/another/file.html\r\n\
+WARC-Date: 2020-06-06T07:07:04Z\r\n\
+WARC-Type: revisit\r\n\
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r\n\
+WARC-Refers-To-Target-URI: https://example.com/\r\n\
+WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 54\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+Foo: Bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+"
+    );
+  });
+
 });

@@ -8,7 +8,7 @@ export {
   WARCParser,
   WARCSerializer,
   StreamingWARCSerializer,
-  WARCRecordBuffer,
+  StreamingBufferIO,
   WARCRecord,
   WARC_1_0,
   WARC_1_1,
