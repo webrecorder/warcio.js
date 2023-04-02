@@ -213,7 +213,7 @@ export class StreamingInMemBuffer extends StreamingBufferIO
       yield buff;
     }
   }
-};
+}
 
 // ===========================================================================
 export class StreamingWARCSerializer extends BaseWARCSerializer {
@@ -228,8 +228,8 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
 
   constructor(record: WARCRecord, opts : WARCSerializerOpts = {},
     externalBuffer: StreamingBufferIO = new StreamingInMemBuffer()) {
-      super(record, opts);
-      this.externalBuffer = externalBuffer;
+    super(record, opts);
+    this.externalBuffer = externalBuffer;
   }
 
   newHasher() {

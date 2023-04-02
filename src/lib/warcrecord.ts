@@ -222,6 +222,8 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
   }
 
+  // need to use any to allow switching args order to provide backwards compatibility
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override async readFully(isContent: any = false, chunksStart : Array<Uint8Array> = []) {
     // if have httpHeaders, need to consider transfer and content decoding is decoding content vs raw data
     if (this.httpHeaders) {
