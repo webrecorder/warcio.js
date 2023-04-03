@@ -19,6 +19,11 @@ export type StreamResult = {
 };
 export type StreamResults = StreamResult[];
 
+export type IndexerOffsetLength = {
+  offset: number;
+  recordLength: number;
+};
+
 export type Request = {
   method: string;
   url: string;

@@ -16,6 +16,10 @@ type StreamResult = {
     reader: AsyncIterable<Uint8Array>;
 };
 type StreamResults = StreamResult[];
+type IndexerOffsetLength = {
+    offset: number;
+    recordLength: number;
+};
 type Request = {
     method: string;
     url: string;
@@ -182,7 +186,7 @@ type WARCParserOpts = {
     keepHeadersCase?: boolean;
     parseHttp?: boolean;
 };
-declare class WARCParser {
+declare class WARCParser implements IndexerOffsetLength {
     static parse(source: Source, options?: WARCParserOpts): Promise<WARCRecord | null>;
     static iterRecords(source: Source, options?: WARCParserOpts): AsyncGenerator<WARCRecord, void, unknown>;
     _offset: number;
@@ -263,7 +267,7 @@ declare abstract class BaseIndexer {
     iterIndex(files: StreamResults): AsyncGenerator<Record<string, any>, void, unknown>;
     iterRecords(parser: WARCParser, filename: string): AsyncGenerator<Record<string, any>, void, unknown>;
     filterRecord?(record: WARCRecord): boolean;
-    indexRecord(record: WARCRecord, parser: WARCParser, filename: string): Record<string, any> | null;
+    indexRecord(record: WARCRecord, indexerOffset: IndexerOffsetLength, filename: string): Record<string, any> | null;
     setField(field: string, record: WARCRecord, result: Record<string, any>): void;
     getField(field: string, record: WARCRecord): string | number | null | undefined;
 }
@@ -283,15 +287,15 @@ declare class CDXIndexer extends Indexer {
     constructor(opts?: Partial<CdxIndexCommandArgs>);
     iterRecords(parser: WARCParser, filename: string): AsyncGenerator<Record<string, any>, void, unknown>;
     filterRecord(record: WARCRecord): boolean;
-    indexRecord(record: WARCRecord | null, parser: WARCParser, filename: string): Record<string, any> | null;
-    indexRecordPair(record: WARCRecord, reqRecord: WARCRecord | null, parser: WARCParser, filename: string): Record<string, any> | null;
+    indexRecord(record: WARCRecord | null, indexOffset: IndexerOffsetLength, filename: string): Record<string, any> | null;
+    indexRecordPair(record: WARCRecord, reqRecord: WARCRecord | null, indexOffset: IndexerOffsetLength, filename: string): Record<string, any> | null;
     serializeCDXJ(result: Record<string, any>): string;
     serializeCDX11(result: Record<string, any>): string;
     getField(field: string, record: WARCRecord): string | number | null | undefined;
 }
 declare class CDXAndRecordIndexer extends CDXIndexer {
     constructor(opts?: Partial<CdxIndexCommandArgs>);
-    indexRecordPair(record: WARCRecord, reqRecord: WARCRecord | null, parser: WARCParser, filename: string): CDXAndRecord | null;
+    indexRecordPair(record: WARCRecord, reqRecord: WARCRecord | null, indexOffset: IndexerOffsetLength, filename: string): CDXAndRecord | null;
 }
 
 declare function getSurt(url: string): string;
