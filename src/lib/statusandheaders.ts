@@ -123,6 +123,7 @@ export class StatusAndHeadersParser {
     }
 
     const headers = new headersClass();
+    const useAppend = headers instanceof Headers;
 
     const headerBuff = await readToDoubleCRLF(reader);
 
@@ -141,7 +142,11 @@ export class StatusAndHeadersParser {
       } else {
         if (value) {
           try {
-            headers.set(name, value);
+            if (useAppend) {
+              headers.append(name, value)
+            } else {
+              headers.set(name, value);
+            }
           } catch (e) {
             // ignore
           }
@@ -171,7 +176,11 @@ export class StatusAndHeadersParser {
 
     if (value) {
       try {
-        headers.set(name, value);
+        if (useAppend) {
+          headers.append(name, value);
+        } else {
+          headers.set(name, value);
+        }
       } catch (e) {
         // ignore
       }

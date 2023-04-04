@@ -611,3 +611,93 @@ test("no await catch errors", async () => {
   }
   expect(count).toBe(0);
 });
+
+test("warc1.1 response and request, header checks", async () => {
+  const input =
+    // eslint-disable-next-line quotes -- inner double quote
+    '\
+WARC/1.0\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:OS3OKGCWQIJOAOC3PKXQOQFD52NECQ74\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 149\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Custom-Header: somevalue\r\n\
+Set-Cookie: greeting=hello\r\n\
+Set-Cookie: name=world\r\n\
+\r\n\
+some\n\
+text\r\n\
+\r\n\
+WARC/1.0\r\n\
+WARC-Type: response\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
+WARC-Block-Digest: sha1:KMUABC6URWIQ7QXCZDQ5FS6WIBBFRORR\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+Content-Length: 268\r\n\
+\r\n\
+HTTP/1.0 200 OK\r\n\
+Content-Type: text/plain; charset="UTF-8"\r\n\
+Content-Disposition: attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt\r\n\
+Custom-Header: somevalue\r\n\
+Unicode-Header: %F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F\r\n\
+\r\n\
+more\n\
+text\r\n\
+\r\n\
+';
+
+  const reader = new AsyncIterReader(getReader([input]));
+
+  let parser = new WARCParser(reader);
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const record = (await parser.parse())!;
+  expect(record).not.toBeNull();
+  expect(record.warcTargetURI, "http://example.com/");
+
+  let headerEntries = [];
+  if (record.httpHeaders?.headers) {
+    for (const [key, value] of record.httpHeaders?.headers?.entries()) {
+      headerEntries.push([ key, value ]);
+    }
+  }
+  expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
+    [ 'content-type', 'text/plain; charset="UTF-8"' ],
+    [ 'custom-header', 'somevalue' ],
+    [ 'set-cookie', 'greeting=hello' ],
+    [ 'set-cookie', 'name=world' ]
+  ]));
+
+  expect(decoder.decode(await record.readFully())).toBe("some\ntext");
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+  const record2 = (await parser.parse())!;
+  expect(record2).not.toBeNull();
+
+  let headerEntries2 = [];
+  if (record2.httpHeaders?.headers) {
+    for (const [key, value] of record2.httpHeaders?.headers?.entries()) {
+      headerEntries2.push([ key, value ]);
+    }
+  }
+  expect(JSON.stringify(headerEntries2)).toBe(JSON.stringify([
+    [ 'content-disposition', 'attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt' ],
+    [ 'content-type', 'text/plain; charset="UTF-8"' ],
+    [ 'custom-header', 'somevalue' ],
+    [ 'unicode-header', '%F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F' ]
+  ]));
+
+  expect(decoder.decode(await record2.readFully())).toBe("more\ntext");
+
+  expect(await parser.parse()).toBeNull();
+});
