@@ -278,6 +278,57 @@ Accept: */*\r\n\
     );
   });
 
+  test("create request record with cookies", async () => {
+    const url = "http://example.com/";
+    const date = "2000-01-01T00:00:00Z";
+    const type = "request";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+    const httpHeaders = [
+      ["Set-Cookie", "greeting=hello"],
+      ["Set-Cookie", "name=world"],
+    ];
+
+    const statusline = "GET /file HTTP/1.1";
+
+    const record = await WARCRecord.create({
+      url,
+      date,
+      type,
+      warcHeaders,
+      httpHeaders,
+      statusline,
+      keepHeadersCase: false,
+    });
+
+    expect(record.warcType).toBe("request");
+
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const res = decoder.decode(pako.inflate(gzipped));
+
+    expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+content-length: 74\r\n\
+content-type: application/http; msgtype=request\r\n\
+warc-block-digest: sha256:e37db413e919457008f5f5d9285185eb37d29ad614915c248dd876a81abbd4ae\r\n\
+warc-date: 2000-01-01T00:00:00Z\r\n\
+warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+warc-target-uri: http://example.com/\r\n\
+warc-type: request\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+set-cookie: greeting=hello\r\n\
+set-cookie: name=world\r\n\
+\r\n\
+\r\n\
+\r\n\
+"
+    );
+  });
+
   test("create warcinfo", async () => {
     const filename = "/my/web/archive.warc";
     const type = "warcinfo";

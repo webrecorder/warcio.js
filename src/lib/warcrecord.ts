@@ -40,7 +40,7 @@ export type WARCRecordOpts = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   warcHeaders?: any;
   filename?: string;
-  httpHeaders?: Record<string, string>;
+  httpHeaders?: any;
   statusline?: string;
   warcVersion?: typeof WARC_1_0 | typeof WARC_1_1;
   keepHeadersCase?: boolean;
