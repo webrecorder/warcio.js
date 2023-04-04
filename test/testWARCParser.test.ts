@@ -11,6 +11,22 @@ import { getReader, getReadableStream } from "./utils";
 import fs from "fs";
 import path from "path";
 
+const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map(Number);
+
+// added in 18.14.2
+const nodeHeadersSupportsMultipleCookies = (
+  (majorVerison !== undefined && majorVerison > 18) ||
+  (
+    majorVerison !== undefined && majorVerison === 18 &&
+    minorVersion !== undefined && minorVersion > 14
+  ) ||
+  (
+    majorVerison !== undefined && majorVerison === 18 &&
+    minorVersion !== undefined && minorVersion === 14 &&
+    minorVersion !== undefined && minorVersion >= 2
+  )
+);
+
 const decoder = new TextDecoder("utf-8");
 
 function get_warc_path(filename: string) {
@@ -671,12 +687,21 @@ text\r\n\
       headerEntries.push([ key, value ]);
     }
   }
-  expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
-    [ 'content-type', 'text/plain; charset="UTF-8"' ],
-    [ 'custom-header', 'somevalue' ],
-    [ 'set-cookie', 'greeting=hello' ],
-    [ 'set-cookie', 'name=world' ]
-  ]));
+
+  if (nodeHeadersSupportsMultipleCookies) {
+    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
+      [ 'content-type', 'text/plain; charset="UTF-8"' ],
+      [ 'custom-header', 'somevalue' ],
+      [ 'set-cookie', 'greeting=hello' ],
+      [ 'set-cookie', 'name=world' ]
+    ]));
+  } else {
+    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
+      [ 'content-type', 'text/plain; charset="UTF-8"' ],
+      [ 'custom-header', 'somevalue' ],
+      [ 'set-cookie', 'greeting=hello, name=world' ]
+    ]));
+  }
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
 

@@ -5,6 +5,22 @@ import { WARCSerializer } from "../src/node/warcserializer";
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
+const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map(Number);
+
+// added in 18.14.2
+const nodeHeadersSupportsMultipleCookies = (
+  (majorVerison !== undefined && majorVerison > 18) ||
+  (
+    majorVerison !== undefined && majorVerison === 18 &&
+    minorVersion !== undefined && minorVersion > 14
+  ) ||
+  (
+    majorVerison !== undefined && majorVerison === 18 &&
+    minorVersion !== undefined && minorVersion === 14 &&
+    minorVersion !== undefined && minorVersion >= 2
+  )
+);
+
 async function* iter(data: string) {
   yield encoder.encode(data);
 }
@@ -307,7 +323,8 @@ Accept: */*\r\n\
     const gzipped = await WARCSerializer.serialize(record, { gzip: true });
     const res = decoder.decode(pako.inflate(gzipped));
 
-    expect(res).toBe(
+    if (nodeHeadersSupportsMultipleCookies) {
+      expect(res).toBe(
       "\
 WARC/1.0\r\n\
 content-length: 74\r\n\
@@ -326,7 +343,28 @@ set-cookie: name=world\r\n\
 \r\n\
 \r\n\
 "
-    );
+      );
+    } else {
+      expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+content-length: 62\r\n\
+content-type: application/http; msgtype=request\r\n\
+warc-block-digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
+warc-date: 2000-01-01T00:00:00Z\r\n\
+warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+warc-target-uri: http://example.com/\r\n\
+warc-type: request\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+set-cookie: greeting=hello, name=world\r\n\
+\r\n\
+\r\n\
+\r\n\
+"
+      );
+    }
   });
 
   test("create request record with cookie header class", async () => {
@@ -357,7 +395,8 @@ set-cookie: name=world\r\n\
     const gzipped = await WARCSerializer.serialize(record, { gzip: true });
     const res = decoder.decode(pako.inflate(gzipped));
 
-    expect(res).toBe(
+    if (nodeHeadersSupportsMultipleCookies) {
+      expect(res).toBe(
       "\
 WARC/1.0\r\n\
 content-length: 74\r\n\
@@ -376,7 +415,29 @@ set-cookie: name=world\r\n\
 \r\n\
 \r\n\
 "
-    );
+      );
+    } else {
+      expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+content-length: 62\r\n\
+content-type: application/http; msgtype=request\r\n\
+warc-block-digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
+warc-date: 2000-01-01T00:00:00Z\r\n\
+warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+warc-target-uri: http://example.com/\r\n\
+warc-type: request\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+set-cookie: greeting=hello, name=world\r\n\
+\r\n\
+\r\n\
+\r\n\
+"
+      );
+    }
+    
   });
 
   test("create warcinfo", async () => {
