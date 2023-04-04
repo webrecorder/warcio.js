@@ -11,7 +11,7 @@ import { getReader, getReadableStream } from "./utils";
 import fs from "fs";
 import path from "path";
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map(Number);
+const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map((v) => Number(v));
 
 // added in 18.14.2
 const nodeHeadersSupportsMultipleCookies = (

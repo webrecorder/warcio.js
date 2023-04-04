@@ -5,7 +5,7 @@ import { WARCSerializer } from "../src/node/warcserializer";
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map(Number);
+const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map((v) => Number(v));
 
 // added in 18.14.2
 const nodeHeadersSupportsMultipleCookies = (
