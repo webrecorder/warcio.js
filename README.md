@@ -456,8 +456,7 @@ async function main() {
 
   const record = await WARCRecord.create({type: "response", url}, resp.body);
 
-  // store up to 16K in memory, buffer the rest to temporary file
-  const serializer = new WARCSerializer(record, {gzip: true, maxMemSize: 16384});
+  const serializer = new WARCSerializer(record, {gzip: true});
 
   for await (const chunk of serializer) {
     // process WARC record chunks incrementally
@@ -489,7 +488,9 @@ async function fetchAndWrite(url, warcOutputStream) {
 
   const record = await WARCRecord.create({type: "response", url}, resp.body);
 
-  const serializer = new WARCSerializer(record, {gzip: true});
+  // set max data per WARC payload that can be buffered in memory to 16K
+  // payloads larger then that are automatically buffered to a temporary file
+  const serializer = new WARCSerializer(record, {gzip: true, maxMemSize: 16384});
 
   await pipeline(Readable.from(serializer), warcOutputStream, {end: false});
 }
