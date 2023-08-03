@@ -1,5 +1,6 @@
 import pako from "pako";
 import { WARCRecord, WARCParser, WARCSerializer, StreamingWARCSerializer } from "../src/lib";
+import { TempFileBuffer } from "../src/lib/tempfilebuffer";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -490,6 +491,61 @@ text\r\n\r\n'
   );
   });
 
+  test("streaming serializer, in mem + temp file", async () => {
+    const url = "https://example.com/another/file.html";
+    const type = "response";
+    const date = "2020-06-06T07:07:04.923Z";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+
+    async function* reader() {
+      yield encoder.encode("so");
+      yield encoder.encode("me\n");
+      yield encoder.encode("text");
+    }
+
+    const record = await WARCRecord.create(
+      {
+        url,
+        date,
+        type,
+        warcHeaders,
+      },
+      reader()
+    );
+
+    const serializer = new StreamingWARCSerializer(record, {},
+      new TempFileBuffer(3)
+    )
+  
+    const buffs = [];
+  
+    for await (const chunk of serializer) {
+      buffs.push(chunk);
+    }
+  
+    expect(decoder.decode(Buffer.concat(buffs))).toBe('\
+\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: https://example.com/another/file.html\r\n\
+WARC-Date: 2020-06-06T07:07:04Z\r\n\
+WARC-Type: response\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Block-Digest: sha256:6e61d31e3e4cae93e17e0e64ff120922662108cfb7f1172e1277ef60607894bf\r\n\
+Content-Length: 28\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+\r\n\
+some\n\
+text\r\n\
+\r\n\
+');
+    
+  });
+
   test("streaming serialize, response sha-256", async () => {
     const input =
     // eslint-disable-next-line quotes -- inner double quote
@@ -514,7 +570,9 @@ text\r\n\r\n';
     keepHeadersCase: true,
   }))!;
 
-  const serializer = new StreamingWARCSerializer(record);
+  const serializer = new StreamingWARCSerializer(record, {},
+    new TempFileBuffer());
+
 
   const buffs = [];
 

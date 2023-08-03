@@ -205,6 +205,11 @@ declare class WARCParser implements IndexerOffsetLength {
     _addHttpHeaders(record: WARCRecord, headersParser: StatusAndHeadersParser): Promise<void>;
 }
 
+declare abstract class StreamingBufferIO {
+    abstract write(chunk: Uint8Array): void;
+    abstract readAll(): AsyncIterable<Uint8Array>;
+}
+
 type WARCSerializerOpts = {
     gzip?: boolean;
     digest?: {
@@ -234,10 +239,6 @@ declare class WARCSerializer extends BaseWARCSerializer {
     static base16(hashBuffer: ArrayBuffer): string;
     digestMessage(chunk: BufferSource): Promise<string>;
     generateRecord(): AsyncGenerator<Uint8Array>;
-}
-declare abstract class StreamingBufferIO {
-    abstract write(chunk: Uint8Array): void;
-    abstract readAll(): AsyncIterable<Uint8Array>;
 }
 declare class StreamingWARCSerializer extends BaseWARCSerializer {
     externalBuffer: StreamingBufferIO;

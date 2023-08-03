@@ -2,12 +2,13 @@
 import base32Encode from "base32-encode";
 import pako from "pako";
 
+import { createSHA256, createSHA1 } from "hash-wasm";
+import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
+
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
-
-import { createSHA256, createSHA1 } from "hash-wasm";
-import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
+import { StreamingInMemBuffer, StreamingBufferIO } from "./streambuffer";
 
 const encoder = new TextEncoder();
 
@@ -77,34 +78,34 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
   override async readlineRaw(maxLength?: number): Promise<Uint8Array | null> {
     return null;
   }
-  
+
   async *pakoCompress() {
     const deflater = new pako.Deflate({ gzip: true });
-  
+
     let lastChunk: Uint8Array | null = null;
-  
+
     for await (const chunk of this.generateRecord()) {
       if (lastChunk && lastChunk.length > 0) {
         deflater.push(lastChunk);
       }
       lastChunk = chunk;
-  
+
       // @ts-expect-error Deflate has property chunks in implementation
       while (deflater.chunks.length) {
         // @ts-expect-error Deflate has property chunks in implementation
         yield deflater.chunks.shift();
       }
     }
-  
+
     if (lastChunk) {
       deflater.push(lastChunk, true);
     }
     yield deflater.result;
   }
-  
+
   async *streamCompress(cs: CompressionStream) {
     const recordIter = this.generateRecord();
-  
+
     const source = new ReadableStream({
       async pull(controller) {
         const res = await recordIter.next();
@@ -115,18 +116,18 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
         }
       },
     });
-  
+
     source.pipeThrough(cs);
-  
+
     let res = null;
-  
+
     const reader = cs.readable.getReader();
-  
+
     while ((res = await reader.read()) && !res.done) {
       yield res.value;
     }
   }
-  
+
 }
 
 // ===========================================================================
@@ -172,8 +173,8 @@ export class WARCSerializer extends BaseWARCSerializer {
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
       const blockDigest = await this.digestMessage(headersAndPayload);
-      const payloadDigest = payloadOffset > 0 ? 
-        await this.digestMessage(headersAndPayload.slice(payloadOffset)) : 
+      const payloadDigest = payloadOffset > 0 ?
+        await this.digestMessage(headersAndPayload.slice(payloadOffset)) :
         blockDigest;
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
@@ -190,28 +191,6 @@ export class WARCSerializer extends BaseWARCSerializer {
     yield headersAndPayload;
 
     yield CRLFCRLF;
-  }
-}
-
-// ===========================================================================
-export abstract class StreamingBufferIO {
-  abstract write(chunk: Uint8Array): void;
-  abstract readAll() : AsyncIterable<Uint8Array>;
-}
-
-// ===========================================================================
-export class StreamingInMemBuffer extends StreamingBufferIO
-{
-  buffers: Array<Uint8Array> = [];
-
-  write(chunk: Uint8Array): void {
-    this.buffers.push(chunk);
-  }
-
-  async* readAll(): AsyncIterable<Uint8Array> {
-    for (const buff of this.buffers) {
-      yield buff;
-    }
   }
 }
 
@@ -266,7 +245,7 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
 
     const blockHasher = await this.newHasher();
     const payloadHasher = await this.newHasher();
-  
+
     let size = 0;
 
     if (record.httpHeaders) {

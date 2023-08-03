@@ -11,7 +11,7 @@ const sharedConfig = {
 const nodeConfig = {
   ...sharedConfig,
   clean: true,
-  entry: ["src/index.ts", "src/cli.ts", "src/utils.ts"],
+  entry: ["src/index.ts", "src/cli.ts", "src/utils.ts", "src/lib/tempfilebuffer.ts"],
   platform: "node",
   format: ["esm", "cjs"],
 }

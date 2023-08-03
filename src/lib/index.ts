@@ -11,7 +11,9 @@ export { StatusAndHeadersParser, StatusAndHeaders } from "./statusandheaders";
 export { WARCParser } from "./warcparser";
 export type { WARCParserOpts } from "./warcparser";
 
-export { BaseWARCSerializer, WARCSerializer, StreamingWARCSerializer, StreamingBufferIO } from "./warcserializer";
+export { StreamingBufferIO } from "./streambuffer";
+
+export { BaseWARCSerializer, WARCSerializer, StreamingWARCSerializer } from "./warcserializer";
 export type { WARCSerializerOpts } from "./warcserializer";
 
 export { WARCRecord, WARC_1_1, WARC_1_0 } from "./warcrecord";
