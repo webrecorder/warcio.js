@@ -235,6 +235,7 @@ declare abstract class BaseSerializerBuffer {
 }
 declare class WARCSerializer extends BaseWARCSerializer {
     externalBuffer: BaseSerializerBuffer;
+    _alreadyDigested: boolean;
     blockHasher: IHasher | null;
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;

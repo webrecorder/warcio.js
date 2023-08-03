@@ -153,6 +153,7 @@ export class SerializerInMemBuffer extends BaseSerializerBuffer
 // ===========================================================================
 export class WARCSerializer extends BaseWARCSerializer {
   externalBuffer: BaseSerializerBuffer;
+  _alreadyDigested = false;
 
   blockHasher: IHasher | null = null;
   payloadHasher: IHasher | null = null;
@@ -200,6 +201,10 @@ export class WARCSerializer extends BaseWARCSerializer {
   async digestRecord() {
     const record = this.record;
 
+    if (this._alreadyDigested) {
+      return Number(record.warcHeaders.headers.get("Content-Length"));
+    }
+
     const blockHasher = await this.newHasher();
     const payloadHasher = await this.newHasher();
 
@@ -234,6 +239,8 @@ export class WARCSerializer extends BaseWARCSerializer {
     record.warcHeaders.headers.set("Content-Length", size.toString());
 
     this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
+
+    this._alreadyDigested = true;
 
     return size;
   }
