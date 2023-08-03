@@ -234,6 +234,8 @@ export class WARCSerializer extends BaseWARCSerializer {
     record.warcHeaders.headers.set("Content-Length", size.toString());
 
     this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
+
+    return size;
   }
 
   override async *generateRecord() {

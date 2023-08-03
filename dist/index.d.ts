@@ -243,7 +243,7 @@ declare class WARCSerializer extends BaseWARCSerializer {
     constructor(record: WARCRecord, opts?: WARCSerializerOpts, externalBuffer?: BaseSerializerBuffer);
     newHasher(): Promise<IHasher> | null;
     getDigest(hasher: IHasher): string;
-    digestRecord(): Promise<void>;
+    digestRecord(): Promise<number>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 declare class FullRecordWARCSerializer extends BaseWARCSerializer {
