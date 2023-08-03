@@ -396,8 +396,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 }
 
 // ===========================================================================
-async function* emptyReader() : AsyncGenerator<never, void, unknown> {
-  return;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+async function* emptyReader() : AsyncGenerator<never, void, unknown> { }
 
 
