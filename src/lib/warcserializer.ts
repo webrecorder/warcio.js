@@ -128,6 +128,7 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
 }
 
 // ===========================================================================
+/* Base class for custom buffering while serializing */
 export abstract class BaseSerializerBuffer {
   abstract write(chunk: Uint8Array): void;
   abstract readAll() : AsyncIterable<Uint8Array>;

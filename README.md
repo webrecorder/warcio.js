@@ -439,8 +439,8 @@ write and read the data at a later time.
 
 For the Node version, a temporary file-based `WARCSerializer` is provided via `warcio/node`.
 
-For browser-based usage, the data is still
-buffered in memory but customized solutions can be implemented.
+For browser-based usage, the payload is still buffered in memory (in chunks), but customized solutions can be implemented
+by extending the [src/lib/warcserializer.ts#132](BaseSerializerBuffer) and implementing custom `write` and `readAll()` functions.
 
 <details>
   <summary>Example of generating larger WARC records in Node using WARCSerializer</summary>
