@@ -28,9 +28,9 @@
       "require": "./dist/utils.cjs",
       "default": "./dist/utils.js"
     },
-    "./tempfilebuffer": {
-      "require": "./dist/lib/tempfilebuffer.cjs",
-      "default": "./dist/lib/tempfilebuffer.js"
+    "./node": {
+      "require": "./dist/node/index.cjs",
+      "default": "./dist/node/index.js"
     }
   },
   "main": "dist/index.cjs",

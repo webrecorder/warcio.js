@@ -437,17 +437,17 @@ To compute the digests, the data needs to be read twice, once to compute the dig
 To support this, warcio.js uses `hash-wasm` for incremental digest computation and supports an external buffer which can
 write and read the data at a later time.
 
-For the Node version, a temporary file-based serializer is provided via `WARCSerializerTempBuffer`.
+For the Node version, a temporary file-based `WARCSerializer` is provided via `warcio/node`.
 
 For browser-based usage, the data is still
 buffered in memory but customized solutions can be implemented.
 
 <details>
-  <summary>Example of generating larger WARC records in Node using WARCSerializerTempBuffer</summary>
+  <summary>Example of generating larger WARC records in Node using WARCSerializer</summary>
 
 ```javascript
 import { WARCRecord } from "warcio";
-import { WARCSerializerTempBuffer } from "warcio/tempfilebuffer";
+import { WARCSerializer } from "warcio/node";
 
 async function main() {
   const url = "https://example.com/some/large/file";
@@ -457,7 +457,7 @@ async function main() {
   const record = await WARCRecord.create({type: "response", url}, resp.body);
 
   // store up to 16K in memory, buffer the rest to temporary file
-  const serializer = new WARCSerializerTempBuffer(record, {gzip: true, maxMemSize: 16384});
+  const serializer = new WARCSerializer(record, {gzip: true, maxMemSize: 16384});
 
   for await (const chunk of serializer) {
     // process WARC record chunks incrementally
@@ -474,22 +474,22 @@ Using standard Node fs functions, it is possible to easily stream content via `f
 WARC records:
 
 <details>
-  <summary>Fetching and streaming content to multiple WARC records on disk using WARCSerializerTempBuffer</summary>
+  <summary>Fetching and streaming content to multiple WARC records on disk using the Node WARCSerializer</summary>
 
 ```javascript
-import { WARCRecord } from "warcio";
-import { WARCSerializerTempBuffer } from "warcio/tempfilebuffer";
-
 import fs from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+
+import { WARCRecord } from "warcio";
+import { WARCSerializer } from "warcio/node";
 
 async function fetchAndWrite(url, warcOutputStream) {
   const resp = await fetch(url);
 
   const record = await WARCRecord.create({type: "response", url}, resp.body);
 
-  const serializer = new WARCSerializerTempBuffer(record, {gzip: true});
+  const serializer = new WARCSerializer(record, {gzip: true});
 
   await pipeline(Readable.from(serializer), warcOutputStream, {end: false});
 }

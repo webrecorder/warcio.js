@@ -3,16 +3,31 @@ import { unlink } from "node:fs/promises";
 
 import { temporaryFile } from "tempy";
 
-import { StreamingInMemBuffer } from "./streambuffer";
-
-import { WARCRecord } from "./warcrecord";
-import { WARCSerializer, WARCSerializerOpts } from "./warcserializer";
+import { WARCRecord } from "../lib/warcrecord";
+import * as warcserializer from "../lib/warcserializer";
 
 export const DEFAULT_MEM_SIZE = 1024 * 256;
 
 
 // ===========================================================================
-export class TempFileBuffer extends StreamingInMemBuffer
+export type WARCSerializerOpts = warcserializer.WARCSerializerOpts & {
+  maxMemSize?: number;
+};
+
+// ===========================================================================
+export class WARCSerializer extends warcserializer.WARCSerializer {
+  static override async serialize(record: WARCRecord, opts?: WARCSerializerOpts) {
+    const s = new WARCSerializer(record, opts);
+    return await s.readFully();
+  }
+
+  constructor(record: WARCRecord, opts : WARCSerializerOpts = {}) {
+    super(record, opts, new TempFileBuffer(opts.maxMemSize || DEFAULT_MEM_SIZE));
+  }
+}
+
+// ===========================================================================
+export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
 {
   memSize: number;
   currSize = 0;
@@ -65,16 +80,3 @@ export function streamFinish(fh: WriteStream) {
   fh.end();
   return p;
 }
-
-// ===========================================================================
-export type WARCSerializerTempBufferOpts = WARCSerializerOpts & {
-  maxMemSize?: number;
-};
-
-// ===========================================================================
-export class WARCSerializerTempBuffer extends WARCSerializer {
-  constructor(record: WARCRecord, opts : WARCSerializerTempBufferOpts = {}) {
-    super(record, opts, new TempFileBuffer(opts.maxMemSize || DEFAULT_MEM_SIZE));
-  }
-}
-

@@ -1,6 +1,6 @@
 import pako from "pako";
-import { WARCRecord, WARCParser, WARCSerializer, FullRecordWARCSerializer } from "../src/lib";
-import { TempFileBuffer, WARCSerializerTempBuffer } from "../src/lib/tempfilebuffer";
+import { WARCRecord, WARCParser, FullRecordWARCSerializer } from "../src/lib";
+import { WARCSerializer } from "../src/node/warcserializer";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -99,9 +99,9 @@ text\r\n\r\n'
 
     const res = decoder.decode(
       await WARCSerializer.serialize(record, {
-        digest: { algo: "sha-1", prefix: "sha1:", base32: true }
+        digest: { algo: "sha-1", prefix: "sha1:", base32: true },
+        maxMemSize: 3
       },
-      new TempFileBuffer(3)
     ));
 
     expect(res).toBe(
@@ -516,7 +516,7 @@ text\r\n\r\n'
       reader()
     );
 
-    const serializer = new WARCSerializerTempBuffer(record, {maxMemSize: 3});
+    const serializer = new WARCSerializer(record, {maxMemSize: 3});
   
     const buffs = [];
   
@@ -569,9 +569,7 @@ text\r\n\r\n';
     keepHeadersCase: true,
   }))!;
 
-  const serializer = new WARCSerializer(record, {},
-    new TempFileBuffer());
-
+  const serializer = new WARCSerializer(record);
 
   const buffs = [];
 
