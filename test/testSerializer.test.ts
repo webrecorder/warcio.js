@@ -1,6 +1,6 @@
 import pako from "pako";
-import { WARCRecord, WARCParser, WARCSerializer, StreamingWARCSerializer } from "../src/lib";
-import { TempFileBuffer } from "../src/lib/tempfilebuffer";
+import { WARCRecord, WARCParser, WARCSerializer, FullRecordWARCSerializer } from "../src/lib";
+import { TempFileBuffer, WARCSerializerTempBuffer } from "../src/lib/tempfilebuffer";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -36,7 +36,7 @@ text\r\n\r\n';
     expect(record).not.toBeNull();
     expect(record.warcType).toBe("response");
 
-    const res = await WARCSerializer.serialize(record, {
+    const res = await FullRecordWARCSerializer.serialize(record, {
       digest: { algo: "sha-1", prefix: "sha1:", base32: true },
     });
 
@@ -99,9 +99,10 @@ text\r\n\r\n'
 
     const res = decoder.decode(
       await WARCSerializer.serialize(record, {
-        digest: { algo: "sha-1", prefix: "sha1:", base32: true },
-      })
-    );
+        digest: { algo: "sha-1", prefix: "sha1:", base32: true }
+      },
+      new TempFileBuffer(3)
+    ));
 
     expect(res).toBe(
       // eslint-disable-next-line quotes -- inner double quote
@@ -306,7 +307,7 @@ Accept: */*\r\n\
       fields
     );
 
-    const res = decoder.decode(await WARCSerializer.serialize(record));
+    const res = decoder.decode(await FullRecordWARCSerializer.serialize(record));
 
     expect(res).toBe(
       "\
@@ -459,7 +460,7 @@ text\r\n\r\n';
     keepHeadersCase: true,
   }))!;
 
-  const serializer = new StreamingWARCSerializer(record, {
+  const serializer = new FullRecordWARCSerializer(record, {
     digest: { algo: "sha-1", prefix: "sha1:", base32: true },
   });
 
@@ -515,9 +516,7 @@ text\r\n\r\n'
       reader()
     );
 
-    const serializer = new StreamingWARCSerializer(record, {},
-      new TempFileBuffer(3)
-    )
+    const serializer = new WARCSerializerTempBuffer(record, {maxMemSize: 3});
   
     const buffs = [];
   
@@ -570,7 +569,7 @@ text\r\n\r\n';
     keepHeadersCase: true,
   }))!;
 
-  const serializer = new StreamingWARCSerializer(record, {},
+  const serializer = new WARCSerializer(record, {},
     new TempFileBuffer());
 
 
@@ -630,11 +629,7 @@ text\r\n\r\n'
       iter("")
     );
 
-    const serializer = new StreamingWARCSerializer(record);
-
-    // multiple bufferRecord calls ignored
-    await serializer.bufferRecord();
-    await serializer.bufferRecord();
+    const serializer = new WARCSerializer(record);
 
     const buffs = [];
   

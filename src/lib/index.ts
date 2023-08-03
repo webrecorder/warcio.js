@@ -13,7 +13,7 @@ export type { WARCParserOpts } from "./warcparser";
 
 export { StreamingBufferIO } from "./streambuffer";
 
-export { BaseWARCSerializer, WARCSerializer, StreamingWARCSerializer } from "./warcserializer";
+export { BaseWARCSerializer, WARCSerializer, FullRecordWARCSerializer } from "./warcserializer";
 export type { WARCSerializerOpts } from "./warcserializer";
 
 export { WARCRecord, WARC_1_1, WARC_1_0 } from "./warcrecord";

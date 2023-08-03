@@ -120,9 +120,6 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
 
     if (!reader) {
-      const emptyReader: () => AsyncGenerator<never, void, unknown> =
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        async function* () {};
       reader = emptyReader();
     }
 
@@ -261,6 +258,11 @@ export class WARCRecord extends BaseAsyncIterReader {
   }
 
   get reader() {
+    // already consumed payload, and know its empty, just return empty reader
+    if (this.payload && !this.payload.length) {
+      return emptyReader();
+    }
+
     if (this._contentReader) {
       throw new TypeError(
         "WARC Record decoding already started, but requesting raw payload"
@@ -394,3 +396,8 @@ export class WARCRecord extends BaseAsyncIterReader {
 }
 
 // ===========================================================================
+async function* emptyReader() : AsyncGenerator<never, void, unknown> {
+  return;
+}
+
+

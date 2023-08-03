@@ -232,25 +232,25 @@ declare abstract class BaseWARCSerializer extends BaseAsyncIterReader {
     [Symbol.asyncIterator](): AsyncGenerator<any, void, unknown>;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
     pakoCompress(): AsyncGenerator<any, void, unknown>;
-    streamCompress(cs: CompressionStream): AsyncGenerator<any, void, unknown>;
+    streamCompress(cs: CompressionStream): AsyncGenerator<Uint8Array, void, unknown>;
 }
-declare class WARCSerializer extends BaseWARCSerializer {
+declare class FullRecordWARCSerializer extends BaseWARCSerializer {
     static serialize(record: WARCRecord, opts?: WARCSerializerOpts): Promise<Uint8Array>;
     static base16(hashBuffer: ArrayBuffer): string;
     digestMessage(chunk: BufferSource): Promise<string>;
     generateRecord(): AsyncGenerator<Uint8Array>;
 }
-declare class StreamingWARCSerializer extends BaseWARCSerializer {
+declare class WARCSerializer extends BaseWARCSerializer {
     externalBuffer: StreamingBufferIO;
-    buffered: boolean;
     blockHasher: IHasher | null;
     payloadHasher: IHasher | null;
     httpHeadersBuff: Uint8Array | null;
     warcHeadersBuff: Uint8Array | null;
+    static serialize(record: WARCRecord, opts?: WARCSerializerOpts, externalBuffer?: StreamingBufferIO): Promise<Uint8Array>;
     constructor(record: WARCRecord, opts?: WARCSerializerOpts, externalBuffer?: StreamingBufferIO);
     newHasher(): Promise<IHasher> | null;
     getDigest(hasher: IHasher): string;
-    bufferRecord(): Promise<void>;
+    digestRecord(): Promise<void>;
     generateRecord(): AsyncGenerator<Uint8Array, void, unknown>;
 }
 
@@ -309,4 +309,4 @@ declare function mfdToQueryString(mfd: string | Uint8Array, contentType: string)
 declare function concatChunks(chunks: Uint8Array[], size: number): Uint8Array;
 declare function splitChunk(chunk: Uint8Array, inx: number): [Uint8Array, Uint8Array];
 
-export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXAndRecordIndexer, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, StreamingBufferIO, StreamingWARCSerializer, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
+export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, CDXAndRecordIndexer, CDXIndexer, FullRecordWARCSerializer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, StreamingBufferIO, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };

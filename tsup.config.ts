@@ -34,7 +34,6 @@ const browserConfig = {
 
 
 export default defineConfig((options) => {
-  console.log(options);
   if (options.define && options.define.browser) {
     return browserConfig;
   } else {

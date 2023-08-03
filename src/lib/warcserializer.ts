@@ -64,10 +64,8 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
       return;
     }
 
-    let cs = null;
-
     if ("CompressionStream" in globalThis && !this.preferPako) {
-      cs = new globalThis.CompressionStream("gzip");
+      const cs = new globalThis.CompressionStream("gzip");
       yield* this.streamCompress(cs);
     } else {
       yield* this.pakoCompress();
@@ -119,7 +117,7 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
 
     source.pipeThrough(cs);
 
-    let res = null;
+    let res : ReadableStreamReadResult<Uint8Array> | null = null;
 
     const reader = cs.readable.getReader();
 
@@ -131,7 +129,10 @@ export abstract class BaseWARCSerializer extends BaseAsyncIterReader
 }
 
 // ===========================================================================
-export class WARCSerializer extends BaseWARCSerializer {
+/**
+ * @deprecated Old-style WARCSerializer, to be removed
+ */
+export class FullRecordWARCSerializer extends BaseWARCSerializer {
   static async serialize(record: WARCRecord, opts?: WARCSerializerOpts) {
     const s = new WARCSerializer(record, opts);
     return await s.readFully();
@@ -148,7 +149,7 @@ export class WARCSerializer extends BaseWARCSerializer {
       this.digestAlgoPrefix +
       (this.digestBase32
         ? base32Encode(hashBuffer, "RFC4648")
-        : WARCSerializer.base16(hashBuffer))
+        : FullRecordWARCSerializer.base16(hashBuffer))
     );
   }
 
@@ -195,15 +196,20 @@ export class WARCSerializer extends BaseWARCSerializer {
 }
 
 // ===========================================================================
-export class StreamingWARCSerializer extends BaseWARCSerializer {
+export class WARCSerializer extends BaseWARCSerializer {
   externalBuffer: StreamingBufferIO;
-  buffered = false;
 
   blockHasher: IHasher | null = null;
   payloadHasher: IHasher | null = null;
 
   httpHeadersBuff: Uint8Array | null = null;
   warcHeadersBuff: Uint8Array | null = null;
+
+  static async serialize(record: WARCRecord, opts?: WARCSerializerOpts,
+    externalBuffer: StreamingBufferIO = new StreamingInMemBuffer()) {
+    const s = new WARCSerializer(record, opts, externalBuffer);
+    return await s.readFully();
+  }
 
   constructor(record: WARCRecord, opts : WARCSerializerOpts = {},
     externalBuffer: StreamingBufferIO = new StreamingInMemBuffer()) {
@@ -236,11 +242,7 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     );
   }
 
-  async bufferRecord() {
-    if (this.buffered) {
-      return;
-    }
-
+  async digestRecord() {
     const record = this.record;
 
     const blockHasher = await this.newHasher();
@@ -277,14 +279,10 @@ export class StreamingWARCSerializer extends BaseWARCSerializer {
     record.warcHeaders.headers.set("Content-Length", size.toString());
 
     this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
-
-    this.buffered = true;
   }
 
   override async *generateRecord() {
-    if (!this.buffered) {
-      await this.bufferRecord();
-    }
+    await this.digestRecord();
 
     if (this.warcHeadersBuff) {
       yield this.warcHeadersBuff;

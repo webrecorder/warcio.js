@@ -5,7 +5,10 @@ import { temporaryFile } from "tempy";
 
 import { StreamingInMemBuffer } from "./streambuffer";
 
-export const DEFAULT_MEM_SIZE = 1024 * 16;
+import { WARCRecord } from "./warcrecord";
+import { WARCSerializer, WARCSerializerOpts } from "./warcserializer";
+
+export const DEFAULT_MEM_SIZE = 1024 * 256;
 
 
 // ===========================================================================
@@ -62,3 +65,16 @@ export function streamFinish(fh: WriteStream) {
   fh.end();
   return p;
 }
+
+// ===========================================================================
+export type WARCSerializerTempBufferOpts = WARCSerializerOpts & {
+  maxMemSize?: number;
+};
+
+// ===========================================================================
+export class WARCSerializerTempBuffer extends WARCSerializer {
+  constructor(record: WARCRecord, opts : WARCSerializerTempBufferOpts = {}) {
+    super(record, opts, new TempFileBuffer(opts.maxMemSize || DEFAULT_MEM_SIZE));
+  }
+}
+
