@@ -523,8 +523,10 @@ text\r\n\r\n'
     for await (const chunk of serializer) {
       buffs.push(chunk);
     }
-  
-    expect(decoder.decode(Buffer.concat(buffs))).toBe('\
+
+    expect(buffs.length).toBe(6);
+
+    const headers ='\
 \
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -535,7 +537,19 @@ Content-Type: application/http; msgtype=response\r\n\
 WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
 WARC-Block-Digest: sha256:6e61d31e3e4cae93e17e0e64ff120922662108cfb7f1172e1277ef60607894bf\r\n\
 Content-Length: 28\r\n\
-\r\n\
+';
+
+    expect(decoder.decode(buffs[0])).toBe(headers);
+    expect(decoder.decode(buffs[1])).toBe("\r\n");
+    expect(decoder.decode(buffs[2])).toBe("HTTP/1.1 200 OK\r\n\r\n");
+
+    expect(decoder.decode(buffs[3])).toBe("so");
+    expect(decoder.decode(buffs[4])).toBe("me\ntext");
+    expect(decoder.decode(buffs[5])).toBe("\r\n\r\n");
+
+
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(headers +
+'\r\n\
 HTTP/1.1 200 OK\r\n\
 \r\n\
 some\n\
