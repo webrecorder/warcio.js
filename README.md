@@ -317,7 +317,7 @@ Setting `gzip: true` in `opts` will serialize to GZIP-compressed records.
 
 Calling `WARCSerializer.serialize(opts)` will serialize the entire WARC record into a single array buffer.
 
-This is the simplest way to serialize WARC records and works well for smaller files
+This is the simplest way to serialize WARC records and works well for storing smaller-sized data in WARC.
 
 <details>
   <summary>An example of generating WARCs in the browser:</summary>
@@ -432,12 +432,15 @@ main();
 
 For larger WARC records, it is not ideal to buffer the entire WARC payload into memory.
 
-Starting with 2.2.0, warcio.js supports fully streaming serialization.
+Starting with 2.2.0, warcio.js supports streaming serialization with the help of an external buffer.
 To compute the digests, the data needs to be read twice, once to compute the digest and again to be written to the WARC.
 To support this, warcio.js uses `hash-wasm` for incremental digest computation and supports an external buffer which can
 write and read the data at a later time.
 
-For the Node version, a temporary file-based `WARCSerializer` is provided via `warcio/node`.
+For the Node version, a `WARCSerializer` provided via `warcio/node` will automatically buffer responses >2MB to a temporary file on disk.
+
+If using Node and expect to have a WARC records that are big it is recommended to use `import { WARCSerializer } from "warcio/node"`.
+Otherwise, using `import { WARCSerializer } from "warcio"` is sufficient.
 
 For browser-based usage, the payload is still buffered in memory (in chunks), but customized solutions can be implemented
 by extending the [src/lib/warcserializer.ts#132](BaseSerializerBuffer) and implementing custom `write` and `readAll()` functions.

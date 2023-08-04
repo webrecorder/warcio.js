@@ -6,7 +6,8 @@ import { temporaryFile } from "tempy";
 import { WARCRecord } from "../lib/warcrecord";
 import * as warcserializer from "../lib/warcserializer";
 
-export const DEFAULT_MEM_SIZE = 1024 * 256;
+// default size to buffer in memory 2MB
+export const DEFAULT_MEM_SIZE = 1024 * 1024 * 2;
 
 
 // ===========================================================================
