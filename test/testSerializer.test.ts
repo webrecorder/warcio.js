@@ -517,6 +517,10 @@ text\r\n\r\n'
     );
 
     const serializer = new WARCSerializer(record, {maxMemSize: 3});
+
+    // multiple digestRecord calls allowed
+    expect(await serializer.digestRecord()).toBe(28);
+    expect(await serializer.digestRecord()).toBe(28);
   
     const buffs = [];
   
