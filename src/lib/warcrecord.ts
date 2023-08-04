@@ -219,14 +219,12 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
   }
 
-  // need to use any to allow switching args order to provide backwards compatibility
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  override async readFully(isContent: any = false, chunksStart : Array<Uint8Array> = []) {
+  override async readFully(isContent = false) {
     // if have httpHeaders, need to consider transfer and content decoding is decoding content vs raw data
     if (this.httpHeaders) {
       // if payload is empty, just return
       if (this.payload && !this.payload.length) {
-        return (chunksStart && chunksStart[0]) || this.payload;
+        return this.payload;
       }
 
       // otherwise, can't serialize payload as raw if already started reading
@@ -238,7 +236,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
       // reading content, but already consumed raw data, convert
       if (isContent && this.consumed === "raw" && this.payload) {
-        return await this._createDecodingReader([this.payload]).readFully(chunksStart);
+        return await this._createDecodingReader([this.payload]).readFully();
       }
     }
 
@@ -247,10 +245,10 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
 
     if (isContent) {
-      this.payload = await super.readFully(chunksStart);
+      this.payload = await super.readFully();
       this.consumed = "content";
     } else {
-      this.payload = await BaseAsyncIterReader.readFully(this._reader, chunksStart);
+      this.payload = await WARCRecord.readFully(this._reader);
       this.consumed = "raw";
     }
 
@@ -398,5 +396,3 @@ export class WARCRecord extends BaseAsyncIterReader {
 // ===========================================================================
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 async function* emptyReader() : AsyncGenerator<never, void, unknown> { }
-
-

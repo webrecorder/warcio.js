@@ -8,6 +8,7 @@ import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
+import { concatChunks } from "./utils";
 
 const encoder = new TextEncoder();
 
@@ -293,30 +294,31 @@ export class FullRecordWARCSerializer extends BaseWARCSerializer {
     );
   }
 
-  override async *generateRecord() : AsyncGenerator<Uint8Array> {
+  override async *generateRecord() {
     let size = 0;
 
     let httpHeadersBuff: Uint8Array | null = null;
-
-    let payloadOffset = 0;
 
     if (this.record.httpHeaders) {
       httpHeadersBuff = encoder.encode(
         this.record.httpHeaders.toString() + "\r\n"
       );
-
-      payloadOffset = httpHeadersBuff.length;
+      size += httpHeadersBuff.length;
     }
 
-    const headersAndPayload = await this.record.readFully(false, httpHeadersBuff ? [httpHeadersBuff] : []);
-    size += headersAndPayload.length;
+    const payload = await this.record.readFully();
+    size += payload.length;
 
     // if digestAlgo is set, compute digests, otherwise only content-length
     if (this.digestAlgo) {
-      const blockDigest = await this.digestMessage(headersAndPayload);
-      const payloadDigest = payloadOffset > 0 ?
-        await this.digestMessage(headersAndPayload.slice(payloadOffset)) :
-        blockDigest;
+      const payloadDigest = await this.digestMessage(payload);
+      /* eslint-disable indent -- offsetTernaryExpressions is broken */
+      const blockDigest = httpHeadersBuff
+        ? await this.digestMessage(
+            concatChunks([httpHeadersBuff, payload], size)
+          )
+        : payloadDigest;
+      /* eslint-enable indent */
 
       this.record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigest);
       this.record.warcHeaders.headers.set("WARC-Block-Digest", blockDigest);
@@ -329,7 +331,11 @@ export class FullRecordWARCSerializer extends BaseWARCSerializer {
     yield warcHeadersBuff;
     yield CRLF;
 
-    yield headersAndPayload;
+    if (httpHeadersBuff) {
+      yield httpHeadersBuff;
+    }
+
+    yield payload;
 
     yield CRLFCRLF;
   }
