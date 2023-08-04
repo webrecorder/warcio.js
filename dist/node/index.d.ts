@@ -1,8 +1,8 @@
 import { WriteStream } from 'node:fs';
-import { f as WARCSerializerOpts$1, b as WARCSerializer$1, W as WARCRecord, j as SerializerInMemBuffer } from '../warcserializer-9223248c.js';
+import { f as WARCSerializerOpts$1, b as WARCSerializer$1, W as WARCRecord, j as SerializerInMemBuffer } from '../warcserializer-502c5f35.js';
 import 'hash-wasm/dist/lib/WASMInterface';
 import 'pako';
-import '../types-af1fe7fc.js';
+import '../types-6f5e4abf.js';
 
 declare const DEFAULT_MEM_SIZE: number;
 type WARCSerializerOpts = WARCSerializerOpts$1 & {

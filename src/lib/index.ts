@@ -39,5 +39,4 @@ export type {
   StreamResult,
   StreamResults,
   Request,
-  IndexerOffsetLength
 } from "./types";
