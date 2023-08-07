@@ -1,5 +1,5 @@
 import pako from "pako";
-import { WARCRecord, WARCParser, FullRecordWARCSerializer } from "../src/lib";
+import { WARCRecord, WARCParser, WARCSerializer as BaseWARCSerializer } from "../src/lib";
 import { WARCSerializer } from "../src/node/warcserializer";
 
 const decoder = new TextDecoder("utf-8");
@@ -36,7 +36,7 @@ text\r\n\r\n';
     expect(record).not.toBeNull();
     expect(record.warcType).toBe("response");
 
-    const res = await FullRecordWARCSerializer.serialize(record, {
+    const res = await BaseWARCSerializer.serialize(record, {
       digest: { algo: "sha-1", prefix: "sha1:", base32: true },
     });
 
@@ -307,7 +307,7 @@ Accept: */*\r\n\
       fields
     );
 
-    const res = decoder.decode(await FullRecordWARCSerializer.serialize(record));
+    const res = decoder.decode(await BaseWARCSerializer.serialize(record));
 
     expect(res).toBe(
       "\
@@ -460,7 +460,7 @@ text\r\n\r\n';
     keepHeadersCase: true,
   }))!;
 
-  const serializer = new FullRecordWARCSerializer(record, {
+  const serializer = new BaseWARCSerializer(record, {
     digest: { algo: "sha-1", prefix: "sha1:", base32: true },
   });
 

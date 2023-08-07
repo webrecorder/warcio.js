@@ -7,7 +7,6 @@ export {
   StatusAndHeaders,
   WARCParser,
   WARCSerializer,
-  FullRecordWARCSerializer,
   BaseSerializerBuffer,
   WARCRecord,
   WARC_1_0,
