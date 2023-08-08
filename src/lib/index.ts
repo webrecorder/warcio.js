@@ -11,7 +11,7 @@ export { StatusAndHeadersParser, StatusAndHeaders } from "./statusandheaders";
 export { WARCParser } from "./warcparser";
 export type { WARCParserOpts } from "./warcparser";
 
-export { WARCSerializer } from "./warcserializer";
+export { WARCSerializer, BaseSerializerBuffer } from "./warcserializer";
 export type { WARCSerializerOpts } from "./warcserializer";
 
 export { WARCRecord, WARC_1_1, WARC_1_0 } from "./warcrecord";

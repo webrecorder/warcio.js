@@ -308,13 +308,16 @@ For example, the following snippet demonstrates a writer that logs all HTML file
 
 ## Writing WARC Files
 
-WARCs can be created using `WARCRecord.create()` static method, and serialized using `WARCSerializer.serialize()`
+WARCs can be created using `WARCRecord.create()` static method, and serialized using the `WARCSerializer`.
 
-Passing in `WARCSerializer.serialize({gzip: true})` will create a GZIP compressed record.
+When serializing, the `WARC-Payload-Digest`, `WARC-Block-Digest` and `Content-Length` headers are automatically computed
+to ensure correct values, overriding those provided in `warcHeaders`.
 
-The payload can be provided as an async iterator. The `WARC-Payload-Digest` and `WARC-Block-Digest` are automatically computed if not provided in the `warcHeaders`.
+Setting `gzip: true` in `opts` will serialize to GZIP-compressed records.
 
-(Note that at this time, computing the digest requires buffering the payload fully, due to limitation of `crypto.subtle.digest()` apis in requiring a full buffer).
+Calling `WARCSerializer.serialize(opts)` will serialize the entire WARC record into a single array buffer.
+
+This is the simplest way to serialize WARC records and works well for storing smaller-sized data in WARC.
 
 <details>
   <summary>An example of generating WARCs in the browser:</summary>
@@ -424,6 +427,98 @@ main();
 ```
 
 </details>
+
+## Writing Larger WARC Records
+
+For larger WARC records, it is not ideal to buffer the entire WARC payload into memory.
+
+Starting with 2.2.0, warcio.js supports streaming serialization with the help of an external buffer.
+To compute the digests, the data needs to be read twice, once to compute the digest and again to be written to the WARC.
+To support this, warcio.js uses `hash-wasm` for incremental digest computation and supports an external buffer which can
+write and read the data at a later time.
+
+For the Node version, a `WARCSerializer` provided via `warcio/node` will automatically buffer responses >2MB to a temporary file on disk.
+
+If using Node and expect to have a WARC records that are big it is recommended to use `import { WARCSerializer } from "warcio/node"`.
+Otherwise, using `import { WARCSerializer } from "warcio"` is sufficient.
+
+For browser-based usage, the payload is still buffered in memory (in chunks), but customized solutions can be implemented
+by extending the [src/lib/warcserializer.ts#132](BaseSerializerBuffer) and implementing custom `write` and `readAll()` functions.
+
+<details>
+  <summary>Example of generating larger WARC records in Node using WARCSerializer</summary>
+
+```javascript
+import { WARCRecord } from "warcio";
+import { WARCSerializer } from "warcio/node";
+
+async function main() {
+  const url = "https://example.com/some/large/file";
+
+  const resp = await fetch(url);
+
+  const record = await WARCRecord.create({type: "response", url}, resp.body);
+
+  const serializer = new WARCSerializer(record, {gzip: true});
+
+  for await (const chunk of serializer) {
+    // process WARC record chunks incrementally
+    console.log(chunk);
+  }
+}
+
+main();
+```
+
+</details>
+
+Using standard Node fs functions, it is possible to easily stream content via `fetch()` directly to
+WARC records:
+
+<details>
+  <summary>Fetching and streaming content to multiple WARC records on disk using the Node WARCSerializer</summary>
+
+```javascript
+import fs from "node:fs";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
+
+import { WARCRecord } from "warcio";
+import { WARCSerializer } from "warcio/node";
+
+async function fetchAndWrite(url, warcOutputStream) {
+  const resp = await fetch(url);
+
+  const record = await WARCRecord.create({type: "response", url}, resp.body);
+
+  // set max data per WARC payload that can be buffered in memory to 16K
+  // payloads larger then that are automatically buffered to a temporary file
+  const serializer = new WARCSerializer(record, {gzip: true, maxMemSize: 16384});
+
+  await pipeline(Readable.from(serializer), warcOutputStream, {end: false});
+}
+
+async function main() {
+  const outputFile = fs.createWriteStream("test.warc.gz");
+
+  await fetchAndWrite("https://example.com/some/large/file1.bin", outputFile);
+
+  await fetchAndWrite("https://example.com/another/large/file2", outputFile);
+
+  outputFile.close();
+}
+
+main();
+```
+
+</details>
+
+
+
+
+
+
+
 
 ## Not Yet Implemented
 

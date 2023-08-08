@@ -11,7 +11,7 @@ const sharedConfig = {
 const nodeConfig = {
   ...sharedConfig,
   clean: true,
-  entry: ["src/index.ts", "src/cli.ts", "src/utils.ts"],
+  entry: ["src/index.ts", "src/cli.ts", "src/utils.ts", "src/node/index.ts"],
   platform: "node",
   format: ["esm", "cjs"],
 }
@@ -34,7 +34,6 @@ const browserConfig = {
 
 
 export default defineConfig((options) => {
-  console.log(options);
   if (options.define && options.define.browser) {
     return browserConfig;
   } else {
