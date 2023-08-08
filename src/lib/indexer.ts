@@ -4,9 +4,10 @@ import { WARCParser } from "./warcparser";
 import { WARCRecord } from "./warcrecord";
 import { postToGetUrl, getSurt } from "./utils";
 import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
-import { StreamResults, Request } from "./types";
+import { StreamResults, Request, IndexerOffsetLength } from "./types";
 
 const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
+
 // ===========================================================================
 abstract class BaseIndexer {
   opts: Partial<IndexCommandArgs>;
@@ -62,7 +63,7 @@ abstract class BaseIndexer {
 
   indexRecord(
     record: WARCRecord,
-    parser: WARCParser,
+    indexerOffset: IndexerOffsetLength,
     filename: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Record<string, any> | null {
@@ -73,8 +74,7 @@ abstract class BaseIndexer {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, any> = {};
 
-    const offset = parser.offset;
-    const length = parser.recordLength;
+    const {offset, recordLength: length} = indexerOffset;
 
     const special = { offset, length, filename };
 
@@ -97,7 +97,7 @@ abstract class BaseIndexer {
     }
   }
 
-  getField(field: string, record: WARCRecord) {
+  getField(field: string, record: WARCRecord) : string | number | null | undefined {
     if (field === "http:status") {
       if (
         record.httpHeaders &&
@@ -110,7 +110,11 @@ abstract class BaseIndexer {
 
     if (field.startsWith("http:")) {
       if (record.httpHeaders) {
-        return record.httpHeaders.headers.get(field.slice(5));
+        let headers : Headers | Map<string, string> = record.httpHeaders.headers;
+        if (headers instanceof Map) {
+          headers = new Headers(Object.fromEntries(headers));
+        }
+        return headers.get(field.slice(5));
       }
       return null;
     }
@@ -224,7 +228,7 @@ export class CDXIndexer extends Indexer {
 
   override indexRecord(
     record: WARCRecord | null,
-    parser: WARCParser,
+    indexOffset: IndexerOffsetLength,
     filename: string
   ) {
 
@@ -232,15 +236,15 @@ export class CDXIndexer extends Indexer {
       if (!record) {
         return null;
       }
-      return super.indexRecord(record, parser, filename);
+      return super.indexRecord(record, indexOffset, filename);
     }
 
     const lastRecord = this._lastRecord;
     this._lastRecord = record;
 
     if (record) {
-      record._offset = parser.offset;
-      record._length = parser.recordLength;
+      record._offset = indexOffset.offset;
+      record._length = indexOffset.recordLength;
     }
 
     if (!lastRecord) {
@@ -248,7 +252,7 @@ export class CDXIndexer extends Indexer {
     }
 
     if (!record || lastRecord.warcTargetURI != record.warcTargetURI) {
-      return this.indexRecordPair(lastRecord, null, parser, filename);
+      return this.indexRecordPair(lastRecord, null, indexOffset, filename);
     }
 
     const warcType = record.warcType;
@@ -256,19 +260,19 @@ export class CDXIndexer extends Indexer {
 
     if (warcType === "request" && (lastWarcType === "response" || lastWarcType === "revisit")) {
       this._lastRecord = null;
-      return this.indexRecordPair(lastRecord, record, parser, filename);
+      return this.indexRecordPair(lastRecord, record, indexOffset, filename);
     } else if ((warcType === "response" || warcType === "revisit") && lastWarcType === "request") {
       this._lastRecord = null;
-      return this.indexRecordPair(record, lastRecord, parser, filename);
+      return this.indexRecordPair(record, lastRecord, indexOffset, filename);
     } else {
-      return this.indexRecordPair(lastRecord, null, parser, filename);
+      return this.indexRecordPair(lastRecord, null, indexOffset, filename);
     }
   }
 
   indexRecordPair(
     record: WARCRecord,
     reqRecord: WARCRecord | null,
-    parser: WARCParser,
+    indexOffset: IndexerOffsetLength,
     filename: string
   ) {
     let method;
@@ -299,7 +303,7 @@ export class CDXIndexer extends Indexer {
 
     record._urlkey = url;
 
-    const res = super.indexRecord(record, parser, filename);
+    const res = super.indexRecord(record, indexOffset, filename);
     if (res) {
       if (record && record._offset !== undefined) {
         res["offset"] = record._offset;
@@ -393,10 +397,10 @@ export class CDXAndRecordIndexer extends CDXIndexer
   override indexRecordPair(
     record: WARCRecord,
     reqRecord: WARCRecord | null,
-    parser: WARCParser,
+    indexOffset: IndexerOffsetLength,
     filename: string
   ) : CDXAndRecord | null {
-    const cdx = super.indexRecordPair(record, reqRecord, parser, filename);
+    const cdx = super.indexRecordPair(record, reqRecord, indexOffset, filename);
     return cdx && {cdx, record, reqRecord};
   }
 }
