@@ -143,7 +143,7 @@ export class StatusAndHeadersParser {
         if (value) {
           try {
             if (canAppend && name.toLowerCase() === "set-cookie") {
-              headers.append(name, value)
+              headers.append(name, value);
             } else {
               headers.set(name, value);
             }
