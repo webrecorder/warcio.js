@@ -37,10 +37,9 @@ export type WARCRecordOpts = {
   url?: string;
   date?: string;
   type?: WARCType;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  warcHeaders?: any;
+  warcHeaders?: Record<string, string>;
   filename?: string;
-  httpHeaders?: Record<string, any>;
+  httpHeaders?: HeadersInit;
   statusline?: string;
   warcVersion?: typeof WARC_1_0 | typeof WARC_1_1;
   keepHeadersCase?: boolean;
@@ -85,33 +84,38 @@ export class WARCRecord extends BaseAsyncIterReader {
       if (filename) {
         warcHeaders["WARC-Filename"] = filename;
       }
-    } else {
+    } else if (url) {
       warcHeaders["WARC-Target-URI"] = url;
     }
 
     warcHeaders["WARC-Date"] = date;
-    warcHeaders["WARC-Type"] = type;
+
+    if (type) {
+      warcHeaders["WARC-Type"] = type;
+    }
 
     if (type === "revisit") {
       warcHeaders["WARC-Profile"] =
         warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0;
-      warcHeaders["WARC-Refers-To-Target-URI"] = refersToUrl;
-      warcHeaders["WARC-Refers-To-Date"] = checkDate(
-        refersToDate || new Date().toISOString()
-      );
+      if (refersToUrl) {
+        warcHeaders["WARC-Refers-To-Target-URI"] = refersToUrl;
+        warcHeaders["WARC-Refers-To-Date"] = checkDate(
+          refersToDate || new Date().toISOString()
+        );
+      }
     }
 
-    warcHeaders = new StatusAndHeaders({
+    const warcHeadersObj = new StatusAndHeaders({
       statusline: warcVersion,
       headers: new Map(Object.entries(warcHeaders))
     });
 
-    if (!warcHeaders.headers.get("WARC-Record-ID")) {
-      warcHeaders.headers.set("WARC-Record-ID", `<urn:uuid:${uuid()}>`);
+    if (!warcHeadersObj.headers.get("WARC-Record-ID")) {
+      warcHeadersObj.headers.set("WARC-Record-ID", `<urn:uuid:${uuid()}>`);
     }
 
-    if (!warcHeaders.headers.get("Content-Type")) {
-      warcHeaders.headers.set(
+    if (!warcHeadersObj.headers.get("Content-Type")) {
+      warcHeadersObj.headers.set(
         "Content-Type",
         (type && defaultRecordCT[type]) || "application/octet-stream"
       );
@@ -121,7 +125,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       reader = emptyReader();
     }
 
-    const record = new WARCRecord({ warcHeaders, reader });
+    const record = new WARCRecord({ warcHeaders: warcHeadersObj, reader });
     let headers: Map<string, string> | Headers | null = null;
     let entries: [string, string][] = [];
 

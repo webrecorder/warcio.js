@@ -301,7 +301,7 @@ Accept: */*\r\n\
     const warcHeaders = {
       "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
     };
-    const httpHeaders = [
+    const httpHeaders : [string, string][] = [
       ["Set-Cookie", "greeting=hello"],
       ["Set-Cookie", "name=world"],
     ];

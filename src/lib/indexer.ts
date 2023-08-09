@@ -150,6 +150,7 @@ const DEFAULT_LEGACY_CDX_FIELDS =
 
 // ===========================================================================
 export interface CDXAndRecord {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cdx: Record<string, any>,
   record: WARCRecord,
   reqRecord: WARCRecord | null

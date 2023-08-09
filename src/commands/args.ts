@@ -17,6 +17,7 @@ export const indexCommandArgs = (yarg: yargs.Argv) => {
 
 //export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
 // todo: fix types?
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type IndexCommandArgs = any;
 
 export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
@@ -46,4 +47,5 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
 
 //export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
 // todo: fix types?
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CdxIndexCommandArgs = any;//ReturnType<cdxIndexCommandArgs>;
