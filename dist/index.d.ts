@@ -131,7 +131,7 @@ type WARCRecordOpts = {
     type?: WARCType;
     warcHeaders?: any;
     filename?: string;
-    httpHeaders?: Record<string, string>;
+    httpHeaders?: Record<string, any>;
     statusline?: string;
     warcVersion?: typeof WARC_1_0 | typeof WARC_1_1;
     keepHeadersCase?: boolean;
