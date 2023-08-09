@@ -123,7 +123,7 @@ export class StatusAndHeadersParser {
     }
 
     const headers = new headersClass();
-    const useAppend = headers instanceof Headers;
+    const canAppend = headers instanceof Headers;
 
     const headerBuff = await readToDoubleCRLF(reader);
 
@@ -142,7 +142,7 @@ export class StatusAndHeadersParser {
       } else {
         if (value) {
           try {
-            if (useAppend) {
+            if (canAppend && name.toLowerCase() === "set-cookie") {
               headers.append(name, value)
             } else {
               headers.set(name, value);
@@ -176,7 +176,7 @@ export class StatusAndHeadersParser {
 
     if (value) {
       try {
-        if (useAppend) {
+        if (canAppend && name.toLowerCase() === "set-cookie") {
           headers.append(name, value);
         } else {
           headers.set(name, value);

@@ -40,7 +40,7 @@ export type WARCRecordOpts = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   warcHeaders?: any;
   filename?: string;
-  httpHeaders?: Record<string, string>;
+  httpHeaders?: Record<string, any>;
   statusline?: string;
   warcVersion?: typeof WARC_1_0 | typeof WARC_1_1;
   keepHeadersCase?: boolean;
@@ -103,9 +103,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
     warcHeaders = new StatusAndHeaders({
       statusline: warcVersion,
-      headers: keepHeadersCase
-        ? new Map(Object.entries(warcHeaders))
-        : new Headers(warcHeaders),
+      headers: new Map(Object.entries(warcHeaders))
     });
 
     if (!warcHeaders.headers.get("WARC-Record-ID")) {
