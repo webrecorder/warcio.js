@@ -8,7 +8,6 @@ import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
-import { concatChunks } from "./utils";
 
 const encoder = new TextEncoder();
 

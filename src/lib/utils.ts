@@ -17,6 +17,7 @@ export function binaryToString(data: Uint8Array | string) {
   }
   // try btoa, if it fails, just ignore the binary data string
   try {
+    // eslint-disable-next-line deprecation/deprecation
     return "__wb_post_data=" + btoa(string);
   } catch (e) {
     return "__wb_post_data=";
