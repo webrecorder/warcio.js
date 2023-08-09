@@ -327,14 +327,14 @@ Accept: */*\r\n\
       expect(res).toBe(
       "\
 WARC/1.0\r\n\
-content-length: 74\r\n\
-content-type: application/http; msgtype=request\r\n\
-warc-block-digest: sha256:e37db413e919457008f5f5d9285185eb37d29ad614915c248dd876a81abbd4ae\r\n\
-warc-date: 2000-01-01T00:00:00Z\r\n\
-warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
-warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-warc-target-uri: http://example.com/\r\n\
-warc-type: request\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:e37db413e919457008f5f5d9285185eb37d29ad614915c248dd876a81abbd4ae\r\n\
+Content-Length: 74\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
 set-cookie: greeting=hello\r\n\
@@ -348,14 +348,14 @@ set-cookie: name=world\r\n\
       expect(res).toBe(
       "\
 WARC/1.0\r\n\
-content-length: 62\r\n\
-content-type: application/http; msgtype=request\r\n\
-warc-block-digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
-warc-date: 2000-01-01T00:00:00Z\r\n\
-warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
-warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-warc-target-uri: http://example.com/\r\n\
-warc-type: request\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
+Content-Length: 62\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
 set-cookie: greeting=hello, name=world\r\n\
@@ -399,14 +399,14 @@ set-cookie: greeting=hello, name=world\r\n\
       expect(res).toBe(
       "\
 WARC/1.0\r\n\
-content-length: 74\r\n\
-content-type: application/http; msgtype=request\r\n\
-warc-block-digest: sha256:e37db413e919457008f5f5d9285185eb37d29ad614915c248dd876a81abbd4ae\r\n\
-warc-date: 2000-01-01T00:00:00Z\r\n\
-warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
-warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-warc-target-uri: http://example.com/\r\n\
-warc-type: request\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:e37db413e919457008f5f5d9285185eb37d29ad614915c248dd876a81abbd4ae\r\n\
+Content-Length: 74\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
 set-cookie: greeting=hello\r\n\
@@ -420,14 +420,14 @@ set-cookie: name=world\r\n\
       expect(res).toBe(
       "\
 WARC/1.0\r\n\
-content-length: 62\r\n\
-content-type: application/http; msgtype=request\r\n\
-warc-block-digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
-warc-date: 2000-01-01T00:00:00Z\r\n\
-warc-payload-digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
-warc-record-id: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-warc-target-uri: http://example.com/\r\n\
-warc-type: request\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
+Content-Length: 62\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
 set-cookie: greeting=hello, name=world\r\n\
