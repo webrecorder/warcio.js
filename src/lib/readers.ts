@@ -26,7 +26,7 @@ export class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflat
 
 // ===========================================================================
 export abstract class BaseAsyncIterReader {
-  static async readFully(iter: AsyncIterable<Uint8Array>) : Promise<Uint8Array> {
+  static async readFully(iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>) : Promise<Uint8Array> {
     const chunks = [];
     let size = 0;
 

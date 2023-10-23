@@ -36,7 +36,7 @@ declare class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Infla
     onEnd(status: pako.ReturnCodes): void;
 }
 declare abstract class BaseAsyncIterReader {
-    static readFully(iter: AsyncIterable<Uint8Array>): Promise<Uint8Array>;
+    static readFully(iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>): Promise<Uint8Array>;
     abstract [Symbol.asyncIterator](): AsyncIterator<Uint8Array>;
     getReadableStream(): ReadableStream<any>;
     readFully(): Promise<Uint8Array>;
@@ -139,10 +139,10 @@ type WARCRecordOpts = {
     refersToDate?: string;
 };
 declare class WARCRecord extends BaseAsyncIterReader {
-    static create({ url, date, type, warcHeaders, filename, httpHeaders, statusline, warcVersion, keepHeadersCase, refersToUrl, refersToDate, }?: WARCRecordOpts, reader?: AsyncIterable<Uint8Array>): WARCRecord;
+    static create({ url, date, type, warcHeaders, filename, httpHeaders, statusline, warcVersion, keepHeadersCase, refersToUrl, refersToDate, }?: WARCRecordOpts, reader?: AsyncIterable<Uint8Array> | Iterable<Uint8Array>): WARCRecord;
     static createWARCInfo(opts: WARCRecordOpts | undefined, info: Record<string, string>): WARCRecord;
     warcHeaders: StatusAndHeaders;
-    _reader: AsyncIterable<Uint8Array>;
+    _reader: AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
     _contentReader: BaseAsyncIterReader | null;
     payload: Uint8Array | null;
     httpHeaders: StatusAndHeaders | null;
@@ -154,7 +154,7 @@ declare class WARCRecord extends BaseAsyncIterReader {
     _urlkey: string;
     constructor({ warcHeaders, reader, }: {
         warcHeaders: StatusAndHeaders;
-        reader: AsyncIterable<Uint8Array>;
+        reader: AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
     });
     getResponseInfo(): {
         headers: Map<string, string> | Headers;
@@ -163,8 +163,8 @@ declare class WARCRecord extends BaseAsyncIterReader {
     } | null;
     fixUp(): void;
     readFully(isContent?: boolean): Promise<Uint8Array>;
-    get reader(): AsyncIterable<Uint8Array>;
-    get contentReader(): AsyncIterable<Uint8Array>;
+    get reader(): AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
+    get contentReader(): AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
     _createDecodingReader(source: Source): AsyncIterReader;
     readlineRaw(maxLength?: number): Promise<Uint8Array | null>;
     contentText(): Promise<string>;
@@ -299,4 +299,4 @@ declare function mfdToQueryString(mfd: string | Uint8Array, contentType: string)
 declare function concatChunks(chunks: Uint8Array[], size: number): Uint8Array;
 declare function splitChunk(chunk: Uint8Array, inx: number): [Uint8Array, Uint8Array];
 
-export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, BaseSerializerBuffer, CDXAndRecordIndexer, CDXIndexer, Indexer, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
+export { AsyncIterReader, AsyncIterReaderOpts, BaseAsyncIterReader, BaseSerializerBuffer, CDXAndRecordIndexer, CDXIndexer, Indexer, IndexerOffsetLength, LimitReader, NoConcatInflator, Request, Source, SourceReadable, SourceReader, StatusAndHeaders, StatusAndHeadersParser, StreamResult, StreamResults, WARCParser, WARCParserOpts, WARCRecord, WARCRecordOpts, WARCSerializer, WARCSerializerOpts, WARCType, WARC_1_0, WARC_1_1, appendRequestQuery, concatChunks, getSurt, jsonToQueryParams, jsonToQueryString, mfdToQueryParams, mfdToQueryString, postToGetUrl, splitChunk };
