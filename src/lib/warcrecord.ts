@@ -63,7 +63,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       refersToUrl = undefined,
       refersToDate = undefined,
     }: WARCRecordOpts = {},
-    reader?: AsyncIterable<Uint8Array>
+    reader?: AsyncIterable<Uint8Array> | Iterable<Uint8Array>
   ) {
     function checkDate(d: string) {
       const date = d;
@@ -163,7 +163,7 @@ export class WARCRecord extends BaseAsyncIterReader {
   }
 
   warcHeaders: StatusAndHeaders;
-  _reader: AsyncIterable<Uint8Array>;
+  _reader: AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
   _contentReader: BaseAsyncIterReader | null;
   payload: Uint8Array | null;
   httpHeaders: StatusAndHeaders | null;
@@ -181,7 +181,7 @@ export class WARCRecord extends BaseAsyncIterReader {
     reader,
   }: {
     warcHeaders: StatusAndHeaders;
-    reader: AsyncIterable<Uint8Array>;
+    reader: AsyncIterable<Uint8Array> | Iterable<Uint8Array>;
   }) {
     super();
 
@@ -250,7 +250,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       this.payload = await super.readFully();
       this.consumed = "content";
     } else {
-      this.payload = await WARCRecord.readFully(this._reader);
+      this.payload = await BaseAsyncIterReader.readFully(this._reader);
       this.consumed = "raw";
     }
 
