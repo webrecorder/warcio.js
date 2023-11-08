@@ -1,6 +1,6 @@
 {
   "name": "warcio",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "keywords": [
     "WARC",
     "web archiving"
@@ -48,6 +48,8 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest --collectCoverage"
   },
   "dependencies": {
+    "@types/pako": "^2.0.3",
+    "@types/stream-buffers": "^3.0.7",
     "base32-encode": "^2.0.0",
     "hash-wasm": "^4.9.0",
     "pako": "^1.0.11",
@@ -59,8 +61,6 @@
     "@types/eslint": "^7.29.0",
     "@types/jest": "^29.2.3",
     "@types/node": "^18.11.9",
-    "@types/pako": "^1.0.0",
-    "@types/stream-buffers": "^3.0.4",
     "@types/yargs": "^17.0.17",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
