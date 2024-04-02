@@ -157,13 +157,41 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
     return key + "." + ++dupes[key] + "_";
   };
 
-  try {
-    JSON.stringify(json, (k, v) => {
-      if (!["object", "function"].includes(typeof v)) {
-        q.set(getKey(k), v);
+  const parser = (jsonObj: object, key="") => {
+    let queryValue = "";
+
+    // if object, attempt to recurse through key/value pairs
+    if (typeof(jsonObj) === "object" && !(jsonObj instanceof Array)) {
+      try {
+        for (const [key, value] of Object.entries(jsonObj)) {
+          parser(value, key);
+        }
+      } catch (e) {
+        // special case for null
+        if (jsonObj === null) {
+          queryValue = "null";
+        }
       }
-      return v;
-    });
+    }
+
+    // if array, recurse through values, re-using key
+    else if (jsonObj instanceof Array) {
+      for (let i=0; i < jsonObj.length; i++) {
+        parser(jsonObj[i], key);
+      }
+    }
+
+    if (["string", "number", "boolean"].includes(typeof(jsonObj))) {
+      queryValue = jsonObj.toString();
+    }
+
+    if (queryValue) {
+      q.set(getKey(key), queryValue);
+    }
+  };
+
+  try {
+    parser(json);
   } catch (e) {
     if (!ignoreInvalid) {
       throw e;

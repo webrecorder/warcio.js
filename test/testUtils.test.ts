@@ -34,6 +34,22 @@ describe("utils", () => {
     ).toBe("abc=def&data=bar&bar=2&a=3&a.2_=4&bar.2_=123&a.3_=5");
   });
 
+  test("another json with more complicated data", () => {
+    expect(
+      toQuery({
+       "type": "event",
+       "id": 44.0,
+       "float": 35.7,
+       "values": [true, false, null],
+       "source": {
+          "type": "component",
+          "id": "a+b&c= d",
+          "values": [3, 4]
+       }
+      })
+    ).toBe("type=event&id=44&float=35.7&values=true&values.2_=false&values.3_=null&type.2_=component&id.2_=a%2Bb%26c%3D+d&values.4_=3&values.5_=4");
+  });
+
   test("post-to-get empty", () => {
     const request = {
       postData: "",
