@@ -1,6 +1,6 @@
 import { WriteStream } from 'node:fs';
-import { f as WARCSerializerOpts$1, b as WARCSerializer$1, W as WARCRecord, j as SerializerInMemBuffer } from '../warcserializer-48f5a2a4.js';
-import 'hash-wasm/dist/lib/WASMInterface';
+import { f as WARCSerializerOpts$1, b as WARCSerializer$1, W as WARCRecord, j as SerializerInMemBuffer } from '../warcserializer-4627762e.js';
+import 'hash-wasm/dist/lib/WASMInterface.js';
 import 'pako';
 import '../types-af1fe7fc.js';
 

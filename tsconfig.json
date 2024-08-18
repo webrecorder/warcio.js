@@ -16,7 +16,7 @@
     "noUncheckedIndexedAccess": true,
     "removeComments": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true,
+    "skipLibCheck": false,
     "strict": true
   }
 }

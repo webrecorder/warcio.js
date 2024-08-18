@@ -3,7 +3,7 @@ import base32Encode from "base32-encode";
 import pako from "pako";
 
 import { createSHA256, createSHA1 } from "hash-wasm";
-import { IHasher } from "hash-wasm/dist/lib/WASMInterface";
+import { IHasher } from "hash-wasm/dist/lib/WASMInterface.js";
 
 import { WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
