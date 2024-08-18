@@ -13,6 +13,7 @@ const nodeConfig: Options = {
   entry: ["src/index.ts", "src/cli.ts", "src/utils.ts", "src/node/index.ts"],
   platform: "node",
   format: ["esm", "cjs"],
+  noExternal: ["base32-encode"],
 };
 
 const browserConfig: Options = {
@@ -27,7 +28,7 @@ const browserConfig: Options = {
     };
   },
   sourcemap: true,
-  noExternal: ["pako", "uuid-random", "base32-encode"],
+  noExternal: ["pako", "uuid-random", "base32-encode", "hash-wasm"],
 };
 
 export default defineConfig((options) => {
