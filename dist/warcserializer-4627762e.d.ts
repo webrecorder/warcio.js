@@ -1,4 +1,4 @@
-import { IHasher } from 'hash-wasm/dist/lib/WASMInterface';
+import { IHasher } from 'hash-wasm/dist/lib/WASMInterface.js';
 import pako from 'pako';
 import { S as Source, b as SourceReader } from './types-af1fe7fc.js';
 

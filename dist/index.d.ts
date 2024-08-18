@@ -1,5 +1,5 @@
 import pako from 'pako';
-import { IHasher } from 'hash-wasm/dist/lib/WASMInterface';
+import { IHasher } from 'hash-wasm/dist/lib/WASMInterface.js';
 import { WritableStreamBuffer } from 'stream-buffers';
 
 type SourceReader = {
