@@ -48,7 +48,7 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest --collectCoverage"
   },
   "dependencies": {
-    "@types/pako": "^2.0.3",
+    "@types/pako": "^1.0.7",
     "@types/stream-buffers": "^3.0.7",
     "base32-encode": "^2.0.0",
     "hash-wasm": "^4.9.0",
