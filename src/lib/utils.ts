@@ -49,9 +49,18 @@ export function getSurt(url: string) {
       surt += urlObj.search;
       for (const [key, value] of urlObj.searchParams.entries()) {
         if (!value) {
+          // if no value set, by default the surt contains 'key='
+          // however, for compatibility, only want to add a trailing '='
+          // if original URL has it.
+          const keyEncoded = encodeURIComponent(key);
           const rx = new RegExp(`(?<=[&?])${rxEscape(key)}=(?=&|$)`);
+          // if original URL does *not* have trailing '=', attempt to remove it below
           if (!rx.exec(urlLower)) {
-            surt = surt.replace(rx, key);
+            // use URI encoded version to match the query arg if key is %-encoded
+            const rxEncoded = (
+              key === keyEncoded ? 
+                rx : new RegExp(`(?<=[&?])${rxEscape(keyEncoded)}=(?=&|$)`));
+            surt = surt.replace(rxEncoded, keyEncoded);
           }
         }
       }
