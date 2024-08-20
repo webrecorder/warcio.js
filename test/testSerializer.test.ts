@@ -5,7 +5,7 @@ import { WARCSerializer } from "../src/node/warcserializer";
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map((v) => Number(v));
+const [ majorVerison, minorVersion, patchVersion ] = process.versions.node.split(".").map((v) => Number(v));
 
 // added in 18.14.2
 const nodeHeadersSupportsMultipleCookies = (
@@ -28,7 +28,7 @@ async function* iter(data: string) {
 describe("serializer", () => {
   test("compute digest, buffering", async () => {
     const input =
-      // eslint-disable-next-line quotes -- inner double quote
+       
       '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -57,7 +57,7 @@ text\r\n\r\n';
     });
 
     expect(decoder.decode(res)).toBe(
-      // eslint-disable-next-line quotes -- inner double quote
+       
       '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -93,7 +93,7 @@ text\r\n\r\n'
     };
     const httpHeaders = {
       "Custom-Header": "somevalue",
-      // eslint-disable-next-line quotes -- inner double quote
+       
       "Content-Type": 'text/plain; charset="UTF-8"',
     };
 
@@ -121,7 +121,7 @@ text\r\n\r\n'
     ));
 
     expect(res).toBe(
-      // eslint-disable-next-line quotes -- inner double quote
+       
       '\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -199,7 +199,7 @@ text\r\n\r\n'
     };
     const httpHeaders = {
       "Custom-Header": "somevalue",
-      // eslint-disable-next-line quotes -- inner double quote
+       
       "Content-Type": 'text/plain; charset="UTF-8"',
     };
 
@@ -223,7 +223,7 @@ text\r\n\r\n'
     const res = decoder.decode(pako.inflate(gzipped));
 
     expect(res).toBe(
-      // eslint-disable-next-line quotes -- inner double quote
+       
       '\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -600,7 +600,7 @@ Foo: Bar\r\n\
 describe("streaming serializer", () => {
   test("streaming serialize, response with sha-1", async () => {
     const input =
-    // eslint-disable-next-line quotes -- inner double quote
+     
     '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -633,7 +633,7 @@ text\r\n\r\n';
   }
 
   expect(decoder.decode(Buffer.concat(buffs))).toBe(
-    // eslint-disable-next-line quotes -- inner double quote
+     
     '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -727,7 +727,7 @@ text\r\n\
 
   test("streaming serialize, response sha-256", async () => {
     const input =
-    // eslint-disable-next-line quotes -- inner double quote
+     
     '\
 WARC/1.1\r\n\
 WARC-Type: response\r\n\
@@ -758,7 +758,7 @@ text\r\n\r\n';
   }
 
   expect(decoder.decode(Buffer.concat(buffs))).toBe(
-    // eslint-disable-next-line quotes -- inner double quote
+     
     '\
 WARC/1.1\r\n\
 WARC-Type: response\r\n\
