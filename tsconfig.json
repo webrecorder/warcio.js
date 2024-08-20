@@ -18,5 +18,6 @@
     "resolveJsonModule": true,
     "skipLibCheck": false,
     "strict": true
-  }
+  },
+  "include": ["src/**/*"]
 }
