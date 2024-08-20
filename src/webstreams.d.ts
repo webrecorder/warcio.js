@@ -1,6 +1,6 @@
 // adapted from https://github.com/celeranis/node-current-types/blob/master/webstreams.d.ts
 
-import * as WebStreams from "node:stream/web";
+import type * as WebStreams from "node:stream/web";
 
 declare module "stream/web" {
   // https://wicg.github.io/compression/

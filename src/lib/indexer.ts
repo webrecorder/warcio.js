@@ -18,7 +18,7 @@ abstract class BaseIndexer {
     opts: Partial<IndexCommandArgs> = {},
   ) {
     this.opts = opts;
-    this.fields = opts?.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
+    this.fields = opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
 
@@ -306,7 +306,7 @@ export class CDXIndexer extends Indexer {
 
     const res = super.indexRecord(record, indexOffset, filename);
     if (res) {
-      if (record?._offset !== undefined) {
+      if (record._offset !== undefined) {
         res["offset"] = record._offset;
         res["length"] = record._length;
       }

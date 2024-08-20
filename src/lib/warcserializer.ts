@@ -82,7 +82,7 @@ export class WARCSerializer extends BaseAsyncIterReader
 
     this.record = record;
 
-    const digestOpts = (opts?.digest) || {};
+    const digestOpts = (opts.digest) || {};
     this.digestAlgo = digestOpts.algo || "sha-256";
     this.digestAlgoPrefix = digestOpts.prefix || "sha256:";
     this.digestBase32 = Boolean(digestOpts.base32);
