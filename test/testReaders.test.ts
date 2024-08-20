@@ -469,7 +469,6 @@ chunks.\r\n\
 
   test("test compressed chunks", async () => {
     const text = ["test", "some\n", "mo\rre", "data"];
-    const encodedText = encoder.encode(text.join(""));
     const data = compressMembers(text);
 
     async function* source() {
