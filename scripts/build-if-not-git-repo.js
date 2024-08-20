@@ -3,7 +3,7 @@
 // Runs a webpack build when not installed in a git repository (i.e. when installed from GitHub in node_modules)
 // Largely pulled from https://github.com/typicode/husky/blob/9d3eb31cd14d3fbdb77225d23a0c5a11f71beb2c/src/index.ts#L23
 
-const cp = require("child_process");
+import cp from "child_process";
 
 /**
  * Logger
