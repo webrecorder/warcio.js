@@ -40,5 +40,5 @@ export type {
   StreamResult,
   StreamResults,
   Request,
-  IndexerOffsetLength
+  IndexerOffsetLength,
 } from "./lib";

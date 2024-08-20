@@ -1,25 +1,31 @@
 import pako from "pako";
-import { WARCRecord, WARCParser, WARCSerializer as BaseWARCSerializer } from "../src/lib";
+import {
+  WARCRecord,
+  WARCParser,
+  WARCSerializer as BaseWARCSerializer,
+} from "../src/lib";
 import { WARCSerializer } from "../src/node/warcserializer";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions.node.split(".").map((v) => Number(v));
+const [majorVerison, minorVersion, patchVersion] = process.versions.node
+  .split(".")
+  .map((v) => Number(v));
 
 // added in 18.14.2
-const nodeHeadersSupportsMultipleCookies = (
+const nodeHeadersSupportsMultipleCookies =
   (majorVerison !== undefined && majorVerison > 18) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion > 14
-  ) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion === 14 &&
-    minorVersion !== undefined && minorVersion >= 2
-  )
-);
+  (majorVerison !== undefined &&
+    majorVerison === 18 &&
+    minorVersion !== undefined &&
+    minorVersion > 14) ||
+  (majorVerison !== undefined &&
+    majorVerison === 18 &&
+    minorVersion !== undefined &&
+    minorVersion === 14 &&
+    minorVersion !== undefined &&
+    minorVersion >= 2);
 
 async function* iter(data: string) {
   yield encoder.encode(data);
@@ -28,7 +34,6 @@ async function* iter(data: string) {
 describe("serializer", () => {
   test("compute digest, buffering", async () => {
     const input =
-       
       '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -57,7 +62,6 @@ text\r\n\r\n';
     });
 
     expect(decoder.decode(res)).toBe(
-       
       '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -74,7 +78,7 @@ Content-Type: text/plain; charset="UTF-8"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
-text\r\n\r\n'
+text\r\n\r\n',
     );
   });
 
@@ -93,7 +97,7 @@ text\r\n\r\n'
     };
     const httpHeaders = {
       "Custom-Header": "somevalue",
-       
+
       "Content-Type": 'text/plain; charset="UTF-8"',
     };
 
@@ -108,7 +112,7 @@ text\r\n\r\n'
         httpHeaders,
         keepHeadersCase,
       },
-      reader()
+      reader(),
     );
 
     expect(record.warcType).toBe("response");
@@ -116,12 +120,11 @@ text\r\n\r\n'
     const res = decoder.decode(
       await WARCSerializer.serialize(record, {
         digest: { algo: "sha-1", prefix: "sha1:", base32: true },
-        maxMemSize: 3
-      },
-    ));
+        maxMemSize: 3,
+      }),
+    );
 
     expect(res).toBe(
-       
       '\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -138,7 +141,7 @@ Custom-Header: somevalue\r\n\
 Content-Type: text/plain; charset="UTF-8"\r\n\
 \r\n\
 some\n\
-text\r\n\r\n'
+text\r\n\r\n',
     );
   });
 
@@ -153,7 +156,7 @@ text\r\n\r\n'
 
     const record = await WARCRecord.create(
       { url, type, warcHeaders },
-      payload()
+      payload(),
     );
 
     expect(record.warcContentType).toBe("text/plain");
@@ -174,7 +177,7 @@ text\r\n\r\n'
 
     const record = await WARCRecord.create(
       { url, type, warcHeaders },
-      payload()
+      payload(),
     );
 
     expect(record.warcContentType).toBe("application/octet-stream");
@@ -199,7 +202,7 @@ text\r\n\r\n'
     };
     const httpHeaders = {
       "Custom-Header": "somevalue",
-       
+
       "Content-Type": 'text/plain; charset="UTF-8"',
     };
 
@@ -214,16 +217,18 @@ text\r\n\r\n'
         httpHeaders,
         statusline,
       },
-      reader()
+      reader(),
     );
 
     expect(record.warcType).toBe("response");
 
-    const gzipped = await WARCSerializer.serialize(record, { gzip: true, preferPako: true });
+    const gzipped = await WARCSerializer.serialize(record, {
+      gzip: true,
+      preferPako: true,
+    });
     const res = decoder.decode(pako.inflate(gzipped));
 
     expect(res).toBe(
-       
       '\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -240,7 +245,7 @@ Custom-Header: somevalue\r\n\
 Content-Type: text/plain; charset="UTF-8"\r\n\
 \r\n\
 some\n\
-text\r\n\r\n'
+text\r\n\r\n',
     );
   };
 
@@ -290,7 +295,7 @@ Accept: */*\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
     );
   });
 
@@ -301,7 +306,7 @@ Accept: */*\r\n\
     const warcHeaders = {
       "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
     };
-    const httpHeaders : [string, string][] = [
+    const httpHeaders: [string, string][] = [
       ["Set-Cookie", "greeting=hello"],
       ["Set-Cookie", "name=world"],
     ];
@@ -325,7 +330,7 @@ Accept: */*\r\n\
 
     if (nodeHeadersSupportsMultipleCookies) {
       expect(res).toBe(
-      "\
+        "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -342,11 +347,11 @@ set-cookie: name=world\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
       );
     } else {
       expect(res).toBe(
-      "\
+        "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -362,7 +367,7 @@ set-cookie: greeting=hello, name=world\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
       );
     }
   });
@@ -375,8 +380,8 @@ set-cookie: greeting=hello, name=world\r\n\
       "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
     };
     const httpHeaders = new Headers();
-    httpHeaders.append('Set-Cookie', 'greeting=hello');
-    httpHeaders.append('Set-Cookie', 'name=world');
+    httpHeaders.append("Set-Cookie", "greeting=hello");
+    httpHeaders.append("Set-Cookie", "name=world");
 
     const statusline = "GET /file HTTP/1.1";
 
@@ -397,7 +402,7 @@ set-cookie: greeting=hello, name=world\r\n\
 
     if (nodeHeadersSupportsMultipleCookies) {
       expect(res).toBe(
-      "\
+        "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -414,11 +419,11 @@ set-cookie: name=world\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
       );
     } else {
       expect(res).toBe(
-      "\
+        "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Target-URI: http://example.com/\r\n\
@@ -434,10 +439,9 @@ set-cookie: greeting=hello, name=world\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
       );
     }
-    
   });
 
   test("create warcinfo", async () => {
@@ -466,7 +470,7 @@ set-cookie: greeting=hello, name=world\r\n\
         type,
         warcVersion,
       },
-      fields
+      fields,
     );
 
     const res = decoder.decode(await BaseWARCSerializer.serialize(record));
@@ -487,7 +491,7 @@ creator: test-case\r\n\
 isPartOf: test\r\n\
 \r\n\
 \r\n\
-"
+",
     );
   });
 
@@ -513,7 +517,7 @@ isPartOf: test\r\n\
         refersToUrl,
         refersToDate,
       },
-      iter("")
+      iter(""),
     );
 
     const res = decoder.decode(await WARCSerializer.serialize(record));
@@ -533,7 +537,7 @@ Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 0\r\n\
 \r\n\
 \r\n\
-\r\n"
+\r\n",
     );
   });
 
@@ -562,7 +566,7 @@ Content-Length: 0\r\n\
         refersToDate,
         httpHeaders,
       },
-      iter("")
+      iter(""),
     );
 
     const res = decoder.decode(await WARCSerializer.serialize(record));
@@ -587,7 +591,7 @@ Foo: Bar\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
     );
   });
 
@@ -596,12 +600,10 @@ Foo: Bar\r\n\
   });
 });
 
-
 describe("streaming serializer", () => {
   test("streaming serialize, response with sha-1", async () => {
     const input =
-     
-    '\
+      '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -617,24 +619,23 @@ Custom-Header: somevalue\r\n\
 some\n\
 text\r\n\r\n';
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
-  const record = (await WARCParser.parse(iter(input), {
-    keepHeadersCase: true,
-  }))!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+    const record = (await WARCParser.parse(iter(input), {
+      keepHeadersCase: true,
+    }))!;
 
-  const serializer = new BaseWARCSerializer(record, {
-    digest: { algo: "sha-1", prefix: "sha1:", base32: true },
-  });
+    const serializer = new BaseWARCSerializer(record, {
+      digest: { algo: "sha-1", prefix: "sha1:", base32: true },
+    });
 
-  const buffs = [];
+    const buffs = [];
 
-  for await (const chunk of serializer) {
-    buffs.push(chunk);
-  }
+    for await (const chunk of serializer) {
+      buffs.push(chunk);
+    }
 
-  expect(decoder.decode(Buffer.concat(buffs))).toBe(
-     
-    '\
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(
+      '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -650,8 +651,8 @@ Content-Type: text/plain; charset="UTF-8"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
-text\r\n\r\n'
-  );
+text\r\n\r\n',
+    );
   });
 
   test("streaming serializer, in mem + temp file", async () => {
@@ -675,24 +676,25 @@ text\r\n\r\n'
         type,
         warcHeaders,
       },
-      reader()
+      reader(),
     );
 
-    const serializer = new WARCSerializer(record, {maxMemSize: 3});
+    const serializer = new WARCSerializer(record, { maxMemSize: 3 });
 
     // multiple digestRecord calls allowed
     expect(await serializer.digestRecord()).toBe(28);
     expect(await serializer.digestRecord()).toBe(28);
-  
+
     const buffs = [];
-  
+
     for await (const chunk of serializer) {
       buffs.push(chunk);
     }
 
     expect(buffs.length).toBe(6);
 
-    const headers ='\
+    const headers =
+      "\
 \
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -703,7 +705,7 @@ Content-Type: application/http; msgtype=response\r\n\
 WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
 WARC-Block-Digest: sha256:6e61d31e3e4cae93e17e0e64ff120922662108cfb7f1172e1277ef60607894bf\r\n\
 Content-Length: 28\r\n\
-';
+";
 
     expect(decoder.decode(buffs[0])).toBe(headers);
     expect(decoder.decode(buffs[1])).toBe("\r\n");
@@ -713,22 +715,21 @@ Content-Length: 28\r\n\
     expect(decoder.decode(buffs[4])).toBe("me\ntext");
     expect(decoder.decode(buffs[5])).toBe("\r\n\r\n");
 
-
-    expect(decoder.decode(Buffer.concat(buffs))).toBe(headers +
-'\r\n\
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(
+      headers +
+        "\r\n\
 HTTP/1.1 200 OK\r\n\
 \r\n\
 some\n\
 text\r\n\
 \r\n\
-');
-    
+",
+    );
   });
 
   test("streaming serialize, response sha-256", async () => {
     const input =
-     
-    '\
+      '\
 WARC/1.1\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -744,22 +745,21 @@ Custom-Header: somevalue\r\n\
 some\n\
 text\r\n\r\n';
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
-  const record = (await WARCParser.parse(iter(input), {
-    keepHeadersCase: true,
-  }))!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
+    const record = (await WARCParser.parse(iter(input), {
+      keepHeadersCase: true,
+    }))!;
 
-  const serializer = new WARCSerializer(record);
+    const serializer = new WARCSerializer(record);
 
-  const buffs = [];
+    const buffs = [];
 
-  for await (const chunk of serializer) {
-    buffs.push(chunk);
-  }
+    for await (const chunk of serializer) {
+      buffs.push(chunk);
+    }
 
-  expect(decoder.decode(Buffer.concat(buffs))).toBe(
-     
-    '\
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(
+      '\
 WARC/1.1\r\n\
 WARC-Type: response\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
@@ -775,8 +775,8 @@ Content-Type: text/plain; charset="UTF-8"\r\n\
 Custom-Header: somevalue\r\n\
 \r\n\
 some\n\
-text\r\n\r\n'
-  );
+text\r\n\r\n',
+    );
   });
 
   test("revisit with http header, sha-256", async () => {
@@ -804,17 +804,17 @@ text\r\n\r\n'
         refersToDate,
         httpHeaders,
       },
-      iter("")
+      iter(""),
     );
 
     const serializer = new WARCSerializer(record);
 
     const buffs = [];
-  
+
     for await (const chunk of serializer) {
       buffs.push(chunk);
     }
-  
+
     expect(decoder.decode(Buffer.concat(buffs))).toBe(
       "\
 WARC/1.0\r\n\
@@ -835,8 +835,7 @@ Foo: Bar\r\n\
 \r\n\
 \r\n\
 \r\n\
-"
+",
     );
   });
-
 });

@@ -11,29 +11,29 @@ import { getReader, getReadableStream } from "./utils";
 import fs from "fs";
 import path from "path";
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions.node.split(".").map((v) => Number(v));
+const [majorVerison, minorVersion, patchVersion] = process.versions.node
+  .split(".")
+  .map((v) => Number(v));
 
 // added in 18.14.2
-const nodeHeadersSupportsMultipleCookies = (
+const nodeHeadersSupportsMultipleCookies =
   (majorVerison !== undefined && majorVerison > 18) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion > 14
-  ) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion === 14 &&
-    minorVersion !== undefined && minorVersion >= 2
-  )
-);
+  (majorVerison !== undefined &&
+    majorVerison === 18 &&
+    minorVersion !== undefined &&
+    minorVersion > 14) ||
+  (majorVerison !== undefined &&
+    majorVerison === 18 &&
+    minorVersion !== undefined &&
+    minorVersion === 14 &&
+    minorVersion !== undefined &&
+    minorVersion >= 2);
 
 const decoder = new TextDecoder("utf-8");
 
 function get_warc_path(filename: string) {
   return new URL(filename, import.meta.url).pathname;
 }
-
-
 
 // ===========================================================================
 // ===========================================================================
@@ -53,8 +53,8 @@ Multi-Line: Value1\r\n\
     Also This\r\n\
 \r\n\
 Body",
-      ])
-    )
+      ]),
+    ),
   );
   expect(result?.toString()).toBe(`\
 HTTP/1.0 200 OK\r
@@ -77,8 +77,8 @@ Content-Type: Value\r\n\
 Content-Length: 0\r\n\
 Bad: multi\nline\r\n\
 \r\n",
-      ])
-    )
+      ]),
+    ),
   );
   expect(result?.toString()).toBe(`HTTP/1.0 204 Empty\r
 Content-Type: Value\r
@@ -90,7 +90,7 @@ Bad: multi\r
 test("StatusAndHeaders test 3", async () => {
   const parser = new StatusAndHeadersParser();
   const result = await parser.parse(
-    new AsyncIterReader(getReader(["HTTP/1.0 204 None\r\n\r\n"]))
+    new AsyncIterReader(getReader(["HTTP/1.0 204 None\r\n\r\n"])),
   );
   expect(result?.toString()).toBe("HTTP/1.0 204 None\r\n");
 });
@@ -98,14 +98,13 @@ test("StatusAndHeaders test 3", async () => {
 test("StatusAndHeaders test empty", async () => {
   const parser = new StatusAndHeadersParser();
   const result = await parser.parse(
-    new AsyncIterReader(getReader(["\r\n\r\n"]))
+    new AsyncIterReader(getReader(["\r\n\r\n"])),
   );
   expect(result).toBe(null);
 });
 
 test("Load WARC Records", async () => {
   const input =
-     
     '\
 WARC/1.0\r\n\
 WARC-Type: warcinfo\r\n\
@@ -176,12 +175,11 @@ text\r\n\
   }
 
   expect(warcinfo).toBe(
-     
     '\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
 json-metadata: {"foo": "bar"}\r\n\
-'
+',
   );
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
@@ -255,7 +253,7 @@ Content-Length: 0\r\n\
 
   expect(record.warcHeaders.protocol).toBe("WARC/1.0");
   expect(record.warcHeader("WARC-Record-ID")).toBe(
-    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
   );
   expect(record.warcType).toBe("revisit");
   expect(record.warcTargetURI).toBe("http://example.com/");
@@ -263,7 +261,7 @@ Content-Length: 0\r\n\
   expect(record.warcRefersToTargetURI).toBe("http://example.com/foo");
   expect(record.warcRefersToDate).toBe("1999-01-01T00:00:00Z");
   expect(record.warcPayloadDigest).toBe(
-    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O"
+    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O",
   );
   expect(record.warcContentType).toBe("application/http; msgtype=response");
   expect(record.warcContentLength).toBe(0);
@@ -310,7 +308,7 @@ Foo: Bar\r\n\
   expect(record).not.toBeNull();
   expect(record.warcHeaders.protocol).toBe("WARC/1.0");
   expect(record.warcHeader("WARC-Record-ID")).toBe(
-    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
   );
   expect(record.warcType).toBe("revisit");
   expect(record.warcTargetURI).toBe("http://example.com/");
@@ -318,7 +316,7 @@ Foo: Bar\r\n\
   expect(record.warcRefersToTargetURI).toBe("http://example.com/foo");
   expect(record.warcRefersToDate).toBe("1999-01-01T00:00:00Z");
   expect(record.warcPayloadDigest).toBe(
-    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O"
+    "sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O",
   );
   expect(record.warcContentType).toBe("application/http; msgtype=response");
   expect(record.warcContentLength).toBe(54);
@@ -377,7 +375,7 @@ Foo: Bar\r\n\
 
   expect(record.warcHeaders.protocol).toBe("WARC/1.0");
   expect(record.warcHeader("WARC-Record-ID")).toBe(
-    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"
+    "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
   );
   expect(record.warcType).toBe("revisit");
   expect(record.warcContentLength).toBe(82);
@@ -460,10 +458,7 @@ text\r\n\
 });
 
 test("warc1.1 response and request, status checks", async () => {
-  const input = fs.readFileSync(
-    get_warc_path("data/redirect.warc"),
-    "utf-8"
-  );
+  const input = fs.readFileSync(get_warc_path("data/redirect.warc"), "utf-8");
 
   let parser = new WARCParser(getReader([input]));
   let response: WARCRecord | null = null;
@@ -530,10 +525,7 @@ test("warc1.1 response and request, status checks", async () => {
 });
 
 test("warc1.1 serialize records match", async () => {
-  const input = fs.readFileSync(
-    get_warc_path("data/redirect.warc"),
-    "utf-8"
-  );
+  const input = fs.readFileSync(get_warc_path("data/redirect.warc"), "utf-8");
 
   const serialized = [];
   let size = 0;
@@ -551,7 +543,7 @@ test("warc1.1 serialize records match", async () => {
 
 test("chunked warc read", async () => {
   const input = fs.createReadStream(
-    get_warc_path("data/example-iana.org-chunked.warc")
+    get_warc_path("data/example-iana.org-chunked.warc"),
   );
 
   const parser = new WARCParser(input);
@@ -567,7 +559,7 @@ test("chunked warc read", async () => {
 
   // can't read raw data anymore
   await expect(async () => await record.readFully(false)).rejects.toThrow(
-    "WARC Record decoding already started, but requesting raw payload"
+    "WARC Record decoding already started, but requesting raw payload",
   );
 
   const text = await record.contentText();
@@ -577,7 +569,7 @@ test("chunked warc read", async () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- checking invalid type
   const busyRecord = record as any as { reader: LimitReader };
   await expect(async () => await busyRecord.reader.readFully()).rejects.toThrow(
-    "WARC Record decoding already started, but requesting raw payload"
+    "WARC Record decoding already started, but requesting raw payload",
   );
 
   expect(await record.readFully(true)).not.toBeNull();
@@ -585,7 +577,7 @@ test("chunked warc read", async () => {
 
 test("no await catch errors", async () => {
   const input = fs.createReadStream(
-    get_warc_path("data/example-iana.org-chunked.warc")
+    get_warc_path("data/example-iana.org-chunked.warc"),
   );
 
   const parser = new WARCParser(input);
@@ -606,10 +598,10 @@ test("no await catch errors", async () => {
   const record1 = (await parser.parse())!;
   expect(record1).not.toBeNull();
   await expect(async () => await iter.next()).rejects.toThrow(
-    "Record already consumed.. Perhaps a promise was not awaited?"
+    "Record already consumed.. Perhaps a promise was not awaited?",
   );
   await expect(async () => await record0.readline()).rejects.toThrow(
-    "Record already consumed.. Perhaps a promise was not awaited?"
+    "Record already consumed.. Perhaps a promise was not awaited?",
   );
 
   let count = 0;
@@ -630,7 +622,6 @@ test("no await catch errors", async () => {
 
 test("warc1.1 response and request, header checks", async () => {
   const input =
-     
     '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -684,23 +675,27 @@ text\r\n\
   const headerEntries = [];
   if (record.httpHeaders?.headers) {
     for (const [key, value] of record.httpHeaders.headers.entries()) {
-      headerEntries.push([ key, value ]);
+      headerEntries.push([key, value]);
     }
   }
 
   if (nodeHeadersSupportsMultipleCookies) {
-    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
-      [ 'content-type', 'text/plain; charset="UTF-8"' ],
-      [ 'custom-header', 'somevalue' ],
-      [ 'set-cookie', 'greeting=hello' ],
-      [ 'set-cookie', 'name=world' ]
-    ]));
+    expect(JSON.stringify(headerEntries)).toBe(
+      JSON.stringify([
+        ["content-type", 'text/plain; charset="UTF-8"'],
+        ["custom-header", "somevalue"],
+        ["set-cookie", "greeting=hello"],
+        ["set-cookie", "name=world"],
+      ]),
+    );
   } else {
-    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
-      [ 'content-type', 'text/plain; charset="UTF-8"' ],
-      [ 'custom-header', 'somevalue' ],
-      [ 'set-cookie', 'greeting=hello, name=world' ]
-    ]));
+    expect(JSON.stringify(headerEntries)).toBe(
+      JSON.stringify([
+        ["content-type", 'text/plain; charset="UTF-8"'],
+        ["custom-header", "somevalue"],
+        ["set-cookie", "greeting=hello, name=world"],
+      ]),
+    );
   }
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
@@ -712,15 +707,20 @@ text\r\n\
   const headerEntries2 = [];
   if (record2.httpHeaders?.headers) {
     for (const [key, value] of record2.httpHeaders.headers.entries()) {
-      headerEntries2.push([ key, value ]);
+      headerEntries2.push([key, value]);
     }
   }
-  expect(JSON.stringify(headerEntries2)).toBe(JSON.stringify([
-    [ 'content-disposition', 'attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt' ],
-    [ 'content-type', 'text/plain; charset="UTF-8"' ],
-    [ 'custom-header', 'somevalue' ],
-    [ 'unicode-header', '%F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F' ]
-  ]));
+  expect(JSON.stringify(headerEntries2)).toBe(
+    JSON.stringify([
+      [
+        "content-disposition",
+        "attachment; filename*=UTF-8''%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt",
+      ],
+      ["content-type", 'text/plain; charset="UTF-8"'],
+      ["custom-header", "somevalue"],
+      ["unicode-header", "%F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F"],
+    ]),
+  );
 
   expect(decoder.decode(await record2.readFully())).toBe("more\ntext");
 
