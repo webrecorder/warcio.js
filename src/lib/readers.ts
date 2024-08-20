@@ -5,7 +5,9 @@ import { splitChunk, concatChunks } from "./utils";
 const decoder = new TextDecoder("utf-8");
 
 // ===========================================================================
-export class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflate {
+export class NoConcatInflator<
+  T extends BaseAsyncIterReader,
+> extends pako.Inflate {
   reader: T;
   ended = false;
   chunks: Uint8Array[] = [];
@@ -26,7 +28,9 @@ export class NoConcatInflator<T extends BaseAsyncIterReader> extends pako.Inflat
 
 // ===========================================================================
 export abstract class BaseAsyncIterReader {
-  static async readFully(iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>) : Promise<Uint8Array> {
+  static async readFully(
+    iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
+  ): Promise<Uint8Array> {
     const chunks = [];
     let size = 0;
 
@@ -77,7 +81,6 @@ export abstract class BaseAsyncIterReader {
   }
 }
 
-
 // ===========================================================================
 export type AsyncIterReaderOpts = {
   raw: boolean;
@@ -110,7 +113,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   constructor(
     streamOrIter: Source,
     compressed: string | null = "gzip",
-    dechunk = false
+    dechunk = false,
   ) {
     super();
     this.compressed = compressed;
@@ -159,7 +162,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   async *dechunk(
-    source: AsyncIterable<Uint8Array>
+    source: AsyncIterable<Uint8Array>,
   ): AsyncIterator<Uint8Array | null> {
     const reader =
       source instanceof AsyncIterReader
@@ -268,7 +271,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _push when this.compressed is null"
+        "AsyncIterReader cannot call _push when this.compressed is null",
       );
     }
     this.lastValue = value;
@@ -298,7 +301,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _getNextChunk when this.compressed is null"
+        "AsyncIterReader cannot call _getNextChunk when this.compressed is null",
       );
     }
     // eslint-disable-next-line no-constant-condition
@@ -379,15 +382,15 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     return concatChunks(chunks, size);
   }
 
-  override async readFully() : Promise<Uint8Array> {
+  override async readFully(): Promise<Uint8Array> {
     return (await this._readOrSkip())[1];
   }
 
-  async readSize(sizeLimit: number) : Promise<Uint8Array> {
+  async readSize(sizeLimit: number): Promise<Uint8Array> {
     return (await this._readOrSkip(sizeLimit))[1];
   }
 
-  async skipSize(sizeLimit: number) : Promise<number> {
+  async skipSize(sizeLimit: number): Promise<number> {
     return (await this._readOrSkip(sizeLimit, true))[0];
   }
 
@@ -536,7 +539,7 @@ export class LimitReader extends BaseAsyncIterReader {
     }
 
     const result = await this.sourceIter.readlineRaw(
-      maxLength ? Math.min(maxLength, this.limit) : this.limit
+      maxLength ? Math.min(maxLength, this.limit) : this.limit,
     );
     this.limit -= result?.length || 0;
     return result;
@@ -552,4 +555,3 @@ export class LimitReader extends BaseAsyncIterReader {
     return origLimit;
   }
 }
-

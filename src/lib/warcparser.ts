@@ -1,4 +1,7 @@
-import { StatusAndHeadersParser, type StatusAndHeaders } from "./statusandheaders";
+import {
+  StatusAndHeadersParser,
+  type StatusAndHeaders,
+} from "./statusandheaders";
 import { WARCRecord } from "./warcrecord";
 import { AsyncIterReader, LimitReader } from "./readers";
 import { type Source, type IndexerOffsetLength } from "./types";
@@ -33,7 +36,7 @@ export class WARCParser implements IndexerOffsetLength {
 
   constructor(
     source: Source,
-    { keepHeadersCase = false, parseHttp = true }: WARCParserOpts = {}
+    { keepHeadersCase = false, parseHttp = true }: WARCParserOpts = {},
   ) {
     this._offset = 0;
     this._warcHeadersLength = 0;
@@ -114,7 +117,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
   _initRecordReader(warcHeaders: StatusAndHeaders) {
     return new LimitReader(
       this._reader,
-      Number(warcHeaders.headers.get("Content-Length") || 0)
+      Number(warcHeaders.headers.get("Content-Length") || 0),
     );
   }
 
@@ -179,7 +182,7 @@ Offset: ${this._reader.getRawOffset() - nextline.byteLength}`);
 
   async _addHttpHeaders(
     record: WARCRecord,
-    headersParser: StatusAndHeadersParser
+    headersParser: StatusAndHeadersParser,
   ) {
     const httpHeaders = await headersParser.parse(this._reader, {
       headersClass: this._headersClass,

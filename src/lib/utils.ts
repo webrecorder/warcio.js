@@ -17,7 +17,6 @@ export function binaryToString(data: Uint8Array | string) {
   }
   // try btoa, if it fails, just ignore the binary data string
   try {
-     
     return "__wb_post_data=" + btoa(string);
   } catch (e) {
     return "__wb_post_data=";
@@ -101,7 +100,7 @@ export function postToGetUrl(request: Request) {
       const content_type = headers.get("content-type");
       if (!content_type) {
         throw new Error(
-          "utils cannot call postToGetURL when missing content-type header"
+          "utils cannot call postToGetURL when missing content-type header",
         );
       }
       query = mfdToQueryString(decodeIfNeeded(postData), content_type);
@@ -202,7 +201,7 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
 
 export function mfdToQueryParams(
   mfd: string | Uint8Array,
-  contentType: string
+  contentType: string,
 ) {
   const params = new URLSearchParams();
 
@@ -236,7 +235,7 @@ export function jsonToQueryString(json: any, ignoreInvalid = true) {
 
 export function mfdToQueryString(
   mfd: string | Uint8Array,
-  contentType: string
+  contentType: string,
 ) {
   return mfdToQueryParams(mfd, contentType).toString();
 }
@@ -262,7 +261,7 @@ export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
 
 export function splitChunk(
   chunk: Uint8Array,
-  inx: number
+  inx: number,
 ): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }

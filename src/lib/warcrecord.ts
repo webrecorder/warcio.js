@@ -63,7 +63,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       refersToUrl = undefined,
       refersToDate = undefined,
     }: WARCRecordOpts = {},
-    reader?: AsyncIterable<Uint8Array> | Iterable<Uint8Array>
+    reader?: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
   ) {
     function checkDate(d: string) {
       const date = d;
@@ -100,14 +100,14 @@ export class WARCRecord extends BaseAsyncIterReader {
       if (refersToUrl) {
         warcHeaders["WARC-Refers-To-Target-URI"] = refersToUrl;
         warcHeaders["WARC-Refers-To-Date"] = checkDate(
-          refersToDate || new Date().toISOString()
+          refersToDate || new Date().toISOString(),
         );
       }
     }
 
     const warcHeadersObj = new StatusAndHeaders({
       statusline: warcVersion,
-      headers: new Map(Object.entries(warcHeaders))
+      headers: new Map(Object.entries(warcHeaders)),
     });
 
     if (!warcHeadersObj.headers.get("WARC-Record-ID")) {
@@ -117,7 +117,7 @@ export class WARCRecord extends BaseAsyncIterReader {
     if (!warcHeadersObj.headers.get("Content-Type")) {
       warcHeadersObj.headers.set(
         "Content-Type",
-        (type && defaultRecordCT[type]) || "application/octet-stream"
+        (type && defaultRecordCT[type]) || "application/octet-stream",
       );
     }
 
@@ -149,7 +149,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
   static createWARCInfo(
     opts: WARCRecordOpts = {},
-    info: Record<string, string>
+    info: Record<string, string>,
   ) {
     async function* genInfo() {
       for (const [name, value] of Object.entries(info)) {
@@ -232,7 +232,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       // otherwise, can't serialize payload as raw if already started reading
       if (this._contentReader && !isContent) {
         throw new TypeError(
-          "WARC Record decoding already started, but requesting raw payload"
+          "WARC Record decoding already started, but requesting raw payload",
         );
       }
 
@@ -265,7 +265,7 @@ export class WARCRecord extends BaseAsyncIterReader {
 
     if (this._contentReader) {
       throw new TypeError(
-        "WARC Record decoding already started, but requesting raw payload"
+        "WARC Record decoding already started, but requesting raw payload",
       );
     }
 
@@ -288,14 +288,12 @@ export class WARCRecord extends BaseAsyncIterReader {
     // only called if this.httpHeaders !== null
     if (!this.httpHeaders) {
       throw new Error(
-        "WARCRecord cannot call _createDecodingReader when this.httpHeaders === null"
+        "WARCRecord cannot call _createDecodingReader when this.httpHeaders === null",
       );
     }
 
     let contentEnc = this.httpHeaders.headers.get("Content-Encoding")!;
-    const transferEnc = this.httpHeaders.headers.get(
-      "Transfer-Encoding"
-    )!;
+    const transferEnc = this.httpHeaders.headers.get("Transfer-Encoding")!;
 
     const chunked = transferEnc === "chunked";
 
@@ -311,14 +309,14 @@ export class WARCRecord extends BaseAsyncIterReader {
   async readlineRaw(maxLength?: number) {
     if (this.consumed) {
       throw new Error(
-        "Record already consumed.. Perhaps a promise was not awaited?"
+        "Record already consumed.. Perhaps a promise was not awaited?",
       );
     }
     if (this.contentReader instanceof BaseAsyncIterReader) {
       return this.contentReader.readlineRaw(maxLength);
     }
     throw new Error(
-      "WARCRecord cannot call readlineRaw on this.contentReader if it does not extend BaseAsyncIterReader"
+      "WARCRecord cannot call readlineRaw on this.contentReader if it does not extend BaseAsyncIterReader",
     );
   }
 
@@ -332,7 +330,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       yield chunk;
       if (this.consumed) {
         throw new Error(
-          "Record already consumed.. Perhaps a promise was not awaited?"
+          "Record already consumed.. Perhaps a promise was not awaited?",
         );
       }
     }
@@ -350,7 +348,7 @@ export class WARCRecord extends BaseAsyncIterReader {
       return res;
     }
     throw new Error(
-      "WARCRecord cannot call skipFully on this._reader if it is not a LimitReader"
+      "WARCRecord cannot call skipFully on this._reader if it is not a LimitReader",
     );
   }
 
@@ -397,4 +395,4 @@ export class WARCRecord extends BaseAsyncIterReader {
 
 // ===========================================================================
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-async function* emptyReader() : AsyncGenerator<never, void> { }
+async function* emptyReader(): AsyncGenerator<never, void> {}

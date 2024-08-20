@@ -9,7 +9,6 @@ import * as warcserializer from "../lib/warcserializer";
 // default size to buffer in memory 2MB
 export const DEFAULT_MEM_SIZE = 1024 * 1024 * 2;
 
-
 // ===========================================================================
 export type WARCSerializerOpts = warcserializer.WARCSerializerOpts & {
   maxMemSize?: number;
@@ -17,19 +16,25 @@ export type WARCSerializerOpts = warcserializer.WARCSerializerOpts & {
 
 // ===========================================================================
 export class WARCSerializer extends warcserializer.WARCSerializer {
-  static override async serialize(record: WARCRecord, opts?: WARCSerializerOpts) {
+  static override async serialize(
+    record: WARCRecord,
+    opts?: WARCSerializerOpts,
+  ) {
     const s = new WARCSerializer(record, opts);
     return await s.readFully();
   }
 
-  constructor(record: WARCRecord, opts : WARCSerializerOpts = {}) {
-    super(record, opts, new TempFileBuffer(opts.maxMemSize || DEFAULT_MEM_SIZE));
+  constructor(record: WARCRecord, opts: WARCSerializerOpts = {}) {
+    super(
+      record,
+      opts,
+      new TempFileBuffer(opts.maxMemSize || DEFAULT_MEM_SIZE),
+    );
   }
 }
 
 // ===========================================================================
-export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
-{
+export class TempFileBuffer extends warcserializer.SerializerInMemBuffer {
   memSize: number;
   currSize = 0;
   fh: WriteStream | null = null;
@@ -41,7 +46,7 @@ export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
   }
 
   override write(chunk: Uint8Array): void {
-    if ((this.currSize + chunk.length) <= this.memSize) {
+    if (this.currSize + chunk.length <= this.memSize) {
       this.buffers.push(chunk);
     } else {
       if (!this.fh) {
@@ -53,7 +58,7 @@ export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
     this.currSize += chunk.length;
   }
 
-  override async* readAll(): AsyncIterable<Uint8Array> {
+  override async *readAll(): AsyncIterable<Uint8Array> {
     for (const buff of this.buffers) {
       yield buff;
     }
@@ -75,7 +80,7 @@ export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
 }
 
 export async function streamFinish(fh: WriteStream) {
-  const p = new Promise<void>(resolve => {
+  const p = new Promise<void>((resolve) => {
     fh.once("finish", () => resolve());
   });
   fh.end();

@@ -106,7 +106,7 @@ export class StatusAndHeadersParser {
       firstLine,
     }: { firstLine?: string; headersClass: typeof Map | typeof Headers } = {
       headersClass: Map,
-    }
+    },
   ) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
@@ -205,7 +205,7 @@ function splitRemainder(str: string, sep: string, limit: number) {
 // ===========================================================================
 export async function indexOfDoubleCRLF(
   buffer: Uint8Array,
-  iter: AsyncIterator<Uint8Array, void, unknown>
+  iter: AsyncIterator<Uint8Array, void, unknown>,
 ) {
   let start = 0;
 
