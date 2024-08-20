@@ -46,7 +46,7 @@
     "build": "tsup && tsup --define.browser='true'",
     "lint": "eslint 'src/**/*.ts'",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest --collectCoverage",
-    "prepare": "node scripts/build-if-not-git-repo.js && yarn build"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@types/pako": "^1.0.7",
