@@ -1,4 +1,4 @@
-import pako, { ReturnCodes } from "pako";
+import pako from "pako";
 import { type Source, type SourceReader } from "./types";
 import { splitChunk, concatChunks } from "./utils";
 
@@ -29,7 +29,7 @@ export class NoConcatInflator<
 // ===========================================================================
 export abstract class BaseAsyncIterReader {
   static async readFully(
-    iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
+    iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>
   ): Promise<Uint8Array> {
     const chunks = [];
     let size = 0;
@@ -114,7 +114,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   constructor(
     streamOrIter: Source,
     compressed: string | null = "gzip",
-    dechunk = false,
+    dechunk = false
   ) {
     super();
     this.compressed = compressed;
@@ -163,7 +163,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   async *dechunk(
-    source: AsyncIterable<Uint8Array>,
+    source: AsyncIterable<Uint8Array>
   ): AsyncIterator<Uint8Array | null> {
     const reader =
       source instanceof AsyncIterReader
@@ -273,7 +273,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _push when this.compressed is null",
+        "AsyncIterReader cannot call _push when this.compressed is null"
       );
     }
     this.lastValue = value;
@@ -303,7 +303,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _getNextChunk when this.compressed is null",
+        "AsyncIterReader cannot call _getNextChunk when this.compressed is null"
       );
     }
     // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
@@ -314,7 +314,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
       }
 
       if (this.inflator.ended) {
-        if (this.inflator.err !== ReturnCodes.Z_OK) {
+        if (this.inflator.err !== 0) {
           // assume not compressed
           this.compressed = null;
           return original;
@@ -543,7 +543,7 @@ export class LimitReader extends BaseAsyncIterReader {
     }
 
     const result = await this.sourceIter.readlineRaw(
-      maxLength ? Math.min(maxLength, this.limit) : this.limit,
+      maxLength ? Math.min(maxLength, this.limit) : this.limit
     );
     this.limit -= result?.length || 0;
     return result;

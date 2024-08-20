@@ -235,7 +235,7 @@ export function mfdToQueryParams(
 }
 
 export function jsonToQueryString(
-  json: string | undefined | null = "",
+  json: string | Record<string, unknown> | undefined | null = "",
   ignoreInvalid = true
 ) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
