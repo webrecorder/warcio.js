@@ -134,10 +134,7 @@ async function readDecompTypes(
     const result = decoder.decode(await reader.readFully());
 
     if (match) {
-      // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
-      expect(result, JSON.stringify([compress, decompress, match])).toBe(
-        expected,
-      );
+      expect(result).toBe(expected);
     } else {
       expect(result).not.toBe(expected);
     }
@@ -499,11 +496,7 @@ chunks.\r\n\
 
     const reader = new AsyncIterReader(sourceEnc(), "gzip", true);
     const result = await reader.readFully();
-    expect(
-      decoder.decode(result),
-      // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
-      `expected\n${encodedText.toString()}\nbut got\n${result.toString()}`,
-    ).toBe("testsome\nmo\rredata");
+    expect(decoder.decode(result)).toBe("testsome\nmo\rredata");
   });
 
   test("test chunked specified, non-chunked actual", async () => {

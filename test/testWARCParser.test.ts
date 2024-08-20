@@ -184,8 +184,7 @@ json-metadata: {"foo": "bar"}\r\n\
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
-  // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
-  expect(record.warcTargetURI, "http://example.com/");
+  expect(record.warcTargetURI).toBe("http://example.com/");
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
 
@@ -670,8 +669,7 @@ text\r\n\
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
-  // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
-  expect(record.warcTargetURI, "http://example.com/");
+  expect(record.warcTargetURI).toBe("http://example.com/");
 
   const headerEntries = [];
   if (record.httpHeaders?.headers) {
