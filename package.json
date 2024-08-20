@@ -44,8 +44,8 @@
   ],
   "scripts": {
     "build": "tsup && tsup --define.browser='true'",
-    "format": "prettier --write src/**/*.ts",
-    "lint": "eslint 'src/**/*.ts'",
+    "format": "prettier --write src/**/*.ts test/**/*.ts",
+    "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest --collectCoverage",
     "prepare": "yarn build"
   },
