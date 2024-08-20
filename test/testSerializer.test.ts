@@ -9,23 +9,23 @@ import { WARCSerializer } from "../src/node/warcserializer";
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
 
-const [majorVerison, minorVersion, patchVersion] = process.versions.node
+const [majorVersion, minorVersion, patchVersion] = process.versions.node
   .split(".")
   .map((v) => Number(v));
 
 // added in 18.14.2
 const nodeHeadersSupportsMultipleCookies =
-  (majorVerison !== undefined && majorVerison > 18) ||
-  (majorVerison !== undefined &&
-    majorVerison === 18 &&
+  (majorVersion !== undefined && majorVersion > 18) ||
+  (majorVersion !== undefined &&
+    majorVersion === 18 &&
     minorVersion !== undefined &&
     minorVersion > 14) ||
-  (majorVerison !== undefined &&
-    majorVerison === 18 &&
+  (majorVersion !== undefined &&
+    majorVersion === 18 &&
     minorVersion !== undefined &&
     minorVersion === 14 &&
-    minorVersion !== undefined &&
-    minorVersion >= 2);
+    patchVersion !== undefined &&
+    patchVersion >= 2);
 
 async function* iter(data: string) {
   yield encoder.encode(data);
@@ -685,10 +685,10 @@ text\r\n\r\n',
     expect(await serializer.digestRecord()).toBe(28);
     expect(await serializer.digestRecord()).toBe(28);
 
-    const buffs = [];
+    const buffs: Uint8Array[] = [];
 
     for await (const chunk of serializer) {
-      buffs.push(chunk);
+      buffs.push(chunk as Uint8Array);
     }
 
     expect(buffs.length).toBe(6);

@@ -134,6 +134,7 @@ async function readDecompTypes(
     const result = decoder.decode(await reader.readFully());
 
     if (match) {
+      // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
       expect(result, JSON.stringify([compress, decompress, match])).toBe(
         expected,
       );
@@ -159,11 +160,11 @@ async function readDecompLines(chunks: string[], expected: string[]) {
   expect(lines).toEqual(expected);
 }
 
-const READ_WHOLE_LINE = "line";
+type READ_WHOLE_LINE = "line";
 
 async function readChunkSizes(
   chunks: string[],
-  sizes: (number | typeof READ_WHOLE_LINE)[],
+  sizes: (number | READ_WHOLE_LINE)[],
   expected: string[],
 ) {
   const inputs = [[compressMembers(chunks)], chunks];
@@ -500,7 +501,8 @@ chunks.\r\n\
     const result = await reader.readFully();
     expect(
       decoder.decode(result),
-      `expected\n${encodedText}\nbut got\n${result}`,
+      // @ts-expect-error Expected 1 arguments, but got 2. -- TODO figure out why this second argument is here
+      `expected\n${encodedText.toString()}\nbut got\n${result.toString()}`,
     ).toBe("testsome\nmo\rredata");
   });
 

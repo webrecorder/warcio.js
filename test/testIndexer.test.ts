@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import { jest } from "@jest/globals";
 import { main } from "../src/commands";
 import { Indexer, CDXIndexer, CDXAndRecordIndexer } from "../src/lib";
@@ -251,7 +250,7 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
       const hasRequest = !!reqRecord;
       const contentType =
         record?.httpHeaders?.headers.get("Content-Type") || null;
-      const dataLength = (await record?.contentText()).length;
+      const dataLength = (await record?.contentText())?.length;
       entries.push({
         cdxOffset,
         cdxLength,
