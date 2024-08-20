@@ -107,7 +107,7 @@ module.exports = {
   overrides: [
     {
       extends: ["plugin:@typescript-eslint/disable-type-checked"],
-      files: ["*.cjs", "tsup.config.ts"],
+      files: ["*.cjs", "tsup.config.ts", "scripts/*"],
       rules: {
         "@typescript-eslint/no-var-requires": "off",
       },

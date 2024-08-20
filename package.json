@@ -48,7 +48,7 @@
     "format": "prettier --write src test",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest --collectCoverage",
-    "prepare": "yarn build"
+    "prepare": "node scripts/build-if-not-git-repo.js"
   },
   "dependencies": {
     "@types/pako": "^1.0.7",
