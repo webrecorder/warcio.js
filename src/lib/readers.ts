@@ -1,4 +1,4 @@
-import pako from "pako";
+import pako, { ReturnCodes } from "pako";
 import { type Source, type SourceReader } from "./types";
 import { splitChunk, concatChunks } from "./utils";
 
@@ -29,7 +29,7 @@ export class NoConcatInflator<
 // ===========================================================================
 export abstract class BaseAsyncIterReader {
   static async readFully(
-    iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>,
+    iter: AsyncIterable<Uint8Array> | Iterable<Uint8Array>
   ): Promise<Uint8Array> {
     const chunks = [];
     let size = 0;
@@ -51,6 +51,7 @@ export abstract class BaseAsyncIterReader {
       async pull(controller) {
         return streamIter.next().then((result) => {
           // all done;
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (result.done || !result.value) {
             controller.close();
           } else {
@@ -88,11 +89,11 @@ export type AsyncIterReaderOpts = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- type guard
 function isIterable(input: any): input is Iterable<Uint8Array> {
-  return input && Symbol.iterator in Object(input);
+  return Boolean(input && Symbol.iterator in Object(input));
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- type guard
 function isAsyncIterable(input: any): input is AsyncIterable<Uint8Array> {
-  return input && Symbol.asyncIterator in Object(input);
+  return Boolean(input && Symbol.asyncIterator in Object(input));
 }
 
 // ===========================================================================
@@ -113,7 +114,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   constructor(
     streamOrIter: Source,
     compressed: string | null = "gzip",
-    dechunk = false,
+    dechunk = false
   ) {
     super();
     this.compressed = compressed;
@@ -162,7 +163,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   }
 
   async *dechunk(
-    source: AsyncIterable<Uint8Array>,
+    source: AsyncIterable<Uint8Array>
   ): AsyncIterator<Uint8Array | null> {
     const reader =
       source instanceof AsyncIterReader
@@ -212,6 +213,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
         break;
       } else {
         first = false;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!chunk || size === 0) {
           return;
         } else {
@@ -271,7 +273,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _push when this.compressed is null",
+        "AsyncIterReader cannot call _push when this.compressed is null"
       );
     }
     this.lastValue = value;
@@ -301,10 +303,10 @@ export class AsyncIterReader extends BaseAsyncIterReader {
     // only called if this.compressed is not null
     if (!this.inflator) {
       throw new Error(
-        "AsyncIterReader cannot call _getNextChunk when this.compressed is null",
+        "AsyncIterReader cannot call _getNextChunk when this.compressed is null"
       );
     }
-    // eslint-disable-next-line no-constant-condition
+    // eslint-disable-next-line no-constant-condition, @typescript-eslint/no-unnecessary-condition
     while (true) {
       if (this.inflator.chunks.length > 0) {
         this.numChunks++;
@@ -312,7 +314,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
       }
 
       if (this.inflator.ended) {
-        if (this.inflator.err !== 0) {
+        if (this.inflator.err !== ReturnCodes.Z_OK) {
           // assume not compressed
           this.compressed = null;
           return original;
@@ -443,6 +445,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
   getRawLength(prevOffset: number): number {
     if (this.compressed) {
       // @ts-expect-error strm is not implemented in typescript types
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return this.inflator.strm.total_in;
     }
     return this._readOffset - prevOffset;
@@ -516,6 +519,7 @@ export class LimitReader extends BaseAsyncIterReader {
         const [first, remainder] = splitChunk(chunk, this.limit);
         chunk = first;
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (this.sourceIter.unread) {
           this.sourceIter.unread(remainder);
         }
@@ -539,7 +543,7 @@ export class LimitReader extends BaseAsyncIterReader {
     }
 
     const result = await this.sourceIter.readlineRaw(
-      maxLength ? Math.min(maxLength, this.limit) : this.limit,
+      maxLength ? Math.min(maxLength, this.limit) : this.limit
     );
     this.limit -= result?.length || 0;
     return result;

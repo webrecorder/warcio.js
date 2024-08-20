@@ -55,7 +55,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
 
   record: WARCRecord;
 
-  externalBuffer: BaseSerializerBuffer;
+  externalBuffer: BaseSerializerBuffer | undefined;
   _alreadyDigested = false;
 
   blockHasher: IHasher | null = null;
@@ -67,7 +67,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
   static async serialize(
     record: WARCRecord,
     opts?: WARCSerializerOpts,
-    externalBuffer: BaseSerializerBuffer = new SerializerInMemBuffer(),
+    externalBuffer: BaseSerializerBuffer = new SerializerInMemBuffer()
   ) {
     const s = new WARCSerializer(record, opts, externalBuffer);
     return await s.readFully();
@@ -76,7 +76,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
   constructor(
     record: WARCRecord,
     opts: WARCSerializerOpts = {},
-    externalBuffer: BaseSerializerBuffer = new SerializerInMemBuffer(),
+    externalBuffer: BaseSerializerBuffer = new SerializerInMemBuffer()
   ) {
     super();
     this.gzip = Boolean(opts.gzip);
@@ -167,6 +167,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
 
     const reader = cs.readable.getReader();
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while ((res = await reader.read()) && !res.done) {
       yield res.value;
     }
@@ -211,7 +212,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
 
     if (record.httpHeaders) {
       this.httpHeadersBuff = encoder.encode(
-        record.httpHeaders.toString() + "\r\n",
+        record.httpHeaders.toString() + "\r\n"
       );
       size += this.httpHeadersBuff.length;
 
@@ -230,14 +231,14 @@ export class WARCSerializer extends BaseAsyncIterReader {
     if (payloadHasher) {
       record.warcHeaders.headers.set(
         "WARC-Payload-Digest",
-        this.getDigest(payloadHasher),
+        this.getDigest(payloadHasher)
       );
     }
 
     if (blockHasher) {
       record.warcHeaders.headers.set(
         "WARC-Block-Digest",
-        this.getDigest(blockHasher),
+        this.getDigest(blockHasher)
       );
     }
 

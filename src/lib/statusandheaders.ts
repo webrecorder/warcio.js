@@ -40,15 +40,15 @@ export class StatusAndHeaders {
     }
   }
 
-  _protocol!: string;
-  _statusCode!: number | string;
-  _statusText!: string;
+  _protocol: string | undefined;
+  _statusCode: number | string | undefined;
+  _statusText: string | undefined;
 
   _parseResponseStatusLine() {
     const parts = splitRemainder(this.statusline, " ", 2);
     this._protocol = parts[0] ?? "";
     this._statusCode = parts.length > 1 ? Number(parts[1]) : "";
-    this._statusText = parts.length > 2 ? parts[2]! : "";
+    this._statusText = parts.length > 2 ? parts[2] : "";
   }
 
   get statusCode() {
@@ -72,8 +72,8 @@ export class StatusAndHeaders {
     return this._statusText;
   }
 
-  _method!: string;
-  _requestPath!: string;
+  _method: string | undefined;
+  _requestPath: string | undefined;
 
   _parseRequestStatusLine() {
     const parts = this.statusline.split(" ", 2);
@@ -106,7 +106,7 @@ export class StatusAndHeadersParser {
       firstLine,
     }: { firstLine?: string; headersClass: typeof Map | typeof Headers } = {
       headersClass: Map,
-    },
+    }
   ) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
 
@@ -145,7 +145,7 @@ export class StatusAndHeadersParser {
             } else {
               headers.set(name, value);
             }
-          } catch (e) {
+          } catch (_e) {
             // ignore
           }
           value = null;
@@ -179,7 +179,7 @@ export class StatusAndHeadersParser {
         } else {
           headers.set(name, value);
         }
-      } catch (e) {
+      } catch (_e) {
         // ignore
       }
     }
@@ -205,7 +205,7 @@ function splitRemainder(str: string, sep: string, limit: number) {
 // ===========================================================================
 export async function indexOfDoubleCRLF(
   buffer: Uint8Array,
-  iter: AsyncIterator<Uint8Array, void, unknown>,
+  iter: AsyncIterator<Uint8Array, void, unknown>
 ) {
   let start = 0;
 
