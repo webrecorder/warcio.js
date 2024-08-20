@@ -314,6 +314,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
       }
 
       if (this.inflator.ended) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
         if (this.inflator.err !== 0) {
           // assume not compressed
           this.compressed = null;

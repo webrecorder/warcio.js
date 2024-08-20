@@ -17,6 +17,7 @@ export function binaryToString(data: Uint8Array | string | undefined | null) {
   }
   // try btoa, if it fails, just ignore the binary data string
   try {
+    // eslint-disable-next-line deprecation/deprecation
     return "__wb_post_data=" + btoa(string);
   } catch (_e) {
     return "__wb_post_data=";
@@ -154,7 +155,7 @@ export function jsonToQueryParams(json: unknown, ignoreInvalid = true) {
     if (!(key in dupes)) {
       dupes[key] = 1;
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unnecessary-type-assertion
     return key + "." + ++dupes[key]! + "_";
   };
 
