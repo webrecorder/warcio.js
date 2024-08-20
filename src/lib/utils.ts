@@ -1,4 +1,4 @@
-import { Request } from "./types";
+import { type Request } from "./types";
 
 export function binaryToString(data: Uint8Array | string) {
   let string;
@@ -17,7 +17,7 @@ export function binaryToString(data: Uint8Array | string) {
   }
   // try btoa, if it fails, just ignore the binary data string
   try {
-    // eslint-disable-next-line deprecation/deprecation
+     
     return "__wb_post_data=" + btoa(string);
   } catch (e) {
     return "__wb_post_data=";
@@ -246,7 +246,7 @@ export function mfdToQueryString(
 
 export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
   if (chunks.length === 1) {
-    return chunks[0] as Uint8Array;
+    return chunks[0]!;
   }
   const buffer = new Uint8Array(size);
 

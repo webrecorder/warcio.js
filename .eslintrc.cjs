@@ -107,6 +107,7 @@ module.exports = {
     ],
     "@typescript-eslint/no-non-null-asserted-nullish-coalescing": "error",
     "@typescript-eslint/no-non-null-asserted-optional-chain": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-redundant-type-constituents": "warn",
     "@typescript-eslint/no-this-alias": "warn",
     "@typescript-eslint/no-unnecessary-type-assertion": "warn",
@@ -126,6 +127,8 @@ module.exports = {
     "@typescript-eslint/unbound-method": "off",
     "@typescript-eslint/method-signature-style": "error",
     "deprecation/deprecation": "warn",
+    "@typescript-eslint/no-empty-function": "warn",
+    "@typescript-eslint/no-empty-interface": "warn",
   },
   reportUnusedDisableDirectives: true,
   ignorePatterns: [

@@ -1,7 +1,7 @@
-import { StatusAndHeadersParser, StatusAndHeaders } from "./statusandheaders";
+import { StatusAndHeadersParser, type StatusAndHeaders } from "./statusandheaders";
 import { WARCRecord } from "./warcrecord";
 import { AsyncIterReader, LimitReader } from "./readers";
-import { Source, IndexerOffsetLength } from "./types";
+import { type Source, type IndexerOffsetLength } from "./types";
 
 const decoder = new TextDecoder();
 const EMPTY = new Uint8Array([]);
@@ -13,7 +13,7 @@ export type WARCParserOpts = {
 
 // ===========================================================================
 export class WARCParser implements IndexerOffsetLength {
-  static parse(source: Source, options?: WARCParserOpts) {
+  static async parse(source: Source, options?: WARCParserOpts) {
     return new WARCParser(source, options).parse();
   }
 

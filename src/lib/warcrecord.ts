@@ -1,7 +1,7 @@
 import uuid from "uuid-random";
 import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
 import { StatusAndHeaders } from "./statusandheaders";
-import { Source } from "./types";
+import { type Source } from "./types";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -292,10 +292,10 @@ export class WARCRecord extends BaseAsyncIterReader {
       );
     }
 
-    let contentEnc = this.httpHeaders.headers.get("Content-Encoding") as string;
+    let contentEnc = this.httpHeaders.headers.get("Content-Encoding")!;
     const transferEnc = this.httpHeaders.headers.get(
       "Transfer-Encoding"
-    ) as string;
+    )!;
 
     const chunked = transferEnc === "chunked";
 

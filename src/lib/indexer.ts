@@ -1,10 +1,10 @@
-import { WritableStreamBuffer } from "stream-buffers";
+import { type WritableStreamBuffer } from "stream-buffers";
 
 import { WARCParser } from "./warcparser";
-import { WARCRecord } from "./warcrecord";
+import { type WARCRecord } from "./warcrecord";
 import { postToGetUrl, getSurt } from "./utils";
-import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
-import { StreamResults, Request, IndexerOffsetLength } from "./types";
+import { type IndexCommandArgs, type CdxIndexCommandArgs } from "../commands";
+import { type StreamResults, type Request, type IndexerOffsetLength } from "./types";
 
 const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 
@@ -18,7 +18,7 @@ abstract class BaseIndexer {
     opts: Partial<IndexCommandArgs> = {},
   ) {
     this.opts = opts;
-    this.fields = opts && opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
+    this.fields = opts?.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
 
@@ -306,7 +306,7 @@ export class CDXIndexer extends Indexer {
 
     const res = super.indexRecord(record, indexOffset, filename);
     if (res) {
-      if (record && record._offset !== undefined) {
+      if (record?._offset !== undefined) {
         res["offset"] = record._offset;
         res["length"] = record._length;
       }

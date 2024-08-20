@@ -1,9 +1,9 @@
-import fs, { WriteStream } from "node:fs";
+import fs, { type WriteStream } from "node:fs";
 import { unlink } from "node:fs/promises";
 
 import { temporaryFile } from "tempy";
 
-import { WARCRecord } from "../lib/warcrecord";
+import { type WARCRecord } from "../lib/warcrecord";
 import * as warcserializer from "../lib/warcserializer";
 
 // default size to buffer in memory 2MB
@@ -74,7 +74,7 @@ export class TempFileBuffer extends warcserializer.SerializerInMemBuffer
   }
 }
 
-export function streamFinish(fh: WriteStream) {
+export async function streamFinish(fh: WriteStream) {
   const p = new Promise<void>(resolve => {
     fh.once("finish", () => resolve());
   });

@@ -1,5 +1,5 @@
 import pako from "pako";
-import { Source, SourceReader } from "./types";
+import { type Source, type SourceReader } from "./types";
 import { splitChunk, concatChunks } from "./utils";
 
 const decoder = new TextDecoder("utf-8");
@@ -44,7 +44,7 @@ export abstract class BaseAsyncIterReader {
     const streamIter = this[Symbol.asyncIterator]();
 
     return new ReadableStream({
-      pull(controller) {
+      async pull(controller) {
         return streamIter.next().then((result) => {
           // all done;
           if (result.done || !result.value) {
@@ -283,7 +283,7 @@ export class AsyncIterReader extends BaseAsyncIterReader {
       this.inflator.err &&
       this.inflator.ended &&
       this.compressed === "deflate" &&
-      this.opts.raw === false &&
+      !this.opts.raw &&
       this.numChunks === 0
     ) {
       this.opts.raw = true;

@@ -1,4 +1,4 @@
-import yargs from "yargs";
+import type yargs from "yargs";
 
 export const indexCommandArgs = (yarg: yargs.Argv) => {
   return yarg

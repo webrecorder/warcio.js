@@ -3,9 +3,9 @@ import base32Encode from "base32-encode";
 import pako from "pako";
 
 import { createSHA256, createSHA1 } from "hash-wasm";
-import { IHasher } from "hash-wasm/dist/lib/WASMInterface.js";
+import { type IHasher } from "hash-wasm/dist/lib/WASMInterface.js";
 
-import { WARCRecord } from "./warcrecord";
+import { type WARCRecord } from "./warcrecord";
 import { BaseAsyncIterReader } from "./readers";
 import { CRLF, CRLFCRLF } from "./statusandheaders";
 
@@ -32,7 +32,7 @@ export abstract class BaseSerializerBuffer {
 // ===========================================================================
 export class SerializerInMemBuffer extends BaseSerializerBuffer
 {
-  buffers: Array<Uint8Array> = [];
+  buffers: Uint8Array[] = [];
 
   write(chunk: Uint8Array): void {
     this.buffers.push(chunk);
@@ -82,11 +82,11 @@ export class WARCSerializer extends BaseAsyncIterReader
 
     this.record = record;
 
-    const digestOpts = (opts && opts.digest) || {};
-    this.digestAlgo = digestOpts?.algo || "sha-256";
-    this.digestAlgoPrefix = digestOpts?.prefix || "sha256:";
-    this.digestBase32 = Boolean(digestOpts?.base32);
-    this.preferPako = Boolean(opts?.preferPako);
+    const digestOpts = (opts?.digest) || {};
+    this.digestAlgo = digestOpts.algo || "sha-256";
+    this.digestAlgoPrefix = digestOpts.prefix || "sha256:";
+    this.digestBase32 = Boolean(digestOpts.base32);
+    this.preferPako = Boolean(opts.preferPako);
 
     if (WARCSerializer.noComputeDigest(record)) {
       this.digestAlgo = "";
@@ -169,7 +169,7 @@ export class WARCSerializer extends BaseAsyncIterReader
     }
   }
 
-  newHasher() {
+  async newHasher() {
     switch (this.digestAlgo) {
       case "sha-256":
         return createSHA256();

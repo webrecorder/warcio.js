@@ -1,5 +1,5 @@
 import { concatChunks, splitChunk } from "./utils";
-import { AsyncIterReader } from "./readers";
+import { type AsyncIterReader } from "./readers";
 
 export const CRLF = new Uint8Array([13, 10]);
 export const CRLFCRLF = new Uint8Array([13, 10, 13, 10]);
@@ -47,9 +47,7 @@ export class StatusAndHeaders {
   _parseResponseStatusLine() {
     const parts = splitRemainder(this.statusline, " ", 2);
     this._protocol = parts[0] ?? "";
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
     this._statusCode = parts.length > 1 ? Number(parts[1]) : "";
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
     this._statusText = parts.length > 2 ? parts[2]! : "";
   }
 
