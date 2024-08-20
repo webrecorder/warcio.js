@@ -15,7 +15,7 @@ const BUFF_SIZE = 1024 * 128;
 // ===========================================================================
 export async function main(
   out: WritableStreamBuffer | NodeJS.WriteStream = stdout,
-  args?: string[]
+  args?: string[],
 ) {
   let promise = Promise.resolve();
 
@@ -41,7 +41,7 @@ export async function main(
       handler: async (args) => {
         promise = new CDXIndexer(args).writeAll(
           loadStreams(args.filenames),
-          out
+          out,
         );
       },
     })

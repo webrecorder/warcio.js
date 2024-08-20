@@ -71,7 +71,7 @@ export function postToGetUrl(request: Request) {
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
   function decodeIfNeeded(
-    postData: Uint8Array | string | undefined
+    postData: Uint8Array | string | undefined,
   ): string | undefined {
     if (postData instanceof Uint8Array) {
       postData = new TextDecoder().decode(postData);
@@ -102,7 +102,7 @@ export function postToGetUrl(request: Request) {
       const content_type = headers.get("content-type");
       if (!content_type) {
         throw new Error(
-          "utils cannot call postToGetURL when missing content-type header"
+          "utils cannot call postToGetURL when missing content-type header",
         );
       }
       query = mfdToQueryString(decodeIfNeeded(postData), content_type);
@@ -206,7 +206,7 @@ export function jsonToQueryParams(json: string | {}, ignoreInvalid = true) {
 
 export function mfdToQueryParams(
   mfd: string | Uint8Array | undefined = "",
-  contentType: string
+  contentType: string,
 ) {
   const params = new URLSearchParams();
 
@@ -235,14 +235,14 @@ export function mfdToQueryParams(
 
 export function jsonToQueryString(
   json: string | {} = "",
-  ignoreInvalid = true
+  ignoreInvalid = true,
 ) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
 export function mfdToQueryString(
   mfd: string | Uint8Array | undefined,
-  contentType: string
+  contentType: string,
 ) {
   return mfdToQueryParams(mfd, contentType).toString();
 }
@@ -269,7 +269,7 @@ export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
 
 export function splitChunk(
   chunk: Uint8Array,
-  inx: number
+  inx: number,
 ): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }
