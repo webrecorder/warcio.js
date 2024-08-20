@@ -25,13 +25,4 @@ module.exports = {
     semi: ["error", "always"],
     "deprecation/deprecation": "warn",
   },
-  overrides: [
-    {
-      extends: ["plugin:@typescript-eslint/disable-type-checked"],
-      files: ["webpack.*.js"],
-      rules: {
-        "@typescript-eslint/no-var-requires": "off",
-      },
-    },
-  ],
 };
