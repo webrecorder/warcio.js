@@ -44,7 +44,7 @@
   ],
   "scripts": {
     "build": "tsup && tsup --define.browser='true'",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && prettier --check src test",
     "format": "prettier --write src test",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest --collectCoverage",
