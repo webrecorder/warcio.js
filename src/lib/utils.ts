@@ -1,6 +1,6 @@
 import { type Request } from "./types";
 
-export function binaryToString(data: Uint8Array | string | undefined) {
+export function binaryToString(data: Uint8Array | string | undefined | null) {
   let string;
 
   if (typeof data === "string") {
@@ -62,7 +62,7 @@ export function getSurt(url: string) {
 }
 
 export function postToGetUrl(request: Request) {
-  const { method, headers, postData } = request;
+  const { method, headers, postData = "" } = request;
 
   if (method === "GET") {
     return false;
@@ -71,15 +71,15 @@ export function postToGetUrl(request: Request) {
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
   function decodeIfNeeded(
-    postData: Uint8Array | string | undefined,
-  ): string | undefined {
+    postData: Uint8Array | string | undefined | null
+  ): string | undefined | null {
     if (postData instanceof Uint8Array) {
       postData = new TextDecoder().decode(postData);
     }
     return postData;
   }
 
-  let query: string | undefined = "";
+  let query: string | undefined | null = "";
 
   switch (requestMime) {
     case "application/x-www-form-urlencoded":
@@ -102,7 +102,7 @@ export function postToGetUrl(request: Request) {
       const content_type = headers.get("content-type");
       if (!content_type) {
         throw new Error(
-          "utils cannot call postToGetURL when missing content-type header",
+          "utils cannot call postToGetURL when missing content-type header"
         );
       }
       query = mfdToQueryString(decodeIfNeeded(postData), content_type);
@@ -133,7 +133,7 @@ export function appendRequestQuery(url: string, query: string, method: string) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-export function jsonToQueryParams(json: string | {}, ignoreInvalid = true) {
+export function jsonToQueryParams(json: unknown, ignoreInvalid = true) {
   if (typeof json === "string") {
     try {
       json = JSON.parse(json);
@@ -205,8 +205,8 @@ export function jsonToQueryParams(json: string | {}, ignoreInvalid = true) {
 }
 
 export function mfdToQueryParams(
-  mfd: string | Uint8Array | undefined = "",
-  contentType: string,
+  mfd: string | Uint8Array | undefined | null = "",
+  contentType: string
 ) {
   const params = new URLSearchParams();
 
@@ -217,7 +217,8 @@ export function mfdToQueryParams(
   try {
     const boundary = contentType.split("boundary=")[1];
 
-    const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const parts = mfd!.split(new RegExp("-*" + boundary + "-*", "mi"));
 
     for (const part of parts) {
       const m = part.trim().match(/name="([^"]+)"\r\n\r\n(.*)/im);
@@ -234,15 +235,15 @@ export function mfdToQueryParams(
 }
 
 export function jsonToQueryString(
-  json: string | {} = "",
-  ignoreInvalid = true,
+  json: string | undefined | null = "",
+  ignoreInvalid = true
 ) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
 export function mfdToQueryString(
-  mfd: string | Uint8Array | undefined,
-  contentType: string,
+  mfd: string | Uint8Array | undefined | null,
+  contentType: string
 ) {
   return mfdToQueryParams(mfd, contentType).toString();
 }
@@ -269,7 +270,7 @@ export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
 
 export function splitChunk(
   chunk: Uint8Array,
-  inx: number,
+  inx: number
 ): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }

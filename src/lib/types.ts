@@ -27,7 +27,7 @@ export type Request = {
   method: string;
   url: string;
   headers: Map<string, string> | Headers;
-  postData?: Uint8Array | string | undefined;
+  postData?: Uint8Array | string | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   requestBody?: any;
 };
