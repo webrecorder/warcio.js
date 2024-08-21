@@ -29,7 +29,6 @@ export {
   mfdToQueryString,
   concatChunks,
   splitChunk,
- 
 } from "./utils";
 
 export type {
@@ -39,5 +38,5 @@ export type {
   StreamResult,
   StreamResults,
   Request,
-  IndexerOffsetLength
+  IndexerOffsetLength,
 } from "./types";

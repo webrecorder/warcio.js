@@ -1,10 +1,14 @@
-import { WritableStreamBuffer } from "stream-buffers";
+import { type WritableStreamBuffer } from "stream-buffers";
 
 import { WARCParser } from "./warcparser";
-import { WARCRecord } from "./warcrecord";
+import { type WARCRecord } from "./warcrecord";
 import { postToGetUrl, getSurt } from "./utils";
-import { IndexCommandArgs, CdxIndexCommandArgs } from "../commands";
-import { StreamResults, Request, IndexerOffsetLength } from "./types";
+import { type IndexCommandArgs, type CdxIndexCommandArgs } from "../commands";
+import {
+  type StreamResults,
+  type Request,
+  type IndexerOffsetLength,
+} from "./types";
 
 const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 
@@ -14,11 +18,9 @@ abstract class BaseIndexer {
   fields: string[];
   parseHttp: boolean;
 
-  constructor(
-    opts: Partial<IndexCommandArgs> = {},
-  ) {
+  constructor(opts: Partial<IndexCommandArgs> = {}) {
     this.opts = opts;
-    this.fields = opts && opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
+    this.fields = opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
     this.parseHttp = false;
   }
 
@@ -27,13 +29,19 @@ abstract class BaseIndexer {
     return JSON.stringify(result) + "\n";
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  write(result: Record<string, any>, out: WritableStreamBuffer | NodeJS.WriteStream) {
+  write(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result: Record<string, any>,
+    out: WritableStreamBuffer | NodeJS.WriteStream,
+  ) {
     // @ts-expect-error incompatible function signatures are actually the same
     out.write(this.serialize(result));
   }
 
-  async writeAll(files: StreamResults, out: WritableStreamBuffer | NodeJS.WriteStream) {
+  async writeAll(
+    files: StreamResults,
+    out: WritableStreamBuffer | NodeJS.WriteStream,
+  ) {
     for await (const result of this.iterIndex(files)) {
       this.write(result, out);
     }
@@ -64,7 +72,7 @@ abstract class BaseIndexer {
   indexRecord(
     record: WARCRecord,
     indexerOffset: IndexerOffsetLength,
-    filename: string
+    filename: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Record<string, any> | null {
     if (this.filterRecord && !this.filterRecord(record)) {
@@ -74,7 +82,7 @@ abstract class BaseIndexer {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: Record<string, any> = {};
 
-    const {offset, recordLength: length} = indexerOffset;
+    const { offset, recordLength: length } = indexerOffset;
 
     const special = { offset, length, filename };
 
@@ -97,7 +105,10 @@ abstract class BaseIndexer {
     }
   }
 
-  getField(field: string, record: WARCRecord) : string | number | null | undefined {
+  getField(
+    field: string,
+    record: WARCRecord,
+  ): string | number | null | undefined {
     if (field === "http:status") {
       if (
         record.httpHeaders &&
@@ -110,7 +121,7 @@ abstract class BaseIndexer {
 
     if (field.startsWith("http:")) {
       if (record.httpHeaders) {
-        let headers : Headers | Map<string, string> = record.httpHeaders.headers;
+        let headers: Headers | Map<string, string> = record.httpHeaders.headers;
         if (headers instanceof Map) {
           headers = new Headers(Object.fromEntries(headers));
         }
@@ -125,9 +136,7 @@ abstract class BaseIndexer {
 
 // ===========================================================================
 export class Indexer extends BaseIndexer {
-  constructor(
-    opts?: Partial<IndexCommandArgs>,
-  ) {
+  constructor(opts?: Partial<IndexCommandArgs>) {
     super(opts);
 
     for (const field of this.fields) {
@@ -144,16 +153,15 @@ const DEFAULT_CDX_FIELDS =
   "urlkey,timestamp,url,mime,status,digest,length,offset,filename".split(",");
 const DEFAULT_LEGACY_CDX_FIELDS =
   "urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename".split(
-    ","
+    ",",
   );
-
 
 // ===========================================================================
 export interface CDXAndRecord {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cdx: Record<string, any>,
-  record: WARCRecord,
-  reqRecord: WARCRecord | null
+  cdx: Record<string, any>;
+  record: WARCRecord;
+  reqRecord: WARCRecord | null;
 }
 
 // ===========================================================================
@@ -163,9 +171,7 @@ export class CDXIndexer extends Indexer {
   noSurt: boolean;
   _lastRecord: WARCRecord | null;
 
-  constructor(
-    opts?: Partial<CdxIndexCommandArgs>,
-  ) {
+  constructor(opts?: Partial<CdxIndexCommandArgs>) {
     super(opts);
     this.includeAll = Boolean(opts?.all);
     this.overrideIndexForAll = Boolean(opts?.all);
@@ -230,9 +236,8 @@ export class CDXIndexer extends Indexer {
   override indexRecord(
     record: WARCRecord | null,
     indexOffset: IndexerOffsetLength,
-    filename: string
+    filename: string,
   ) {
-
     if (this.overrideIndexForAll) {
       if (!record) {
         return null;
@@ -259,10 +264,16 @@ export class CDXIndexer extends Indexer {
     const warcType = record.warcType;
     const lastWarcType = lastRecord.warcType;
 
-    if (warcType === "request" && (lastWarcType === "response" || lastWarcType === "revisit")) {
+    if (
+      warcType === "request" &&
+      (lastWarcType === "response" || lastWarcType === "revisit")
+    ) {
       this._lastRecord = null;
       return this.indexRecordPair(lastRecord, record, indexOffset, filename);
-    } else if ((warcType === "response" || warcType === "revisit") && lastWarcType === "request") {
+    } else if (
+      (warcType === "response" || warcType === "revisit") &&
+      lastWarcType === "request"
+    ) {
       this._lastRecord = null;
       return this.indexRecordPair(record, lastRecord, indexOffset, filename);
     } else {
@@ -274,20 +285,17 @@ export class CDXIndexer extends Indexer {
     record: WARCRecord,
     reqRecord: WARCRecord | null,
     indexOffset: IndexerOffsetLength,
-    filename: string
+    filename: string,
   ) {
     let method;
     let requestBody;
     let url = record.warcTargetURI || "";
 
-    if (
-      reqRecord &&
-      reqRecord.httpHeaders &&
-      reqRecord.httpHeaders.method !== "GET"
-    ) {
+    if (reqRecord?.httpHeaders && reqRecord.httpHeaders.method !== "GET") {
       const request: Request = {
         url,
-        method: reqRecord.httpHeaders.method,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        method: reqRecord.httpHeaders.method!,
         headers: reqRecord.httpHeaders.headers,
         postData: reqRecord.payload,
       };
@@ -306,7 +314,7 @@ export class CDXIndexer extends Indexer {
 
     const res = super.indexRecord(record, indexOffset, filename);
     if (res) {
-      if (record && record._offset !== undefined) {
+      if (record._offset !== undefined) {
         res["offset"] = record._offset;
         res["length"] = record._length;
       }
@@ -386,11 +394,8 @@ export class CDXIndexer extends Indexer {
 }
 
 // ===========================================================================
-export class CDXAndRecordIndexer extends CDXIndexer
-{
-  constructor(
-    opts?: Partial<CdxIndexCommandArgs>
-  ) {
+export class CDXAndRecordIndexer extends CDXIndexer {
+  constructor(opts?: Partial<CdxIndexCommandArgs>) {
     super(opts);
     this.overrideIndexForAll = false;
   }
@@ -399,9 +404,9 @@ export class CDXAndRecordIndexer extends CDXIndexer
     record: WARCRecord,
     reqRecord: WARCRecord | null,
     indexOffset: IndexerOffsetLength,
-    filename: string
-  ) : CDXAndRecord | null {
+    filename: string,
+  ): CDXAndRecord | null {
     const cdx = super.indexRecordPair(record, reqRecord, indexOffset, filename);
-    return cdx && {cdx, record, reqRecord};
+    return cdx && { cdx, record, reqRecord };
   }
 }

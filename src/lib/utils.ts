@@ -1,11 +1,11 @@
-import { Request } from "./types";
+import { type Request } from "./types";
 
-export function binaryToString(data: Uint8Array | string) {
+export function binaryToString(data: Uint8Array | string | undefined | null) {
   let string;
 
   if (typeof data === "string") {
     string = data;
-  } else if (data && data.length) {
+  } else if (data?.length) {
     string = data.reduce((accumulator, value) => {
       accumulator += String.fromCharCode(value);
       return accumulator;
@@ -19,7 +19,7 @@ export function binaryToString(data: Uint8Array | string) {
   try {
     // eslint-disable-next-line deprecation/deprecation
     return "__wb_post_data=" + btoa(string);
-  } catch (e) {
+  } catch (_e) {
     return "__wb_post_data=";
   }
 }
@@ -57,13 +57,13 @@ export function getSurt(url: string) {
       }
     }
     return surt;
-  } catch (e) {
+  } catch (_e) {
     return url;
   }
 }
 
 export function postToGetUrl(request: Request) {
-  const { method, headers, postData } = request;
+  const { method, headers, postData = "" } = request;
 
   if (method === "GET") {
     return false;
@@ -71,14 +71,16 @@ export function postToGetUrl(request: Request) {
 
   const requestMime = (headers.get("content-type") || "").split(";")[0];
 
-  function decodeIfNeeded(postData: Uint8Array | string): string {
+  function decodeIfNeeded(
+    postData: Uint8Array | string | undefined | null,
+  ): string | undefined | null {
     if (postData instanceof Uint8Array) {
       postData = new TextDecoder().decode(postData);
     }
     return postData;
   }
 
-  let query = "";
+  let query: string | undefined | null = "";
 
   switch (requestMime) {
     case "application/x-www-form-urlencoded":
@@ -92,7 +94,7 @@ export function postToGetUrl(request: Request) {
     case "text/plain":
       try {
         query = jsonToQueryString(decodeIfNeeded(postData), false);
-      } catch (e) {
+      } catch (_e) {
         query = binaryToString(postData);
       }
       break;
@@ -101,7 +103,7 @@ export function postToGetUrl(request: Request) {
       const content_type = headers.get("content-type");
       if (!content_type) {
         throw new Error(
-          "utils cannot call postToGetURL when missing content-type header"
+          "utils cannot call postToGetURL when missing content-type header",
         );
       }
       query = mfdToQueryString(decodeIfNeeded(postData), content_type);
@@ -112,7 +114,7 @@ export function postToGetUrl(request: Request) {
       query = binaryToString(postData);
   }
 
-  if (query !== null) {
+  if (query != null) {
     request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
     request.requestBody = query;
@@ -132,12 +134,11 @@ export function appendRequestQuery(url: string, query: string, method: string) {
   return `${url}${start}__wb_method=${method}&${query}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
+export function jsonToQueryParams(json: unknown, ignoreInvalid = true) {
   if (typeof json === "string") {
     try {
       json = JSON.parse(json);
-    } catch (e) {
+    } catch (_e) {
       json = {};
     }
   }
@@ -154,19 +155,21 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
     if (!(key in dupes)) {
       dupes[key] = 1;
     }
-    return key + "." + ++dupes[key] + "_";
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unnecessary-type-assertion
+    return key + "." + ++dupes[key]! + "_";
   };
 
-  const parser = (jsonObj: object, key="") => {
+  const parser = (jsonObj: unknown, key = "") => {
     let queryValue = "";
 
     // if object, attempt to recurse through key/value pairs
-    if (typeof(jsonObj) === "object" && !(jsonObj instanceof Array)) {
+    if (typeof jsonObj === "object" && !(jsonObj instanceof Array)) {
       try {
-        for (const [key, value] of Object.entries(jsonObj)) {
-          parser(value, key);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        for (const [key, value] of Object.entries(jsonObj!)) {
+          parser(value as object, key);
         }
-      } catch (e) {
+      } catch (_e) {
         // special case for null
         if (jsonObj === null) {
           queryValue = "null";
@@ -176,13 +179,15 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
 
     // if array, recurse through values, re-using key
     else if (jsonObj instanceof Array) {
-      for (let i=0; i < jsonObj.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/prefer-for-of
+      for (let i = 0; i < jsonObj.length; i++) {
         parser(jsonObj[i], key);
       }
     }
 
-    if (["string", "number", "boolean"].includes(typeof(jsonObj))) {
-      queryValue = jsonObj.toString();
+    if (["string", "number", "boolean"].includes(typeof jsonObj)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-base-to-string
+      queryValue = jsonObj!.toString();
     }
 
     if (queryValue) {
@@ -201,8 +206,8 @@ export function jsonToQueryParams(json: string | any, ignoreInvalid = true) {
 }
 
 export function mfdToQueryParams(
-  mfd: string | Uint8Array,
-  contentType: string
+  mfd: string | Uint8Array | undefined | null = "",
+  contentType: string,
 ) {
   const params = new URLSearchParams();
 
@@ -213,7 +218,8 @@ export function mfdToQueryParams(
   try {
     const boundary = contentType.split("boundary=")[1];
 
-    const parts = mfd.split(new RegExp("-*" + boundary + "-*", "mi"));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const parts = mfd!.split(new RegExp("-*" + boundary + "-*", "mi"));
 
     for (const part of parts) {
       const m = part.trim().match(/name="([^"]+)"\r\n\r\n(.*)/im);
@@ -222,21 +228,23 @@ export function mfdToQueryParams(
         params.set(m[1]!, m[2]!);
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // ignore invalid, don't add params
   }
 
   return params;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function jsonToQueryString(json: any, ignoreInvalid = true) {
+export function jsonToQueryString(
+  json: string | Record<string, unknown> | undefined | null = "",
+  ignoreInvalid = true,
+) {
   return jsonToQueryParams(json, ignoreInvalid).toString();
 }
 
 export function mfdToQueryString(
-  mfd: string | Uint8Array,
-  contentType: string
+  mfd: string | Uint8Array | undefined | null,
+  contentType: string,
 ) {
   return mfdToQueryParams(mfd, contentType).toString();
 }
@@ -246,7 +254,8 @@ export function mfdToQueryString(
 
 export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
   if (chunks.length === 1) {
-    return chunks[0] as Uint8Array;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return chunks[0]!;
   }
   const buffer = new Uint8Array(size);
 
@@ -262,7 +271,7 @@ export function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
 
 export function splitChunk(
   chunk: Uint8Array,
-  inx: number
+  inx: number,
 ): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }

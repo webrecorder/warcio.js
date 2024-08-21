@@ -4,36 +4,35 @@ import {
   WARCParser,
   WARCSerializer,
   concatChunks,
-  WARCRecord,
+  type WARCRecord,
   LimitReader,
 } from "../src/lib";
 import { getReader, getReadableStream } from "./utils";
 import fs from "fs";
-import path from "path";
 
-const [ majorVerison, minorVersion, patchVersion ] = process.versions?.node?.split(".").map((v) => Number(v));
+const [majorVersion, minorVersion, patchVersion] = process.versions.node
+  .split(".")
+  .map((v) => Number(v));
 
 // added in 18.14.2
-const nodeHeadersSupportsMultipleCookies = (
-  (majorVerison !== undefined && majorVerison > 18) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion > 14
-  ) ||
-  (
-    majorVerison !== undefined && majorVerison === 18 &&
-    minorVersion !== undefined && minorVersion === 14 &&
-    minorVersion !== undefined && minorVersion >= 2
-  )
-);
+const nodeHeadersSupportsMultipleCookies =
+  (majorVersion !== undefined && majorVersion > 18) ||
+  (majorVersion !== undefined &&
+    majorVersion === 18 &&
+    minorVersion !== undefined &&
+    minorVersion > 14) ||
+  (majorVersion !== undefined &&
+    majorVersion === 18 &&
+    minorVersion !== undefined &&
+    minorVersion === 14 &&
+    patchVersion !== undefined &&
+    patchVersion >= 2);
 
 const decoder = new TextDecoder("utf-8");
 
 function get_warc_path(filename: string) {
   return new URL(filename, import.meta.url).pathname;
 }
-
-
 
 // ===========================================================================
 // ===========================================================================
@@ -105,7 +104,6 @@ test("StatusAndHeaders test empty", async () => {
 
 test("Load WARC Records", async () => {
   const input =
-    // eslint-disable-next-line quotes -- inner double quote
     '\
 WARC/1.0\r\n\
 WARC-Type: warcinfo\r\n\
@@ -176,7 +174,6 @@ text\r\n\
   }
 
   expect(warcinfo).toBe(
-    // eslint-disable-next-line quotes -- inner double quote
     '\
 software: recorder test\r\n\
 format: WARC File Format 1.0\r\n\
@@ -187,7 +184,7 @@ json-metadata: {"foo": "bar"}\r\n\
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
-  expect(record.warcTargetURI, "http://example.com/");
+  expect(record.warcTargetURI).toBe("http://example.com/");
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
 
@@ -460,10 +457,7 @@ text\r\n\
 });
 
 test("warc1.1 response and request, status checks", async () => {
-  const input = fs.readFileSync(
-    get_warc_path("data/redirect.warc"),
-    "utf-8"
-  );
+  const input = fs.readFileSync(get_warc_path("data/redirect.warc"), "utf-8");
 
   let parser = new WARCParser(getReader([input]));
   let response: WARCRecord | null = null;
@@ -509,8 +503,8 @@ test("warc1.1 response and request, status checks", async () => {
   // incorrect accessor, just return protocol
   expect(response.warcHeaders.method).toBe("WARC/1.1");
 
-  expect(response?.httpHeaders?.statusText).toBe("Moved Permanently");
-  expect(response?.httpHeaders?.protocol).toBe("HTTP/1.1");
+  expect(response.httpHeaders?.statusText).toBe("Moved Permanently");
+  expect(response.httpHeaders?.protocol).toBe("HTTP/1.1");
 
   expect(response.getResponseInfo()).not.toBeNull();
 
@@ -520,20 +514,17 @@ test("warc1.1 response and request, status checks", async () => {
   const { status, statusText, headers } = responseInfo;
   expect(status).toBe(301);
   expect(statusText).toBe("Moved Permanently");
-  expect(headers).toBe(response?.httpHeaders?.headers);
+  expect(headers).toBe(response.httpHeaders?.headers);
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   request = (await parser.parse())!;
   expect(request).not.toBeNull();
-  expect(request?.httpHeaders?.requestPath).toBe("/domains/example");
-  expect(request?.httpHeaders?.method).toBe("GET");
+  expect(request.httpHeaders?.requestPath).toBe("/domains/example");
+  expect(request.httpHeaders?.method).toBe("GET");
 });
 
 test("warc1.1 serialize records match", async () => {
-  const input = fs.readFileSync(
-    get_warc_path("data/redirect.warc"),
-    "utf-8"
-  );
+  const input = fs.readFileSync(get_warc_path("data/redirect.warc"), "utf-8");
 
   const serialized = [];
   let size = 0;
@@ -630,7 +621,6 @@ test("no await catch errors", async () => {
 
 test("warc1.1 response and request, header checks", async () => {
   const input =
-    // eslint-disable-next-line quotes -- inner double quote
     '\
 WARC/1.0\r\n\
 WARC-Type: response\r\n\
@@ -674,33 +664,37 @@ text\r\n\
 
   const reader = new AsyncIterReader(getReader([input]));
 
-  let parser = new WARCParser(reader);
+  const parser = new WARCParser(reader);
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked in expect
   const record = (await parser.parse())!;
   expect(record).not.toBeNull();
-  expect(record.warcTargetURI, "http://example.com/");
+  expect(record.warcTargetURI).toBe("http://example.com/");
 
-  let headerEntries = [];
+  const headerEntries = [];
   if (record.httpHeaders?.headers) {
-    for (const [key, value] of record.httpHeaders?.headers?.entries()) {
-      headerEntries.push([ key, value ]);
+    for (const [key, value] of record.httpHeaders.headers.entries()) {
+      headerEntries.push([key, value]);
     }
   }
 
   if (nodeHeadersSupportsMultipleCookies) {
-    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
-      [ 'content-type', 'text/plain; charset="UTF-8"' ],
-      [ 'custom-header', 'somevalue' ],
-      [ 'set-cookie', 'greeting=hello' ],
-      [ 'set-cookie', 'name=world' ]
-    ]));
+    expect(JSON.stringify(headerEntries)).toBe(
+      JSON.stringify([
+        ["content-type", 'text/plain; charset="UTF-8"'],
+        ["custom-header", "somevalue"],
+        ["set-cookie", "greeting=hello"],
+        ["set-cookie", "name=world"],
+      ])
+    );
   } else {
-    expect(JSON.stringify(headerEntries)).toBe(JSON.stringify([
-      [ 'content-type', 'text/plain; charset="UTF-8"' ],
-      [ 'custom-header', 'somevalue' ],
-      [ 'set-cookie', 'greeting=hello, name=world' ]
-    ]));
+    expect(JSON.stringify(headerEntries)).toBe(
+      JSON.stringify([
+        ["content-type", 'text/plain; charset="UTF-8"'],
+        ["custom-header", "somevalue"],
+        ["set-cookie", "greeting=hello, name=world"],
+      ])
+    );
   }
 
   expect(decoder.decode(await record.readFully())).toBe("some\ntext");
@@ -709,18 +703,23 @@ text\r\n\
   const record2 = (await parser.parse())!;
   expect(record2).not.toBeNull();
 
-  let headerEntries2 = [];
+  const headerEntries2 = [];
   if (record2.httpHeaders?.headers) {
-    for (const [key, value] of record2.httpHeaders?.headers?.entries()) {
-      headerEntries2.push([ key, value ]);
+    for (const [key, value] of record2.httpHeaders.headers.entries()) {
+      headerEntries2.push([key, value]);
     }
   }
-  expect(JSON.stringify(headerEntries2)).toBe(JSON.stringify([
-    [ 'content-disposition', 'attachment; filename*=UTF-8\'\'%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt' ],
-    [ 'content-type', 'text/plain; charset="UTF-8"' ],
-    [ 'custom-header', 'somevalue' ],
-    [ 'unicode-header', '%F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F' ]
-  ]));
+  expect(JSON.stringify(headerEntries2)).toBe(
+    JSON.stringify([
+      [
+        "content-disposition",
+        "attachment; filename*=UTF-8''%D0%B8%D1%81%D0%BF%D1%8B%D1%82%D0%B0%D0%BD%D0%B8%D0%B5.txt",
+      ],
+      ["content-type", 'text/plain; charset="UTF-8"'],
+      ["custom-header", "somevalue"],
+      ["unicode-header", "%F0%9F%93%81%20text%20%F0%9F%97%84%EF%B8%8F"],
+    ])
+  );
 
   expect(decoder.decode(await record2.readFully())).toBe("more\ntext");
 

@@ -23,7 +23,7 @@ async function readLines(input: string[], expected: string[], maxLength = 0) {
 // Compression utils
 function compressMembers(
   chunks: string[],
-  method: string | null = "gzip"
+  method: string | null = "gzip",
 ): Uint8Array {
   const buffers: Uint8Array[] = [];
 
@@ -54,7 +54,7 @@ async function readDecomp(
   chunks: string[],
   expectedOffsets: number[],
   splitSize = 0,
-  inc = 1
+  inc = 1,
 ) {
   if (splitSize === 0) {
     await _readDecomp(chunks, expectedOffsets, splitSize);
@@ -68,7 +68,7 @@ async function readDecomp(
 async function _readDecomp(
   chunks: string[],
   expectedOffsets: number[],
-  splitSize: number
+  splitSize: number,
 ) {
   const input = compressMembers(chunks);
 
@@ -126,7 +126,7 @@ async function readDecompFully(chunks: string[], expected: string) {
 async function readDecompTypes(
   chunk: string,
   expected: string,
-  methods: [string | null, string | null, boolean][]
+  methods: [string | null, string | null, boolean][],
 ) {
   for (const [decompress, compress, match] of methods) {
     const input = compressMembers([chunk], compress);
@@ -134,9 +134,7 @@ async function readDecompTypes(
     const result = decoder.decode(await reader.readFully());
 
     if (match) {
-      expect(result, JSON.stringify([compress, decompress, match])).toBe(
-        expected
-      );
+      expect(result).toBe(expected);
     } else {
       expect(result).not.toBe(expected);
     }
@@ -159,12 +157,12 @@ async function readDecompLines(chunks: string[], expected: string[]) {
   expect(lines).toEqual(expected);
 }
 
-const READ_WHOLE_LINE = "line";
+type READ_WHOLE_LINE = "line";
 
 async function readChunkSizes(
   chunks: string[],
-  sizes: (number | typeof READ_WHOLE_LINE)[],
-  expected: string[]
+  sizes: (number | READ_WHOLE_LINE)[],
+  expected: string[],
 ) {
   const inputs = [[compressMembers(chunks)], chunks];
   //const inputs = [[compressMembers(chunks)]];
@@ -192,12 +190,12 @@ async function readWithLimit(
   chunks: string[],
   limit: number,
   offset: number,
-  expected: string
+  expected: string,
 ) {
   const reader = new LimitReader(
     new AsyncIterReader(getReader(chunks)),
     limit,
-    offset
+    offset,
   );
 
   const value = await reader.readFully();
@@ -217,7 +215,7 @@ describe("readers", () => {
   test("readline() test 1", async () => {
     await readLines(
       ["ABC\nDEFBLAHBLAH\nFOO", "BAR\n\n"],
-      ["ABC\n", "DEFBLAHBLAH\n", "FOOBAR\n", "\n"]
+      ["ABC\n", "DEFBLAHBLAH\n", "FOOBAR\n", "\n"],
     );
   });
 
@@ -225,7 +223,7 @@ describe("readers", () => {
     await readLines(
       ["ABC\nDEFBLAHBLAH\nFOO", "BAR\n\n"],
       ["ABC", "\n", "DEF", "BLA", "HBL", "AH\n", "FOO", "BAR", "\n", "\n"],
-      3
+      3,
     );
   });
 
@@ -238,7 +236,7 @@ BART\r\
 ABC`,
         "FOO",
       ],
-      ["ABC\r\n", "TEST\n", "BART\rABCFOO"]
+      ["ABC\r\n", "TEST\n", "BART\rABCFOO"],
     );
   });
 
@@ -252,7 +250,7 @@ ABC`,
         "FOO",
       ],
       ["ABC\r\n", "TEST\n", "BART\r", "ABCFO", "O"],
-      5
+      5,
     );
   });
 
@@ -263,7 +261,7 @@ ABC`,
   test("decompressed reader multi member", async () => {
     await readDecomp(
       ["Some Data", "Some\n More Data", "Another Chunk of Data", "extra data"],
-      [29, 64, 105, 135]
+      [29, 64, 105, 135],
     );
   });
 
@@ -276,7 +274,7 @@ ABC`,
       ["Some Data", "Some\n More Data", "Another Chunk of Data", "extra data"],
       [29, 64, 105, 135],
       15,
-      5
+      5,
     );
   });
 
@@ -293,7 +291,7 @@ More Data
 Another LineNew Chunk
 Same Chunk
 Single Line
-Next`
+Next`,
     );
   });
 
@@ -337,7 +335,7 @@ Next`
         "Same Chunk\n",
         "Single Line\n",
         "Next",
-      ]
+      ],
     );
   });
 
@@ -358,7 +356,7 @@ Next`
         "\n",
         "Another Chunk of Data\n",
         "extra data",
-      ]
+      ],
     );
   });
 
@@ -379,7 +377,7 @@ Next`
       ["Some\n", "Dat", "Even More", " Data"],
       13,
       9,
-      "ven More Data"
+      "ven More Data",
     );
   });
 
@@ -419,7 +417,7 @@ Next`
   test("limitreader + readline", async () => {
     const reader = new LimitReader(
       new AsyncIterReader([encoder.encode("test\ndata\n")]),
-      7
+      7,
     );
     expect(await reader.readline(3)).toBe("tes");
     expect(await reader.readline(5)).toBe("t\n");
@@ -439,7 +437,7 @@ Next`
     const reader = new AsyncIterReader(
       getReader(["test\ndata\ndata"]),
       null,
-      true
+      true,
     );
 
     expect(await reader.readline()).toBe("test\n");
@@ -465,13 +463,12 @@ chunks.\r\n\
 
     const reader = new AsyncIterReader(getReader([data]), null, true);
     expect(decoder.decode(await reader.readFully())).toBe(
-      "Wikipedia in\r\n\r\nchunks."
+      "Wikipedia in\r\n\r\nchunks.",
     );
   });
 
   test("test compressed chunks", async () => {
     const text = ["test", "some\n", "mo\rre", "data"];
-    const encodedText = encoder.encode(text.join(""));
     const data = compressMembers(text);
 
     async function* source() {
@@ -498,17 +495,14 @@ chunks.\r\n\
 
     const reader = new AsyncIterReader(sourceEnc(), "gzip", true);
     const result = await reader.readFully();
-    expect(
-      decoder.decode(result),
-      `expected\n${encodedText}\nbut got\n${result}`
-    ).toBe("testsome\nmo\rredata");
+    expect(decoder.decode(result)).toBe("testsome\nmo\rredata");
   });
 
   test("test chunked specified, non-chunked actual", async () => {
     async function readChunked(
       data: string | Uint8Array,
       compress: string | null = null,
-      errored = false
+      errored = false,
     ) {
       const reader = new AsyncIterReader(getReader([data]), compress, true);
       const res = decoder.decode(await reader.readFully());
@@ -521,12 +515,12 @@ chunks.\r\n\
 
     //Non-chunked data, numbers only:
     expect(await readChunked("ABCDEABCDEABCDEABCDE")).toBe(
-      "ABCDEABCDEABCDEABCDE"
+      "ABCDEABCDEABCDEABCDE",
     );
 
     //Non-chunked data, numbers new line, large:
     expect(await readChunked("ABCDEABCDEABCDEABCDE\r\n")).toBe(
-      "ABCDEABCDEABCDEABCDE\r\n"
+      "ABCDEABCDEABCDEABCDE\r\n",
     );
 
     //Non-chunked, attempt decompression
@@ -540,17 +534,17 @@ chunks.\r\n\
 
     //Error: invalid second chunk length
     expect(await readChunked("4\r\n1234\r\nZ\r\n12", null, true)).toBe(
-      "1234Z\r\n12"
+      "1234Z\r\n12",
     );
 
     //Error: invalid second chunk, cut-off chunk
     expect(await readChunked("4\r\n1234\r\n4\r\n12", null, true)).toBe(
-      "123412"
+      "123412",
     );
 
     //Error: invalid second chunk, no end \r\n
     expect(await readChunked("4\r\n1234\r\n4\r\n567890", null, true)).toBe(
-      "1234567890"
+      "1234567890",
     );
 
     // zero length chunk

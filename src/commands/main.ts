@@ -1,27 +1,27 @@
 import { lstatSync, createReadStream } from "node:fs";
 import { basename } from "node:path";
 import { stdout, stderr } from "node:process";
-import { WritableStreamBuffer } from "stream-buffers";
+import { type WritableStreamBuffer } from "stream-buffers";
 import yargs from "yargs";
-import { hideBin } from "yargs/helpers"; 
+import { hideBin } from "yargs/helpers";
 
 import { indexCommandArgs, cdxIndexCommandArgs } from "./args";
-import { Indexer, CDXIndexer, StreamResults } from "../lib";
+import { Indexer, CDXIndexer, type StreamResults } from "../lib";
 
 import * as pkg from "../../package.json";
 
 const BUFF_SIZE = 1024 * 128;
 
 // ===========================================================================
-export function main(
+export async function main(
   out: WritableStreamBuffer | NodeJS.WriteStream = stdout,
-  args?: string[]
+  args?: string[],
 ) {
   let promise = Promise.resolve();
 
   args = args || hideBin(process.argv);
 
-  yargs()
+  void yargs()
     .version(pkg.version)
     .usage("$0 [command]")
     // Basic Indexer
@@ -39,7 +39,10 @@ export function main(
       describe: "CDX(J) Index of WARC(s)",
       builder: cdxIndexCommandArgs,
       handler: async (args) => {
-        promise = new CDXIndexer(args).writeAll(loadStreams(args.filenames), out);
+        promise = new CDXIndexer(args).writeAll(
+          loadStreams(args.filenames),
+          out,
+        );
       },
     })
     .demandCommand(1, "Please specify a command")

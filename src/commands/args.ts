@@ -1,4 +1,4 @@
-import yargs from "yargs";
+import type yargs from "yargs";
 
 export const indexCommandArgs = (yarg: yargs.Argv) => {
   return yarg
@@ -40,7 +40,7 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
     })
     .option("noSurt", {
       describe:
-    "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
+        "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
       type: "boolean",
     });
 };
@@ -48,4 +48,4 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
 //export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
 // todo: fix types?
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CdxIndexCommandArgs = any;//ReturnType<cdxIndexCommandArgs>;
+export type CdxIndexCommandArgs = any; //ReturnType<cdxIndexCommandArgs>;

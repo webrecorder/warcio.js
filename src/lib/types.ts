@@ -1,9 +1,8 @@
 // ReadableStreamReader
-// eslint-disable-next-line @typescript-eslint/ban-types
 export type SourceReader = { read: Function };
 // ReadableStream
 export type SourceReadable = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getReader: (...args: any) => { read: Function };
 };
 
@@ -28,8 +27,7 @@ export type Request = {
   method: string;
   url: string;
   headers: Map<string, string> | Headers;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  postData?: any;
+  postData?: Uint8Array | string | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   requestBody?: any;
 };
