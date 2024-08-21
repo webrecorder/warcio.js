@@ -142,13 +142,12 @@ describe("utils", () => {
 
   test("surt with %-encoded query, trailing = param", () => {
     expect(getSurt("https://www.example.com/some/path?a=b&c=d&e^=&z")).toBe(
-      "com,example)/some/path?a=b&c=d&e%5E=&z"
+      "com,example)/some/path?a=b&c=d&e%5E=&z",
     );
   });
   test("surt with %-encoded query, no trailing = param", () => {
     expect(getSurt("https://www.example.com/some/path?a=b&c=d&e^&z")).toBe(
-      "com,example)/some/path?a=b&c=d&e%5E&z"
+      "com,example)/some/path?a=b&c=d&e%5E&z",
     );
   });
-
 });

@@ -57,9 +57,10 @@ export function getSurt(url: string) {
           // if original URL does *not* have trailing '=', attempt to remove it below
           if (!rx.exec(urlLower)) {
             // use URI encoded version to match the query arg if key is %-encoded
-            const rxEncoded = (
-              key === keyEncoded ? 
-                rx : new RegExp(`(?<=[&?])${rxEscape(keyEncoded)}=(?=&|$)`));
+            const rxEncoded =
+              key === keyEncoded
+                ? rx
+                : new RegExp(`(?<=[&?])${rxEscape(keyEncoded)}=(?=&|$)`);
             surt = surt.replace(rxEncoded, keyEncoded);
           }
         }
