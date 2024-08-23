@@ -335,7 +335,15 @@ export class CDXIndexer extends Indexer {
     delete result["urlkey"];
     delete result["timestamp"];
 
-    return `${urlkey} ${timestamp} ${JSON.stringify(result)}\n`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const replacer = (key: string, value: any) : any => {
+      if (["offset", "length", "status"].includes(key)) {
+        return value === null || value === undefined ? "" : "" + value;
+      }
+      return value;
+    }
+
+    return `${urlkey} ${timestamp} ${JSON.stringify(result, replacer)}\n`;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -375,7 +383,7 @@ export class CDXIndexer extends Indexer {
             break;
 
           default:
-            field = "content-type";
+            return record.warcContentType;
         }
         value = super.getField(field, record);
         return value ? value.toString().split(";", 1)[0]?.trim() : null;
