@@ -45,26 +45,9 @@ export function getSurt(url: string) {
     surt += ")";
     surt += urlObj.pathname;
     if (urlObj.search) {
-      urlObj.searchParams.sort();
-      surt += urlObj.search;
-      for (const [key, value] of urlObj.searchParams.entries()) {
-        if (!value) {
-          // if no value set, by default the surt contains 'key='
-          // however, for compatibility, only want to add a trailing '='
-          // if original URL has it.
-          const keyEncoded = encodeURIComponent(key);
-          const rx = new RegExp(`(?<=[&?])${rxEscape(key)}=(?=&|$)`);
-          // if original URL does *not* have trailing '=', attempt to remove it below
-          if (!rx.exec(urlLower)) {
-            // use URI encoded version to match the query arg if key is %-encoded
-            const rxEncoded =
-              key === keyEncoded
-                ? rx
-                : new RegExp(`(?<=[&?])${rxEscape(keyEncoded)}=(?=&|$)`);
-            surt = surt.replace(rxEncoded, keyEncoded);
-          }
-        }
-      }
+      const args = urlObj.search.slice(1).split("&");
+      args.sort();
+      surt += "?" + args.join("&");
     }
     return surt;
   } catch (_e) {
@@ -125,7 +108,7 @@ export function postToGetUrl(request: Request) {
   }
 
   if (query != null) {
-    request.url = appendRequestQuery(request.url, query, request.method);
+    request.url = appendRequestQuery(request.url, decodeURI(query), request.method);
     request.method = "GET";
     request.requestBody = query;
     return true;

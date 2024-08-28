@@ -194,7 +194,8 @@ text\r\n\r\n',
       yield encoder.encode("text");
     }
 
-    const url = "http://example.com/";
+    // missing trailing slash, will be added automatically
+    const url = "http://example.com";
     const date = "2000-01-01T00:00:00Z";
     const type = "response";
     const warcHeaders = {
