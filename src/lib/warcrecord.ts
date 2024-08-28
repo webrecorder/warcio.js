@@ -85,7 +85,11 @@ export class WARCRecord extends BaseAsyncIterReader {
         warcHeaders["WARC-Filename"] = filename;
       }
     } else if (url) {
-      warcHeaders["WARC-Target-URI"] = url;
+      try {
+        warcHeaders["WARC-Target-URI"] = new URL(url).href;
+      } catch (_e) {
+        warcHeaders["WARC-Target-URI"] = url;
+      }
     }
 
     warcHeaders["WARC-Date"] = date;
