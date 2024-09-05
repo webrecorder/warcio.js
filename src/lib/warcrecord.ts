@@ -176,8 +176,6 @@ export class WARCRecord extends BaseAsyncIterReader {
   _offset: number | undefined = 0;
   _length = 0;
 
-  //method: string | undefined = "";
-  //requestBody = "";
   _urlkey = "";
 
   constructor({
