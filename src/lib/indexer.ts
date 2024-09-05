@@ -304,8 +304,8 @@ export class CDXIndexer extends Indexer {
 
       if (postToGetUrl(request)) {
         requestBody = request.requestBody;
-        record.method = method;
-        record.requestBody = requestBody;
+        //record.method = method;
+        //record.requestBody = requestBody;
         url = request.url;
       }
     }

@@ -62,7 +62,24 @@ export function postToGetUrl(request: Request) {
     return false;
   }
 
-  const requestMime = (headers.get("content-type") || "").split(";")[0];
+  const getContentType = (headers: Headers | Map<string, string>) : string => {
+    const ct = headers.get("content-type");
+    if (ct) {
+      return ct;
+    }
+    if (!(headers instanceof Headers)) {
+      for (const [key, value] of headers.entries()) {
+        if (key && key.toLowerCase() === "content-type") {
+          return value;
+        }
+      }
+    }
+    return "";
+  }
+
+  const contentType = getContentType(headers);
+
+  const requestMime = contentType.split(";")[0];
 
   function decodeIfNeeded(
     postData: Uint8Array | string | undefined | null,
@@ -93,13 +110,12 @@ export function postToGetUrl(request: Request) {
       break;
 
     case "multipart/form-data": {
-      const content_type = headers.get("content-type");
-      if (!content_type) {
+      if (!contentType) {
         throw new Error(
           "utils cannot call postToGetURL when missing content-type header",
         );
       }
-      query = mfdToQueryString(decodeIfNeeded(postData), content_type);
+      query = mfdToQueryString(decodeIfNeeded(postData), contentType);
       break;
     }
 
