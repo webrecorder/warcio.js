@@ -17,7 +17,14 @@ export type { WARCSerializerOpts } from "./warcserializer";
 export { WARCRecord, WARC_1_1, WARC_1_0 } from "./warcrecord";
 export type { WARCRecordOpts, WARCType } from "./warcrecord";
 
-export { Indexer, CDXIndexer, CDXAndRecordIndexer } from "./indexer";
+export {
+  Indexer,
+  CDXIndexer,
+  CDXAndRecordIndexer,
+  DEFAULT_FIELDS,
+  DEFAULT_CDX_FIELDS,
+  DEFAULT_LEGACY_CDX_FIELDS,
+} from "./indexer";
 
 export {
   postToGetUrl,

@@ -153,8 +153,8 @@ describe("utils", () => {
   });
 
   test("surt with space", () => {
-    expect(getSurt("https://www.example.com/some/path?e+f=&a b&a+b=c&g^h=&d ")).toBe(
-      "com,example)/some/path?a%20b&a+b=c&d&e+f=&g^h="
-    );
+    expect(
+      getSurt("https://www.example.com/some/path?e+f=&a b&a+b=c&g^h=&d "),
+    ).toBe("com,example)/some/path?a%20b&a+b=c&d&e+f=&g^h=");
   });
 });

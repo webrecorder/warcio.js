@@ -10,17 +10,27 @@ import {
   type IndexerOffsetLength,
 } from "./types";
 
-const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
+export const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 
 // ===========================================================================
 abstract class BaseIndexer {
   opts: Partial<IndexCommandArgs>;
   fields: string[];
+  reqFields: string[];
   parseHttp: boolean;
 
-  constructor(opts: Partial<IndexCommandArgs> = {}) {
+  constructor(
+    opts: Partial<IndexCommandArgs> = {},
+    defaultFields: string[] = DEFAULT_FIELDS,
+  ) {
     this.opts = opts;
-    this.fields = opts.fields ? opts.fields.split(",") : DEFAULT_FIELDS;
+    if (opts.fields) {
+      this.fields = opts.fields.split(",");
+      this.reqFields = this.fields.filter((x) => isRequestHeader(x));
+    } else {
+      this.fields = defaultFields;
+      this.reqFields = [];
+    }
     this.parseHttp = false;
   }
 
@@ -109,6 +119,15 @@ abstract class BaseIndexer {
     field: string,
     record: WARCRecord,
   ): string | number | null | undefined {
+    // only handle req. fields for 'request' records
+    if (field.startsWith("req.")) {
+      if (record.warcType === "request") {
+        field = field.slice(4);
+      } else {
+        return null;
+      }
+    }
+
     if (field === "http:status") {
       if (
         record.httpHeaders &&
@@ -136,8 +155,8 @@ abstract class BaseIndexer {
 
 // ===========================================================================
 export class Indexer extends BaseIndexer {
-  constructor(opts?: Partial<IndexCommandArgs>) {
-    super(opts);
+  constructor(opts?: Partial<IndexCommandArgs>, defaultFields?: string[]) {
+    super(opts, defaultFields);
 
     for (const field of this.fields) {
       if (field.startsWith("http:")) {
@@ -149,9 +168,9 @@ export class Indexer extends BaseIndexer {
 }
 
 // ===========================================================================
-const DEFAULT_CDX_FIELDS =
+export const DEFAULT_CDX_FIELDS =
   "urlkey,timestamp,url,mime,status,digest,length,offset,filename".split(",");
-const DEFAULT_LEGACY_CDX_FIELDS =
+export const DEFAULT_LEGACY_CDX_FIELDS =
   "urlkey,timestamp,url,mime,status,digest,redirect,meta,length,offset,filename".split(
     ",",
   );
@@ -172,10 +191,9 @@ export class CDXIndexer extends Indexer {
   _lastRecord: WARCRecord | null;
 
   constructor(opts?: Partial<CdxIndexCommandArgs>) {
-    super(opts);
+    super(opts, DEFAULT_CDX_FIELDS);
     this.includeAll = Boolean(opts?.all);
     this.overrideIndexForAll = Boolean(opts?.all);
-    this.fields = DEFAULT_CDX_FIELDS;
     this.parseHttp = true;
     this.noSurt = Boolean(opts?.noSurt);
     this._lastRecord = null;
@@ -322,6 +340,12 @@ export class CDXIndexer extends Indexer {
       if (requestBody) {
         res["requestBody"] = requestBody;
       }
+
+      if (reqRecord && this.reqFields.length) {
+        for (const field of this.reqFields) {
+          this.setField(field, reqRecord, res);
+        }
+      }
     }
 
     return res;
@@ -334,12 +358,12 @@ export class CDXIndexer extends Indexer {
     delete result["timestamp"];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const replacer = (key: string, value: any) : any => {
+    const replacer = (key: string, value: any): any => {
       if (["offset", "length", "status"].includes(key)) {
         return value === null || value === undefined ? "" : "" + value;
       }
       return value;
-    }
+    };
 
     return `${urlkey} ${timestamp} ${JSON.stringify(result, replacer)}\n`;
   }
@@ -389,12 +413,15 @@ export class CDXIndexer extends Indexer {
       case "status":
         return super.getField("http:status", record);
 
+      case "referrer":
+        return super.getField("req.http:referer", record);
+
       case "digest":
         value = record.warcPayloadDigest;
         return value ? value.split(":", 2)[1] : null;
 
       default:
-        return null;
+        return super.getField(field, record);
     }
   }
 }
@@ -415,4 +442,8 @@ export class CDXAndRecordIndexer extends CDXIndexer {
     const cdx = super.indexRecordPair(record, reqRecord, indexOffset, filename);
     return cdx && { cdx, record, reqRecord };
   }
+}
+
+export function isRequestHeader(header: string) {
+  return header.startsWith("req.") || header.toLowerCase() === "referrer";
 }

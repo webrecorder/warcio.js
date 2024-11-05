@@ -1,7 +1,12 @@
 import fs from "fs";
 import { jest } from "@jest/globals";
 import { main } from "../src/commands";
-import { Indexer, CDXIndexer, CDXAndRecordIndexer } from "../src/lib";
+import {
+  Indexer,
+  CDXIndexer,
+  CDXAndRecordIndexer,
+  DEFAULT_CDX_FIELDS,
+} from "../src/lib";
 import { WritableStreamBuffer } from "stream-buffers";
 
 function get_warc_path(filename: string) {
@@ -90,6 +95,21 @@ com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit",
     );
   });
 
+  test("cdxj warc.gz with referrer", async () => {
+    await index(
+      [
+        "cdx-index",
+        get_warc_path("data/example.warc.gz"),
+        "--fields",
+        [...DEFAULT_CDX_FIELDS, "referrer"].join(","),
+      ],
+      `\
+com,example)/ 20170306040206 {"url":"http://example.com/","mime":"text/html","status":"200","digest":"G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK","length":"1228","offset":"784","filename":"example.warc.gz","referrer":"https://webrecorder.io/temp-MJFXHZ4S/temp/recording-session/record/http://example.com/"}
+com,example)/ 20170306040348 {"url":"http://example.com/","mime":"warc/revisit","status":"200","digest":"G7HRM7BGOKSKMSXZAHMUQTTV53QOFSMK","length":"586","offset":"2621","filename":"example.warc.gz","referrer":"https://webrecorder.io/temp-MJFXHZ4S/temp/recording-session/record/http://example.com/"}
+`,
+    );
+  });
+
   test("cdx11 warc.gz", async () => {
     await index(
       ["cdx-index", get_warc_path("data/example.warc.gz"), "--format", "cdx"],
@@ -154,11 +174,16 @@ com,example)/ 20170306040348 http://example.com/ warc/revisit 200 G7HRM7BGOKSKMS
 
   test("post append", async () => {
     await index(
-      ["cdx-index", get_warc_path("data/post-test.warc.gz")],
+      [
+        "cdx-index",
+        get_warc_path("data/post-test.warc.gz"),
+        "--fields",
+        [...DEFAULT_CDX_FIELDS, "req.http:cookie"].join(","),
+      ],
       `\
-org,httpbin)/post?__wb_method=post&foo=bar&test=abc 20140610000859 {"url":"http://httpbin.org/post","mime":"application/json","status":"200","digest":"M532K5WS4GY2H4OVZO6HRPOP47A7KDWU","length":"720","offset":"0","filename":"post-test.warc.gz","method":"POST","requestBody":"foo=bar&test=abc"}
-org,httpbin)/post?__wb_method=post&a=1&b=[]&c=3 20140610001151 {"url":"http://httpbin.org/post","mime":"application/json","status":"200","digest":"M7YCTM7HS3YKYQTAWQVMQSQZBNEOXGU2","length":"723","offset":"1196","filename":"post-test.warc.gz","method":"POST","requestBody":"A=1&B=[]&C=3"}
-org,httpbin)/post?__wb_method=post&data=^&foo=bar 20140610001255 {"url":"http://httpbin.org/post?foo=bar","mime":"application/json","status":"200","digest":"B6E5P6JUZI6UPDTNO4L2BCHMGLTNCUAJ","length":"723","offset":"2395","filename":"post-test.warc.gz","method":"POST","requestBody":"data=^"}
+org,httpbin)/post?__wb_method=post&foo=bar&test=abc 20140610000859 {"url":"http://httpbin.org/post","mime":"application/json","status":"200","digest":"M532K5WS4GY2H4OVZO6HRPOP47A7KDWU","length":"720","offset":"0","filename":"post-test.warc.gz","method":"POST","requestBody":"foo=bar&test=abc","req.http:cookie":"Max-Age=3600; Path=/"}
+org,httpbin)/post?__wb_method=post&a=1&b=[]&c=3 20140610001151 {"url":"http://httpbin.org/post","mime":"application/json","status":"200","digest":"M7YCTM7HS3YKYQTAWQVMQSQZBNEOXGU2","length":"723","offset":"1196","filename":"post-test.warc.gz","method":"POST","requestBody":"A=1&B=[]&C=3","req.http:cookie":"Max-Age=3600; Path=/"}
+org,httpbin)/post?__wb_method=post&data=^&foo=bar 20140610001255 {"url":"http://httpbin.org/post?foo=bar","mime":"application/json","status":"200","digest":"B6E5P6JUZI6UPDTNO4L2BCHMGLTNCUAJ","length":"723","offset":"2395","filename":"post-test.warc.gz","method":"POST","requestBody":"data=^","req.http:cookie":"Max-Age=3600; Path=/"}
 `,
     );
   });

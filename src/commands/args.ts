@@ -42,6 +42,11 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
       describe:
         "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
       type: "boolean",
+    })
+    .option("fields", {
+      alias: "f",
+      describe: "fields to include in index",
+      type: "string",
     });
 };
 
