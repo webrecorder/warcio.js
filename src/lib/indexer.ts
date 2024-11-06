@@ -25,7 +25,8 @@ abstract class BaseIndexer {
   ) {
     this.opts = opts;
     if (opts.fields) {
-      this.fields = opts.fields.split(",");
+      this.fields =
+        typeof opts.fields === "string" ? opts.fields.split(",") : opts.fields;
       this.reqFields = this.fields.filter((x) => isRequestHeader(x));
     } else {
       this.fields = defaultFields;
