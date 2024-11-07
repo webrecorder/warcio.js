@@ -121,7 +121,6 @@ export class StatusAndHeadersParser {
     }
 
     const headers = new headersClass();
-    const canAppend = headers instanceof Headers;
 
     const headerBuff = await readToDoubleCRLF(reader);
 
@@ -139,15 +138,7 @@ export class StatusAndHeadersParser {
           .trimEnd();
       } else {
         if (value) {
-          try {
-            if (canAppend && name.toLowerCase() === "set-cookie") {
-              headers.append(name, value);
-            } else {
-              headers.set(name, value);
-            }
-          } catch (_e) {
-            // ignore
-          }
+          this.setHeader(name, value, headers);
           value = null;
         }
 
@@ -173,21 +164,33 @@ export class StatusAndHeadersParser {
     }
 
     if (value) {
-      try {
-        if (canAppend && name.toLowerCase() === "set-cookie") {
-          headers.append(name, value);
-        } else {
-          headers.set(name, value);
-        }
-      } catch (_e) {
-        // ignore
-      }
+      this.setHeader(name, value, headers);
     }
 
     return new StatusAndHeaders({
       statusline,
       headers,
     });
+  }
+
+  setHeader(
+    name: string,
+    value: string,
+    headers: Headers | Map<string, string>,
+    noRetry = false,
+  ) {
+    try {
+      if (headers instanceof Headers && name.toLowerCase() === "set-cookie") {
+        headers.append(name, value);
+      } else {
+        headers.set(name, value);
+      }
+    } catch (_e) {
+      if (!noRetry) {
+        // if haven't retried yet, try encoding before saving
+        this.setHeader(name, encodeURIComponent(value), headers, true);
+      }
+    }
   }
 }
 
