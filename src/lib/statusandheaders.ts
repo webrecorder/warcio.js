@@ -188,7 +188,7 @@ export class StatusAndHeadersParser {
     } catch (_e) {
       if (!noRetry) {
         // if haven't retried yet, try encoding before saving
-        this.setHeader(name, encodeURIComponent(value), headers, true);
+        this.setHeader(name, encodeURI(value), headers, true);
       }
     }
   }
