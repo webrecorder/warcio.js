@@ -333,7 +333,7 @@ com,example,some:8080)/ 20200405201750 {"url":"http://some.example.com:8080/","m
 
   test("test custom Indexer", async () => {
     const entries = [];
-    const indexer = new Indexer({ fields: "warc-type,warc-target-uri" });
+    const indexer = new Indexer({ fields: ["warc-type", "warc-target-uri"] });
 
     const files = [
       {

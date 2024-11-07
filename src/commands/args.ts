@@ -1,4 +1,9 @@
+import { DEFAULT_CDX_FIELDS, DEFAULT_FIELDS } from "../lib/indexer";
 import type yargs from "yargs";
+
+const coerce = (array: string[]): string[] => {
+  return array.flatMap((v) => v.split(",")).filter((x) => !!x);
+};
 
 export const indexCommandArgs = (yarg: yargs.Argv) => {
   return yarg
@@ -11,14 +16,15 @@ export const indexCommandArgs = (yarg: yargs.Argv) => {
     .option("fields", {
       alias: "f",
       describe: "fields to include in index",
-      type: "string",
+      type: "array",
+      default: DEFAULT_FIELDS,
+      coerce,
     });
 };
 
-//export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
-// todo: fix types?
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type IndexCommandArgs = any;
+export type IndexCommandArgs = Awaited<
+  ReturnType<typeof indexCommandArgs>["argv"]
+>;
 
 export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
   return yarg
@@ -46,11 +52,12 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
     .option("fields", {
       alias: "f",
       describe: "fields to include in index",
-      type: "string",
+      type: "array",
+      default: DEFAULT_CDX_FIELDS,
+      coerce,
     });
 };
 
-//export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
-// todo: fix types?
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CdxIndexCommandArgs = any; //ReturnType<cdxIndexCommandArgs>;
+export type CdxIndexCommandArgs = Awaited<
+  ReturnType<typeof cdxIndexCommandArgs>["argv"]
+>;
