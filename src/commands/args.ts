@@ -1,6 +1,11 @@
-import type yargs from "yargs";
+import { DEFAULT_CDX_FIELDS, DEFAULT_FIELDS } from "../lib/indexer";
+import { type Argv } from "yargs";
 
-export const indexCommandArgs = (yarg: yargs.Argv) => {
+const coerce = (array: string[]): string[] => {
+  return array.flatMap((v) => v.split(",")).filter((x) => !!x);
+};
+
+export const indexCommandArgs = (yarg: Argv) => {
   return yarg
     .positional("filenames", {
       describe: "WARC file(s) to index",
@@ -11,16 +16,17 @@ export const indexCommandArgs = (yarg: yargs.Argv) => {
     .option("fields", {
       alias: "f",
       describe: "fields to include in index",
-      type: "string",
+      type: "array",
+      default: DEFAULT_FIELDS,
+      coerce,
     });
 };
 
-//export type IndexCommandArgs = Awaited<typeof indexCommandArgs.argv>;
-// todo: fix types?
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type IndexCommandArgs = any;
+export type IndexCommandArgs = Awaited<
+  ReturnType<typeof indexCommandArgs>["argv"]
+>;
 
-export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
+export const cdxIndexCommandArgs = (yarg: Argv) => {
   return yarg
     .positional("filenames", {
       describe: "WARC file(s) to index",
@@ -42,10 +48,16 @@ export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
       describe:
         "Use plain urlkey, do not convert to SURT form (Sort-friendly URI Reordering Transform)",
       type: "boolean",
+    })
+    .option("fields", {
+      alias: "f",
+      describe: "fields to include in index",
+      type: "array",
+      default: DEFAULT_CDX_FIELDS,
+      coerce,
     });
 };
 
-//export type CdxIndexCommandArgs = Awaited<typeof cdxIndexCommandArgs.argv>;
-// todo: fix types?
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CdxIndexCommandArgs = any; //ReturnType<cdxIndexCommandArgs>;
+export type CdxIndexCommandArgs = Awaited<
+  ReturnType<typeof cdxIndexCommandArgs>["argv"]
+>;

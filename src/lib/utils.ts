@@ -62,7 +62,7 @@ export function postToGetUrl(request: Request) {
     return false;
   }
 
-  const getContentType = (headers: Headers | Map<string, string>) : string => {
+  const getContentType = (headers: Headers | Map<string, string>): string => {
     const ct = headers.get("content-type");
     if (ct) {
       return ct;
@@ -75,7 +75,7 @@ export function postToGetUrl(request: Request) {
       }
     }
     return "";
-  }
+  };
 
   const contentType = getContentType(headers);
 
@@ -124,7 +124,11 @@ export function postToGetUrl(request: Request) {
   }
 
   if (query != null) {
-    request.url = appendRequestQuery(request.url, decodeURI(query), request.method);
+    request.url = appendRequestQuery(
+      request.url,
+      decodeURI(query),
+      request.method,
+    );
     request.method = "GET";
     request.requestBody = query;
     return true;
