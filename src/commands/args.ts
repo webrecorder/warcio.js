@@ -1,11 +1,11 @@
 import { DEFAULT_CDX_FIELDS, DEFAULT_FIELDS } from "../lib/indexer";
-import type yargs from "yargs";
+import { type Argv } from "yargs";
 
 const coerce = (array: string[]): string[] => {
   return array.flatMap((v) => v.split(",")).filter((x) => !!x);
 };
 
-export const indexCommandArgs = (yarg: yargs.Argv) => {
+export const indexCommandArgs = (yarg: Argv) => {
   return yarg
     .positional("filenames", {
       describe: "WARC file(s) to index",
@@ -26,7 +26,7 @@ export type IndexCommandArgs = Awaited<
   ReturnType<typeof indexCommandArgs>["argv"]
 >;
 
-export const cdxIndexCommandArgs = (yarg: yargs.Argv) => {
+export const cdxIndexCommandArgs = (yarg: Argv) => {
   return yarg
     .positional("filenames", {
       describe: "WARC file(s) to index",
