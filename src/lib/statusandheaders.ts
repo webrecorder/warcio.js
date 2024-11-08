@@ -188,7 +188,7 @@ export class StatusAndHeadersParser {
     } catch (_e) {
       if (!noRetry) {
         // if haven't retried yet, try encoding before saving
-        this.setHeader(name, encodeURI(value), headers, true);
+        this.setHeader(name, encodeLatin1(value), headers, true);
       }
     }
   }
@@ -203,6 +203,16 @@ function splitRemainder(str: string, sep: string, limit: number) {
     newParts.push(parts.slice(limit).join(sep));
   }
   return newParts;
+}
+
+// ===========================================================================
+function encodeLatin1(value: string) {
+  const buf = new TextEncoder().encode(value);
+
+  let str = "";
+  buf.forEach((x) => (str += String.fromCharCode(x)));
+  //buf.forEach(x => str += x < 128 ? String.fromCharCode(x) : `\\x${x}`);
+  return str;
 }
 
 // ===========================================================================
