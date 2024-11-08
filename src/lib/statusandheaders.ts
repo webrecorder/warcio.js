@@ -10,23 +10,31 @@ const decoder = new TextDecoder("utf-8");
 export class StatusAndHeaders {
   statusline: string;
   headers: Map<string, string> | Headers;
+  needsReencode = false;
 
   constructor({
     statusline,
     headers,
+    needsReencode
   }: {
     statusline: string;
     headers: Map<string, string> | Headers;
+    needsReencode?: boolean;
   }) {
     this.statusline = statusline;
     this.headers = headers;
+    this.needsReencode = needsReencode || false;
   }
 
   toString() {
     const buff = [this.statusline];
 
     for (const [name, value] of this.headers) {
-      buff.push(`${name}: ${value}`);
+      if (this.needsReencode) {
+        buff.push(`${name}: ${latin1ToUTF(value)}`);
+      } else {
+        buff.push(`${name}: ${value}`);
+      }
     }
 
     return buff.join("\r\n") + "\r\n";
@@ -99,6 +107,8 @@ export class StatusAndHeaders {
 
 // ===========================================================================
 export class StatusAndHeadersParser {
+  needsReencode = false;
+
   async parse(
     reader: AsyncIterReader,
     {
@@ -151,6 +161,7 @@ export class StatusAndHeadersParser {
           value = headerBuff
             .slice(valueStart, valueEnd < 0 ? undefined : valueEnd)
             .trim();
+
         } else {
           value = null;
         }
@@ -170,6 +181,7 @@ export class StatusAndHeadersParser {
     return new StatusAndHeaders({
       statusline,
       headers,
+      needsReencode: this.needsReencode
     });
   }
 
@@ -187,8 +199,9 @@ export class StatusAndHeadersParser {
       }
     } catch (_e) {
       if (!noRetry) {
-        // if haven't retried yet, try encoding before saving
-        this.setHeader(name, encodeLatin1(value), headers, true);
+        // if haven't retried yet, try reencoding as latin1 before saving
+        this.setHeader(name, UTFToLatin1(value), headers, true);
+        this.needsReencode = true;
       }
     }
   }
@@ -206,13 +219,21 @@ function splitRemainder(str: string, sep: string, limit: number) {
 }
 
 // ===========================================================================
-function encodeLatin1(value: string) {
+function UTFToLatin1(value: string) {
   const buf = new TextEncoder().encode(value);
 
   let str = "";
   buf.forEach((x) => (str += String.fromCharCode(x)));
-  //buf.forEach(x => str += x < 128 ? String.fromCharCode(x) : `\\x${x}`);
   return str;
+}
+
+// ===========================================================================
+function latin1ToUTF(str: string) {
+  const buf = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) {
+    buf[i] = str.charCodeAt(i) & 0xff;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 // ===========================================================================

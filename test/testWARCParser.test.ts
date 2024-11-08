@@ -111,6 +111,9 @@ test("StatusAndHeaders test non-ascii", async () => {
 HTTP/1.0 200 OK\r\n\
 Content-Type: ABC\r\n\
 Content-Location: https://example.com/example-испытание\r\n\
+Other: Value\r\n\
+Metadata: Test-メタデータ\r\n\
+More: Values\r\n\
 \r\n\
 Body",
       ]),
@@ -119,8 +122,11 @@ Body",
   );
   expect(result?.toString()).toBe(`\
 HTTP/1.0 200 OK\r\n\
-content-location: https://example.com/example-Ð¸Ñ\x81Ð¿Ñ\x8BÑ\x82Ð°Ð½Ð¸Ðµ\r\n\
+content-location: https://example.com/example-испытание\r\n\
 content-type: ABC\r\n\
+metadata: Test-メタデータ\r\n\
+more: Values\r\n\
+other: Value\r\n\
 `);
 });
 
