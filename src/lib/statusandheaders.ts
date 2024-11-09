@@ -10,27 +10,29 @@ const decoder = new TextDecoder("utf-8");
 export class StatusAndHeaders {
   statusline: string;
   headers: Map<string, string> | Headers;
-  needsReencode = false;
+  private readonly reencodeHeaders;
 
   constructor({
     statusline,
     headers,
-    needsReencode
+    reencodeHeaders
   }: {
     statusline: string;
     headers: Map<string, string> | Headers;
-    needsReencode?: boolean;
+    reencodeHeaders?: Set<string>;
   }) {
     this.statusline = statusline;
     this.headers = headers;
-    this.needsReencode = needsReencode || false;
+    this.reencodeHeaders = reencodeHeaders;
   }
 
   toString() {
     const buff = [this.statusline];
 
+    const isHeaders = this.headers instanceof Headers;
+
     for (const [name, value] of this.headers) {
-      if (this.needsReencode) {
+      if (isHeaders && this.reencodeHeaders?.has(name)) {
         buff.push(`${name}: ${latin1ToUTF(value)}`);
       } else {
         buff.push(`${name}: ${value}`);
@@ -107,7 +109,7 @@ export class StatusAndHeaders {
 
 // ===========================================================================
 export class StatusAndHeadersParser {
-  needsReencode = false;
+  reencodeHeaders = new Set<string>();
 
   async parse(
     reader: AsyncIterReader,
@@ -181,7 +183,7 @@ export class StatusAndHeadersParser {
     return new StatusAndHeaders({
       statusline,
       headers,
-      needsReencode: this.needsReencode
+      reencodeHeaders: this.reencodeHeaders
     });
   }
 
@@ -189,19 +191,23 @@ export class StatusAndHeadersParser {
     name: string,
     value: string,
     headers: Headers | Map<string, string>,
-    noRetry = false,
+    reencoded = false,
   ) {
     try {
-      if (headers instanceof Headers && name.toLowerCase() === "set-cookie") {
+      const isHeaders = headers instanceof Headers;
+      const nameLower = name.toLowerCase();
+      if (isHeaders && nameLower === "set-cookie") {
         headers.append(name, value);
       } else {
         headers.set(name, value);
       }
+      if (isHeaders && reencoded) {
+        this.reencodeHeaders.add(nameLower);
+      }
     } catch (_e) {
-      if (!noRetry) {
-        // if haven't retried yet, try reencoding as latin1 before saving
+      if (!reencoded) {
+        // if haven't reencoded already, try reencoding as latin1 before saving
         this.setHeader(name, UTFToLatin1(value), headers, true);
-        this.needsReencode = true;
       }
     }
   }
