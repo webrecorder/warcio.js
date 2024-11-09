@@ -102,6 +102,34 @@ test("StatusAndHeaders test empty", async () => {
   expect(result).toBe(null);
 });
 
+test("StatusAndHeaders test non-ascii", async () => {
+  const parser = new StatusAndHeadersParser();
+  const result = await parser.parse(
+    new AsyncIterReader(
+      getReader([
+        "\
+HTTP/1.0 200 OK\r\n\
+Content-Type: ABC\r\n\
+Content-Location: https://example.com/example-испытание\r\n\
+Other: Value\r\n\
+Metadata: Test-メタデータ\r\n\
+More: Values\r\n\
+\r\n\
+Body",
+      ]),
+    ),
+    { headersClass: Headers },
+  );
+  expect(result?.toString()).toBe(`\
+HTTP/1.0 200 OK\r\n\
+content-location: https://example.com/example-испытание\r\n\
+content-type: ABC\r\n\
+metadata: Test-メタデータ\r\n\
+more: Values\r\n\
+other: Value\r\n\
+`);
+});
+
 test("Load WARC Records", async () => {
   const input =
     '\

@@ -10,23 +10,33 @@ const decoder = new TextDecoder("utf-8");
 export class StatusAndHeaders {
   statusline: string;
   headers: Map<string, string> | Headers;
+  private readonly reencodeHeaders;
 
   constructor({
     statusline,
     headers,
+    reencodeHeaders
   }: {
     statusline: string;
     headers: Map<string, string> | Headers;
+    reencodeHeaders?: Set<string>;
   }) {
     this.statusline = statusline;
     this.headers = headers;
+    this.reencodeHeaders = reencodeHeaders;
   }
 
   toString() {
     const buff = [this.statusline];
 
+    const isHeaders = this.headers instanceof Headers;
+
     for (const [name, value] of this.headers) {
-      buff.push(`${name}: ${value}`);
+      if (isHeaders && this.reencodeHeaders?.has(name)) {
+        buff.push(`${name}: ${latin1ToUTF(value)}`);
+      } else {
+        buff.push(`${name}: ${value}`);
+      }
     }
 
     return buff.join("\r\n") + "\r\n";
@@ -99,6 +109,8 @@ export class StatusAndHeaders {
 
 // ===========================================================================
 export class StatusAndHeadersParser {
+  reencodeHeaders = new Set<string>();
+
   async parse(
     reader: AsyncIterReader,
     {
@@ -121,7 +133,6 @@ export class StatusAndHeadersParser {
     }
 
     const headers = new headersClass();
-    const canAppend = headers instanceof Headers;
 
     const headerBuff = await readToDoubleCRLF(reader);
 
@@ -139,15 +150,7 @@ export class StatusAndHeadersParser {
           .trimEnd();
       } else {
         if (value) {
-          try {
-            if (canAppend && name.toLowerCase() === "set-cookie") {
-              headers.append(name, value);
-            } else {
-              headers.set(name, value);
-            }
-          } catch (_e) {
-            // ignore
-          }
+          this.setHeader(name, value, headers);
           value = null;
         }
 
@@ -160,6 +163,7 @@ export class StatusAndHeadersParser {
           value = headerBuff
             .slice(valueStart, valueEnd < 0 ? undefined : valueEnd)
             .trim();
+
         } else {
           value = null;
         }
@@ -173,21 +177,39 @@ export class StatusAndHeadersParser {
     }
 
     if (value) {
-      try {
-        if (canAppend && name.toLowerCase() === "set-cookie") {
-          headers.append(name, value);
-        } else {
-          headers.set(name, value);
-        }
-      } catch (_e) {
-        // ignore
-      }
+      this.setHeader(name, value, headers);
     }
 
     return new StatusAndHeaders({
       statusline,
       headers,
+      reencodeHeaders: this.reencodeHeaders
     });
+  }
+
+  setHeader(
+    name: string,
+    value: string,
+    headers: Headers | Map<string, string>,
+    reencoded = false,
+  ) {
+    try {
+      const isHeaders = headers instanceof Headers;
+      const nameLower = name.toLowerCase();
+      if (isHeaders && nameLower === "set-cookie") {
+        headers.append(name, value);
+      } else {
+        headers.set(name, value);
+      }
+      if (isHeaders && reencoded) {
+        this.reencodeHeaders.add(nameLower);
+      }
+    } catch (_e) {
+      if (!reencoded) {
+        // if haven't reencoded already, try reencoding as latin1 before saving
+        this.setHeader(name, UTFToLatin1(value), headers, true);
+      }
+    }
   }
 }
 
@@ -200,6 +222,24 @@ function splitRemainder(str: string, sep: string, limit: number) {
     newParts.push(parts.slice(limit).join(sep));
   }
   return newParts;
+}
+
+// ===========================================================================
+function UTFToLatin1(value: string) {
+  const buf = new TextEncoder().encode(value);
+
+  let str = "";
+  buf.forEach((x) => (str += String.fromCharCode(x)));
+  return str;
+}
+
+// ===========================================================================
+function latin1ToUTF(str: string) {
+  const buf = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) {
+    buf[i] = str.charCodeAt(i) & 0xff;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 // ===========================================================================
