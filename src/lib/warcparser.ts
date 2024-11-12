@@ -5,6 +5,7 @@ import {
 import { WARCRecord } from "./warcrecord";
 import { AsyncIterReader, LimitReader } from "./readers";
 import { type Source, type IndexerOffsetLength } from "./types";
+import { HeadersMultiMap } from "./utils";
 
 const decoder = new TextDecoder();
 const EMPTY = new Uint8Array([]);
@@ -27,7 +28,7 @@ export class WARCParser implements IndexerOffsetLength {
   _offset: number;
   _warcHeadersLength: number;
 
-  _headersClass: typeof Map | typeof Headers;
+  _headersClass: typeof HeadersMultiMap | typeof Headers;
   _parseHttp: boolean;
 
   _reader: AsyncIterReader;
@@ -41,7 +42,7 @@ export class WARCParser implements IndexerOffsetLength {
     this._offset = 0;
     this._warcHeadersLength = 0;
 
-    this._headersClass = keepHeadersCase ? Map : Headers;
+    this._headersClass = keepHeadersCase ? HeadersMultiMap : Headers;
     this._parseHttp = parseHttp;
 
     if (!(source instanceof AsyncIterReader)) {

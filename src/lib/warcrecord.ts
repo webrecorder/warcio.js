@@ -2,6 +2,7 @@ import uuid from "uuid-random";
 import { BaseAsyncIterReader, AsyncIterReader, LimitReader } from "./readers";
 import { StatusAndHeaders } from "./statusandheaders";
 import { type Source } from "./types";
+import { HeadersMultiMap } from "./utils";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -37,7 +38,7 @@ export type WARCRecordOpts = {
   url?: string;
   date?: string;
   type?: WARCType;
-  warcHeaders?: Record<string, string>;
+  warcHeaders?: Record<string, string> | [string, string][];
   filename?: string;
   httpHeaders?: HeadersInit;
   statusline?: string;
@@ -79,39 +80,43 @@ export class WARCRecord extends BaseAsyncIterReader {
 
     date = checkDate(date || new Date().toISOString());
 
-    warcHeaders = { ...warcHeaders };
+    const warcHeadersMap = new HeadersMultiMap(warcHeaders);
+
     if (type === "warcinfo") {
       if (filename) {
-        warcHeaders["WARC-Filename"] = filename;
+        warcHeadersMap.set("WARC-Filename", filename);
       }
     } else if (url) {
       try {
-        warcHeaders["WARC-Target-URI"] = new URL(url).href;
+        warcHeadersMap.set("WARC-Target-URI", new URL(url).href);
       } catch (_e) {
-        warcHeaders["WARC-Target-URI"] = url;
+        warcHeadersMap.set("WARC-Target-URI", url);
       }
     }
 
-    warcHeaders["WARC-Date"] = date;
+    warcHeadersMap.set("WARC-Date", date);
 
     if (type) {
-      warcHeaders["WARC-Type"] = type;
+      warcHeadersMap.set("WARC-Type", type);
     }
 
     if (type === "revisit") {
-      warcHeaders["WARC-Profile"] =
-        warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0;
+      warcHeadersMap.set(
+        "WARC-Profile",
+        warcVersion === WARC_1_1 ? REVISIT_PROFILE_1_1 : REVISIT_PROFILE_1_0,
+      );
       if (refersToUrl) {
-        warcHeaders["WARC-Refers-To-Target-URI"] = refersToUrl;
-        warcHeaders["WARC-Refers-To-Date"] = checkDate(
-          refersToDate || new Date().toISOString(),
+        warcHeadersMap.set("WARC-Refers-To-Target-URI", refersToUrl);
+        warcHeadersMap.set(
+          "WARC-Refers-To-Date",
+          checkDate(refersToDate || new Date().toISOString()),
         );
       }
     }
 
     const warcHeadersObj = new StatusAndHeaders({
       statusline: warcVersion,
-      headers: new Map(Object.entries(warcHeaders)),
+      headers: warcHeadersMap,
     });
 
     if (!warcHeadersObj.headers.get("WARC-Record-ID")) {
@@ -130,19 +135,24 @@ export class WARCRecord extends BaseAsyncIterReader {
     }
 
     const record = new WARCRecord({ warcHeaders: warcHeadersObj, reader });
-    let headers: Map<string, string> | Headers | null = null;
-    let entries: [string, string][] = [];
+    let headers: HeadersMultiMap | Headers | null = null;
+    let isEmpty = false;
 
     switch (type) {
       case "response":
       case "request":
       case "revisit":
-        entries = Object.entries(httpHeaders);
-        headers = keepHeadersCase ? new Map(entries) : new Headers(httpHeaders);
+        if (keepHeadersCase) {
+          headers = new HeadersMultiMap(httpHeaders);
+          isEmpty = !headers.size;
+        } else {
+          headers = new Headers(httpHeaders);
+          isEmpty = !Object.entries(httpHeaders).length;
+        }
 
         // for revisit records, if there are no http headers, don't add statusline
         // for other request/response, add an empty statusline-only block
-        if (entries.length > 0 || type !== "revisit") {
+        if (!isEmpty || type !== "revisit") {
           record.httpHeaders = new StatusAndHeaders({ statusline, headers });
         }
         break;
@@ -394,6 +404,15 @@ export class WARCRecord extends BaseAsyncIterReader {
 
   get warcContentLength() {
     return Number(this.warcHeaders.headers.get("Content-Length"));
+  }
+
+  get warcConcurrentTo() {
+    if (this.warcHeaders.headers instanceof HeadersMultiMap) {
+      return this.warcHeaders.headers.getMultiple("WARC-Concurrent-To");
+    } else {
+      const res = this.warcHeaders.headers.get("WARC-Concurrent-To");
+      return res ? res.split(",") : [];
+    }
   }
 }
 
