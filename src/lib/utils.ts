@@ -293,6 +293,8 @@ export function splitChunk(
 // headers multi map
 const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to"];
 
+// using something other than comma to reduce change of any collisions with actual data
+// in theory, collision still possible with arbitrary cookie value
 const JOIN_MARKER = ",,,";
 
 export class HeadersMultiMap extends Map<string, string> {
