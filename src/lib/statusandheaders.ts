@@ -10,7 +10,7 @@ const decoder = new TextDecoder("utf-8");
 export class StatusAndHeaders {
   statusline: string;
   headers: HeadersMultiMap | Headers;
-  private readonly reencodeHeaders?: Set<string>;
+  readonly reencodeHeaders?: Set<string>;
 
   constructor({
     statusline,
