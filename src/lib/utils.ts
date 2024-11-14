@@ -288,3 +288,61 @@ export function splitChunk(
 ): [Uint8Array, Uint8Array] {
   return [chunk.slice(0, inx), chunk.slice(inx)];
 }
+
+// ===========================================================================
+// headers multi map
+const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to"];
+
+// using something other than comma to reduce change of any collisions with actual data
+// in theory, collision still possible with arbitrary cookie value
+const JOIN_MARKER = ",,,";
+
+export class HeadersMultiMap extends Map<string, string> {
+  constructor(headersInit?: HeadersInit) {
+    // if an array of array, parse that and add individually here
+    if (headersInit instanceof Array) {
+      super();
+      for (const entry of headersInit) {
+        if (entry instanceof Array) {
+          const name = entry[0];
+          const value = entry[1];
+          this.append(name, value);
+        }
+      }
+    } else {
+      super(headersInit ? Object.entries(headersInit) : undefined);
+    }
+  }
+
+  getMultiple(name: string): string[] | undefined {
+    const value = super.get(name);
+    if (!value) {
+      return undefined;
+    }
+    if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+      return value.split(JOIN_MARKER);
+    }
+    return [value];
+  }
+
+  append(name: string, value: string) {
+    if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+      const prev = this.get(name);
+      this.set(name, prev !== undefined ? prev + JOIN_MARKER + value : value);
+    } else {
+      this.set(name, value);
+    }
+  }
+
+  override *[Symbol.iterator](): IterableIterator<[string, string]> {
+    for (const [name, value] of super[Symbol.iterator]()) {
+      if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+        for (const v of value.split(JOIN_MARKER)) {
+          yield [name, v];
+        }
+      } else {
+        yield [name, value];
+      }
+    }
+  }
+}

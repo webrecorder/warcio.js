@@ -300,6 +300,62 @@ Accept: */*\r\n\
     );
   });
 
+  test("create record with multiple warc-concurrent-to", async () => {
+    const url = "http://example.com/";
+    const date = "2000-01-01T00:00:00Z";
+    const type = "request";
+    const warcHeaders: [string, string][] = [
+      ["WARC-Record-ID", "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>"],
+      ["WARC-Concurrent-To", "<urn:uuid:12345678-abc-1111-0000-68a86d1772ce>"],
+      ["WARC-Concurrent-To", "<urn:uuid:87654321-abc-1111-0000-68a86d1772ce>"],
+    ];
+
+    const httpHeaders = { Foo: "bar" };
+
+    const statusline = "GET /file HTTP/1.1";
+
+    const record = await WARCRecord.create({
+      url,
+      date,
+      type,
+      warcHeaders,
+      httpHeaders,
+      statusline,
+    });
+
+    expect(record.warcType).toBe("request");
+
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const res = decoder.decode(pako.inflate(gzipped));
+
+    expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Concurrent-To: <urn:uuid:12345678-abc-1111-0000-68a86d1772ce>\r\n\
+WARC-Concurrent-To: <urn:uuid:87654321-abc-1111-0000-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:895e6c403af1abfa5347850fcdf2174971c2c5370bfd2cd322986e1cd6805ebf\r\n\
+Content-Length: 32\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Foo: bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+    );
+
+    expect(record.warcConcurrentTo).toEqual([
+      "<urn:uuid:12345678-abc-1111-0000-68a86d1772ce>",
+      "<urn:uuid:87654321-abc-1111-0000-68a86d1772ce>",
+    ]);
+  });
+
   test("create request record with cookie array", async () => {
     const url = "http://example.com/";
     const date = "2000-01-01T00:00:00Z";
@@ -365,6 +421,79 @@ Content-Length: 62\r\n\
 \r\n\
 GET /file HTTP/1.1\r\n\
 set-cookie: greeting=hello, name=world\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+      );
+    }
+  });
+
+  test("create request record with cookie array, keep headers case", async () => {
+    const url = "http://example.com/";
+    const date = "2000-01-01T00:00:00Z";
+    const type = "request";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+    const httpHeaders: [string, string][] = [
+      ["Set-Cookie", "greeting=hello"],
+      ["Set-Cookie", "name=world"],
+    ];
+
+    const statusline = "GET /file HTTP/1.1";
+
+    const record = await WARCRecord.create({
+      url,
+      date,
+      type,
+      warcHeaders,
+      httpHeaders,
+      statusline,
+      keepHeadersCase: true,
+    });
+
+    expect(record.warcType).toBe("request");
+
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const res = decoder.decode(pako.inflate(gzipped));
+
+    if (nodeHeadersSupportsMultipleCookies) {
+      expect(res).toBe(
+        "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:89dca486471d5ac3cd8e655ac3e273a7d0f251d54c2986a30a67b327b96a7455\r\n\
+Content-Length: 74\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Set-Cookie: greeting=hello\r\n\
+Set-Cookie: name=world\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+      );
+    } else {
+      expect(res).toBe(
+        "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: http://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:8862c1f0167a2acbeec66b60afa8ffbf855fe666c17cd525238a33bb68c3df02\r\n\
+Content-Length: 62\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Set-Cookie: greeting=hello, name=world\r\n\
 \r\n\
 \r\n\
 \r\n\

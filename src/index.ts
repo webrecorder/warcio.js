@@ -5,6 +5,7 @@ export {
   NoConcatInflator,
   StatusAndHeadersParser,
   StatusAndHeaders,
+  HeadersMultiMap,
   WARCParser,
   WARCSerializer,
   BaseSerializerBuffer,

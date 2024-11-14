@@ -1,4 +1,4 @@
-import { concatChunks, splitChunk } from "./utils";
+import { concatChunks, HeadersMultiMap, splitChunk } from "./utils";
 import { type AsyncIterReader } from "./readers";
 
 export const CRLF = new Uint8Array([13, 10]);
@@ -9,16 +9,16 @@ const decoder = new TextDecoder("utf-8");
 // ===========================================================================
 export class StatusAndHeaders {
   statusline: string;
-  headers: Map<string, string> | Headers;
-  private readonly reencodeHeaders;
+  headers: HeadersMultiMap | Headers;
+  readonly reencodeHeaders?: Set<string>;
 
   constructor({
     statusline,
     headers,
-    reencodeHeaders
+    reencodeHeaders,
   }: {
     statusline: string;
-    headers: Map<string, string> | Headers;
+    headers: HeadersMultiMap | Headers;
     reencodeHeaders?: Set<string>;
   }) {
     this.statusline = statusline;
@@ -116,8 +116,11 @@ export class StatusAndHeadersParser {
     {
       headersClass,
       firstLine,
-    }: { firstLine?: string; headersClass: typeof Map | typeof Headers } = {
-      headersClass: Map,
+    }: {
+      firstLine?: string;
+      headersClass: typeof HeadersMultiMap | typeof Headers;
+    } = {
+      headersClass: HeadersMultiMap,
     },
   ) {
     const fullStatusLine = firstLine ? firstLine : await reader.readline();
@@ -163,7 +166,6 @@ export class StatusAndHeadersParser {
           value = headerBuff
             .slice(valueStart, valueEnd < 0 ? undefined : valueEnd)
             .trim();
-
         } else {
           value = null;
         }
@@ -183,26 +185,20 @@ export class StatusAndHeadersParser {
     return new StatusAndHeaders({
       statusline,
       headers,
-      reencodeHeaders: this.reencodeHeaders
+      reencodeHeaders: this.reencodeHeaders,
     });
   }
 
   setHeader(
     name: string,
     value: string,
-    headers: Headers | Map<string, string>,
+    headers: Headers | HeadersMultiMap,
     reencoded = false,
   ) {
     try {
-      const isHeaders = headers instanceof Headers;
-      const nameLower = name.toLowerCase();
-      if (isHeaders && nameLower === "set-cookie") {
-        headers.append(name, value);
-      } else {
-        headers.set(name, value);
-      }
-      if (isHeaders && reencoded) {
-        this.reencodeHeaders.add(nameLower);
+      headers.append(name, value);
+      if (headers instanceof Headers && reencoded) {
+        this.reencodeHeaders.add(name.toLowerCase());
       }
     } catch (_e) {
       if (!reencoded) {

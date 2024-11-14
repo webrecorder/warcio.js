@@ -36,6 +36,7 @@ export {
   mfdToQueryString,
   concatChunks,
   splitChunk,
+  HeadersMultiMap,
 } from "./utils";
 
 export type {
