@@ -140,11 +140,19 @@ abstract class BaseIndexer {
 
     if (field.startsWith("http:")) {
       if (record.httpHeaders) {
-        let headers: Headers | Map<string, string> = record.httpHeaders.headers;
+        const headers: Headers | Map<string, string> = record.httpHeaders.headers;
+        const name = field.slice(5);
+        let value = headers.get(name);
+        // just do lower-case search to avoid conversion in case there may be errors
         if (headers instanceof Map) {
-          headers = new Headers(Object.fromEntries(headers));
+          const nameLower = name.toLowerCase();
+          for (const keyName of headers.keys()) {
+            if (nameLower === keyName.toLowerCase()) {
+              value = headers.get(keyName);
+            }
+          }
         }
-        return headers.get(field.slice(5));
+        return value;
       }
       return null;
     }

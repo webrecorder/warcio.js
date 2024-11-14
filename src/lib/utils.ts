@@ -291,7 +291,7 @@ export function splitChunk(
 
 // ===========================================================================
 // headers multi map
-const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to"];
+const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to", "warc-protocol"];
 
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value
