@@ -1,4 +1,4 @@
-import { concatChunks, HeadersMultiMap, splitChunk } from "./utils";
+import { concatChunks, HeadersMultiMap, latin1ToUTF, splitChunk, UTFToLatin1 } from "./utils";
 import { type AsyncIterReader } from "./readers";
 
 export const CRLF = new Uint8Array([13, 10]);
@@ -218,24 +218,6 @@ function splitRemainder(str: string, sep: string, limit: number) {
     newParts.push(parts.slice(limit).join(sep));
   }
   return newParts;
-}
-
-// ===========================================================================
-function UTFToLatin1(value: string) {
-  const buf = new TextEncoder().encode(value);
-
-  let str = "";
-  buf.forEach((x) => (str += String.fromCharCode(x)));
-  return str;
-}
-
-// ===========================================================================
-function latin1ToUTF(str: string) {
-  const buf = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) {
-    buf[i] = str.charCodeAt(i) & 0xff;
-  }
-  return new TextDecoder().decode(buf);
 }
 
 // ===========================================================================
