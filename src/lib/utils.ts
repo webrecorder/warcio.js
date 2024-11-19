@@ -290,12 +290,37 @@ export function splitChunk(
 }
 
 // ===========================================================================
+export function UTFToLatin1(value: string) {
+  const buf = new TextEncoder().encode(value);
+
+  let str = "";
+  buf.forEach((x) => (str += String.fromCharCode(x)));
+  return str;
+}
+
+// ===========================================================================
+export function latin1ToUTF(str: string) {
+  const buf = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) {
+    buf[i] = str.charCodeAt(i) & 0xff;
+  }
+  return new TextDecoder().decode(buf);
+}
+
+// ===========================================================================
 // headers multi map
 const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to", "warc-protocol"];
 
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value
 const JOIN_MARKER = ",,,";
+
+export function multiValueHeader(name: string, value: string[]) {
+  if (!MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+    throw new Error("not a valid multi value header");
+  }
+  return value.join(JOIN_MARKER);
+}
 
 export class HeadersMultiMap extends Map<string, string> {
   constructor(headersInit?: HeadersInit) {

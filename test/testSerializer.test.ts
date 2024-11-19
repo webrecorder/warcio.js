@@ -5,6 +5,7 @@ import {
   WARCSerializer as BaseWARCSerializer,
 } from "../src/lib";
 import { WARCSerializer } from "../src/node/warcserializer";
+import { multiValueHeader } from "../src/lib/utils";
 
 const decoder = new TextDecoder("utf-8");
 const encoder = new TextEncoder();
@@ -429,12 +430,13 @@ set-cookie: greeting=hello, name=world\r\n\
     }
   });
 
-  test("create request record with cookie array, keep headers case", async () => {
-    const url = "http://example.com/";
+  test("create request record with protocol + cookie array, keep headers case", async () => {
+    const url = "https://example.com/";
     const date = "2000-01-01T00:00:00Z";
     const type = "request";
     const warcHeaders = {
       "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+      "WARC-Protocol": multiValueHeader("WARC-Protocol", ["h2", "tls/1.0"])
     };
     const httpHeaders: [string, string][] = [
       ["Set-Cookie", "greeting=hello"],
@@ -463,7 +465,9 @@ set-cookie: greeting=hello, name=world\r\n\
         "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-WARC-Target-URI: http://example.com/\r\n\
+WARC-Protocol: h2\r\n\
+WARC-Protocol: tls/1.0\r\n\
+WARC-Target-URI: https://example.com/\r\n\
 WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: request\r\n\
 Content-Type: application/http; msgtype=request\r\n\
@@ -484,7 +488,9 @@ Set-Cookie: name=world\r\n\
         "\
 WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
-WARC-Target-URI: http://example.com/\r\n\
+WARC-Protocol: h2\r\n\
+WARC-Protocol: tls/1.0\r\n\
+WARC-Target-URI: https://example.com/\r\n\
 WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: request\r\n\
 Content-Type: application/http; msgtype=request\r\n\
