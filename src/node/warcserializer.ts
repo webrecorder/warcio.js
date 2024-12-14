@@ -75,10 +75,10 @@ export class TempFileBuffer extends warcserializer.SerializerInMemBuffer {
       yield buff;
     }
 
-    await this.clear();
+    await this.purge();
   }
 
-  override async clear() {
+  override async purge() {
     if (this.filename) {
       await unlink(this.filename);
       this.filename = "";
