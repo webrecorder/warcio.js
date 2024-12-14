@@ -27,6 +27,7 @@ export type WARCSerializerOpts = {
 export abstract class BaseSerializerBuffer {
   abstract write(chunk: Uint8Array): void;
   abstract readAll(): AsyncIterable<Uint8Array>;
+  abstract purge(): void;
 }
 
 // ===========================================================================
@@ -41,6 +42,10 @@ export class SerializerInMemBuffer extends BaseSerializerBuffer {
     for (const buff of this.buffers) {
       yield buff;
     }
+  }
+
+  purge() {
+    this.buffers = [];
   }
 }
 
