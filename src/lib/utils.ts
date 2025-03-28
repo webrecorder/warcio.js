@@ -124,13 +124,20 @@ export function postToGetUrl(request: Request) {
   }
 
   if (query != null) {
+    request.requestBody = query;
+    try {
+      query = decodeURI(query);
+    } catch (_) {
+      // just clear out invalid query string
+      query = "";
+    }
+
     request.url = appendRequestQuery(
       request.url,
-      decodeURI(query),
+      query,
       request.method,
     );
     request.method = "GET";
-    request.requestBody = query;
     return true;
   }
 
