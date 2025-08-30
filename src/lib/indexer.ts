@@ -140,7 +140,8 @@ abstract class BaseIndexer {
 
     if (field.startsWith("http:")) {
       if (record.httpHeaders) {
-        const headers: Headers | Map<string, string> = record.httpHeaders.headers;
+        const headers: Headers | Map<string, string> =
+          record.httpHeaders.headers;
         const name = field.slice(5);
         let value = headers.get(name);
         // just do lower-case search to avoid conversion in case there may be errors

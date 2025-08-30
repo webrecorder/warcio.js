@@ -1,4 +1,10 @@
-import { concatChunks, HeadersMultiMap, latin1ToUTF, splitChunk, UTFToLatin1 } from "./utils";
+import {
+  concatChunks,
+  HeadersMultiMap,
+  latin1ToUTF,
+  splitChunk,
+  UTFToLatin1,
+} from "./utils";
 import { type AsyncIterReader } from "./readers";
 
 export const CRLF = new Uint8Array([13, 10]);

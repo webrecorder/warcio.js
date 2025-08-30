@@ -30,6 +30,11 @@ const nodeHeadersSupportsMultipleCookies =
 
 const decoder = new TextDecoder("utf-8");
 
+const serializeOpts = {
+  digest: { algo: "sha-1", prefix: "sha1:", base32: true },
+  maxMemSize: 3,
+};
+
 function get_warc_path(filename: string) {
   return new URL(filename, import.meta.url).pathname;
 }
@@ -299,7 +304,9 @@ Content-Length: 0\r\n\
 
   expect(record.payload).toEqual(new Uint8Array([]));
 
-  expect(decoder.decode(await WARCSerializer.serialize(record))).toBe(input);
+  expect(
+    decoder.decode(await WARCSerializer.serialize(record, serializeOpts)),
+  ).toBe(input);
 });
 
 test("Load revisit, with http headers", async () => {
@@ -314,7 +321,7 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: http://example.com/foo\r\n\
 WARC-Refers-To-Date: 1999-01-01T00:00:00Z\r\n\
 WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
-WARC-Block-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ\r\n\
+WARC-Block-Digest: sha1:3FLDFFHOXN2PZWNRW3SVPKAHWES7W6RA\r\n\
 Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 54\r\n\
 \r\n\
@@ -362,7 +369,9 @@ Foo: Bar\r\n\
 
   expect(record.payload).toEqual(new Uint8Array([]));
 
-  expect(decoder.decode(await WARCSerializer.serialize(record))).toEqual(input);
+  expect(
+    decoder.decode(await WARCSerializer.serialize(record, serializeOpts)),
+  ).toEqual(input);
 });
 
 test("Load revisit, with http headers + chunk encoding", async () => {
@@ -377,7 +386,7 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: http://example.com/foo\r\n\
 WARC-Refers-To-Date: 1999-01-01T00:00:00Z\r\n\
 WARC-Payload-Digest: sha1:B6QJ6BNJ3R4B23XXMRKZKHLPGJY2VE4O\r\n\
-WARC-Block-Digest: sha1:3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ\r\n\
+WARC-Block-Digest: sha1:Z75UACGJ6WO3QOTDC62I6S3TMSHUY42B\r\n\
 Content-Type: application/http; msgtype=response\r\n\
 Content-Length: 82\r\n\
 \r\n\
@@ -419,7 +428,9 @@ Foo: Bar\r\n\
 
   expect(record.payload).toEqual(new Uint8Array([]));
 
-  expect(decoder.decode(await WARCSerializer.serialize(record))).toBe(input);
+  expect(
+    decoder.decode(await WARCSerializer.serialize(record, serializeOpts)),
+  ).toBe(input);
 });
 
 test("No parse http, record headers only", async () => {

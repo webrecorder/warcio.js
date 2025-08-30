@@ -83,15 +83,15 @@ describe("utils", () => {
   test("post-to-get bad query string", () => {
     const request = {
       postData: "a=b&c=%ac",
-      headers: new Headers({"Content-Type": "application/x-www-form-urlencoded"}),
+      headers: new Headers({
+        "Content-Type": "application/x-www-form-urlencoded",
+      }),
       method: "POST",
       url: "https://example.com/path/file",
     };
     const result = postToGetUrl(request);
     expect(result).toBe(true);
-    expect(request.url).toBe(
-      "https://example.com/path/file?__wb_method=POST&",
-    );
+    expect(request.url).toBe("https://example.com/path/file?__wb_method=POST&");
   });
 
   test("surt with www", () => {
