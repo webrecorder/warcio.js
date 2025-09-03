@@ -132,11 +132,7 @@ export function postToGetUrl(request: Request) {
       query = "";
     }
 
-    request.url = appendRequestQuery(
-      request.url,
-      query,
-      request.method,
-    );
+    request.url = appendRequestQuery(request.url, query, request.method);
     request.method = "GET";
     return true;
   }
@@ -316,7 +312,11 @@ export function latin1ToUTF(str: string) {
 
 // ===========================================================================
 // headers multi map
-const MULTI_VALUE_ALLOWED = ["set-cookie", "warc-concurrent-to", "warc-protocol"];
+const MULTI_VALUE_ALLOWED = [
+  "set-cookie",
+  "warc-concurrent-to",
+  "warc-protocol",
+];
 
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value

@@ -371,7 +371,7 @@ export class WARCRecord extends BaseAsyncIterReader {
   }
 
   get warcType() {
-    return this.warcHeaders.headers.get("WARC-Type");
+    return this.warcHeaders.headers.get("WARC-Type") as WARCType;
   }
 
   get warcTargetURI() {

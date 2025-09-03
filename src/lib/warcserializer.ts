@@ -94,19 +94,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
     this.digestBase32 = Boolean(digestOpts.base32);
     this.preferPako = Boolean(opts.preferPako);
 
-    if (WARCSerializer.noComputeDigest(record)) {
-      this.digestAlgo = "";
-    }
-
     this.externalBuffer = externalBuffer;
-  }
-
-  static noComputeDigest(record: WARCRecord) {
-    return (
-      record.warcType === "revisit" ||
-      record.warcType === "warcinfo" ||
-      (record.warcPayloadDigest && record.warcBlockDigest)
-    );
   }
 
   async *[Symbol.asyncIterator]() {
@@ -203,15 +191,25 @@ export class WARCSerializer extends BaseAsyncIterReader {
     );
   }
 
-  async digestRecord() {
+  async digestRecord({ recompute = false, includeHeadersSize = true } = {}) {
     const record = this.record;
 
     if (this._alreadyDigested) {
       return Number(record.warcHeaders.headers.get("Content-Length"));
     }
 
-    const blockHasher = await this.newHasher();
-    const payloadHasher = await this.newHasher();
+    let blockHasher = null;
+    let payloadHasher = null;
+    const type = record.warcType;
+
+    if (type !== "warcinfo") {
+      if (recompute || !record.warcBlockDigest) {
+        blockHasher = await this.newHasher();
+      }
+      if (type !== "revisit" && (recompute || !record.warcPayloadDigest)) {
+        payloadHasher = await this.newHasher();
+      }
+    }
 
     let size = 0;
 
@@ -219,7 +217,9 @@ export class WARCSerializer extends BaseAsyncIterReader {
       this.httpHeadersBuff = encoder.encode(
         record.httpHeaders.toString() + "\r\n",
       );
-      size += this.httpHeadersBuff.length;
+      if (includeHeadersSize) {
+        size += this.httpHeadersBuff.length;
+      }
 
       blockHasher?.update(this.httpHeadersBuff);
     }

@@ -436,7 +436,7 @@ set-cookie: greeting=hello, name=world\r\n\
     const type = "request";
     const warcHeaders = {
       "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
-      "WARC-Protocol": multiValueHeader("WARC-Protocol", ["h2", "tls/1.0"])
+      "WARC-Protocol": multiValueHeader("WARC-Protocol", ["h2", "tls/1.0"]),
     };
     const httpHeaders: [string, string][] = [
       ["Set-Cookie", "greeting=hello"],
@@ -670,6 +670,7 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: https://example.com/\r\n\
 WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
 Content-Type: application/http; msgtype=response\r\n\
+WARC-Block-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
 Content-Length: 0\r\n\
 \r\n\
 \r\n\
@@ -719,6 +720,7 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: https://example.com/\r\n\
 WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
 Content-Type: application/http; msgtype=response\r\n\
+WARC-Block-Digest: sha256:858db93af9fda371e716d64344a52058ec0cd1d0b182ee5c2ddfc198d8ebbfa4\r\n\
 Content-Length: 54\r\n\
 \r\n\
 HTTP/1.1 200 OK\r\n\
@@ -963,6 +965,7 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: https://example.com/\r\n\
 WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
 Content-Type: application/http; msgtype=response\r\n\
+WARC-Block-Digest: sha256:858db93af9fda371e716d64344a52058ec0cd1d0b182ee5c2ddfc198d8ebbfa4\r\n\
 Content-Length: 54\r\n\
 \r\n\
 HTTP/1.1 200 OK\r\n\
