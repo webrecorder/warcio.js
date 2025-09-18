@@ -793,6 +793,75 @@ text\r\n\r\n',
     );
   });
 
+  test("streaming serializer, includeHeadersFalse", async () => {
+    const url = "https://example.com/another/file.html";
+    const type = "response";
+    const date = "2020-06-06T07:07:04.923Z";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+
+    async function* reader() {
+      yield encoder.encode("so");
+      yield encoder.encode("me\n");
+      yield encoder.encode("text");
+    }
+
+    const record = await WARCRecord.create(
+      {
+        url,
+        date,
+        type,
+        warcHeaders,
+      },
+      reader(),
+    );
+
+    const serializer = new WARCSerializer(record, { maxMemSize: 3 });
+
+    // multiple digestRecord calls allowed - return payload only size
+    expect(await serializer.digestRecord({ returnPayloadOnlySize: true })).toBe(
+      9,
+    );
+    expect(await serializer.digestRecord()).toBe(28);
+    expect(
+      await serializer.digestRecord({ returnPayloadOnlySize: false }),
+    ).toBe(28);
+
+    // repeat with payload only size
+    expect(await serializer.digestRecord({ returnPayloadOnlySize: true })).toBe(
+      9,
+    );
+
+    expect(
+      await serializer.digestRecord({ returnPayloadOnlySize: false }),
+    ).toBe(28);
+
+    const buffs: Uint8Array[] = [];
+
+    for await (const chunk of serializer) {
+      buffs.push(chunk as Uint8Array);
+    }
+
+    expect(buffs.length).toBe(6);
+
+    const headers =
+      "\
+\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: https://example.com/another/file.html\r\n\
+WARC-Date: 2020-06-06T07:07:04Z\r\n\
+WARC-Type: response\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
+WARC-Block-Digest: sha256:6e61d31e3e4cae93e17e0e64ff120922662108cfb7f1172e1277ef60607894bf\r\n\
+Content-Length: 28\r\n\
+";
+
+    expect(decoder.decode(buffs[0])).toBe(headers);
+  });
+
   test("streaming serializer, in mem + temp file", async () => {
     const url = "https://example.com/another/file.html";
     const type = "response";
@@ -821,6 +890,15 @@ text\r\n\r\n',
 
     // multiple digestRecord calls allowed
     expect(await serializer.digestRecord()).toBe(28);
+
+    // payload-only size
+    expect(await serializer.digestRecord({ returnPayloadOnlySize: true })).toBe(
+      9,
+    );
+
+    expect(
+      await serializer.digestRecord({ returnPayloadOnlySize: false }),
+    ).toBe(28);
     expect(await serializer.digestRecord()).toBe(28);
 
     const buffs: Uint8Array[] = [];
@@ -965,6 +1043,69 @@ WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r
 WARC-Refers-To-Target-URI: https://example.com/\r\n\
 WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
 Content-Type: application/http; msgtype=response\r\n\
+WARC-Block-Digest: sha256:858db93af9fda371e716d64344a52058ec0cd1d0b182ee5c2ddfc198d8ebbfa4\r\n\
+Content-Length: 54\r\n\
+\r\n\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+Foo: Bar\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+    );
+  });
+
+  test("revisit with http header, sha-256, pass payload digest", async () => {
+    const url = "https://example.com/another/file.html";
+    const type = "revisit";
+    const date = "2020-06-06T07:07:04.923Z";
+    const refersToDate = "2020-12-26T07:07:04.12";
+    const refersToUrl = "https://example.com/";
+
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+    };
+
+    const httpHeaders = { "Content-Type": "text/html", Foo: "Bar" };
+
+    const record = await WARCRecord.create(
+      {
+        url,
+        date,
+        type,
+        warcHeaders,
+        refersToUrl,
+        refersToDate,
+        httpHeaders,
+      },
+      iter(""),
+    );
+
+    const serializer = new WARCSerializer(record);
+    const payloadDigestForRevisit =
+      "sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253";
+    const size = await serializer.digestRecord({ payloadDigestForRevisit });
+    expect(size).toBe(54);
+
+    const buffs = [];
+
+    for await (const chunk of serializer) {
+      buffs.push(chunk);
+    }
+
+    expect(decoder.decode(Buffer.concat(buffs))).toBe(
+      "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Target-URI: https://example.com/another/file.html\r\n\
+WARC-Date: 2020-06-06T07:07:04Z\r\n\
+WARC-Type: revisit\r\n\
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest\r\n\
+WARC-Refers-To-Target-URI: https://example.com/\r\n\
+WARC-Refers-To-Date: 2020-12-26T07:07:04Z\r\n\
+Content-Type: application/http; msgtype=response\r\n\
+WARC-Payload-Digest: sha256:e8e5bf447c352c0080e1444994b0cc1fbe7a25f3ea637c5c89f595b6a95c9253\r\n\
 WARC-Block-Digest: sha256:858db93af9fda371e716d64344a52058ec0cd1d0b182ee5c2ddfc198d8ebbfa4\r\n\
 Content-Length: 54\r\n\
 \r\n\
