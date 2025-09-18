@@ -191,7 +191,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
     );
   }
 
-  async digestRecord({ recompute = false, includeHeadersSize = true } = {}) {
+  async digestRecord({ recompute = false, includeHeadersSize = true, payloadDigestForRevisit = "" } = {}) {
     const record = this.record;
 
     if (this._alreadyDigested) {
@@ -239,6 +239,8 @@ export class WARCSerializer extends BaseAsyncIterReader {
         "WARC-Payload-Digest",
         this.getDigest(payloadHasher),
       );
+    } else if (type === "revisit" && payloadDigestForRevisit) {
+      record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigestForRevisit);
     }
 
     if (blockHasher) {
