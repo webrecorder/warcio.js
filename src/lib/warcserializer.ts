@@ -61,7 +61,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
   record: WARCRecord;
 
   externalBuffer: BaseSerializerBuffer | undefined;
-  _alreadyDigested = false;
+  private _alreadyDigested = false;
 
   blockHasher: IHasher | null = null;
   payloadHasher: IHasher | null = null;
@@ -191,11 +191,22 @@ export class WARCSerializer extends BaseAsyncIterReader {
     );
   }
 
-  async digestRecord({ recompute = false, includeHeadersSize = true, payloadDigestForRevisit = "" } = {}) {
+  async digestRecord({
+    recompute = false,
+    returnPayloadOnlySize = false,
+    payloadDigestForRevisit = "",
+  } = {}) {
     const record = this.record;
 
     if (this._alreadyDigested) {
-      return Number(record.warcHeaders.headers.get("Content-Length"));
+      const totalSize = Number(
+        record.warcHeaders.headers.get("Content-Length"),
+      );
+      // if no headers buffer, always return totalSize
+      if (!returnPayloadOnlySize || !this.httpHeadersBuff) {
+        return totalSize;
+      }
+      return totalSize - this.httpHeadersBuff.length;
     }
 
     let blockHasher = null;
@@ -211,15 +222,15 @@ export class WARCSerializer extends BaseAsyncIterReader {
       }
     }
 
-    let size = 0;
+    let payloadSize = 0;
+    let headersSize = 0;
 
     if (record.httpHeaders) {
       this.httpHeadersBuff = encoder.encode(
         record.httpHeaders.toString() + "\r\n",
       );
-      if (includeHeadersSize) {
-        size += this.httpHeadersBuff.length;
-      }
+
+      headersSize = this.httpHeadersBuff.length;
 
       blockHasher?.update(this.httpHeadersBuff);
     }
@@ -231,7 +242,7 @@ export class WARCSerializer extends BaseAsyncIterReader {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       this.externalBuffer!.write(chunk);
 
-      size += chunk.length;
+      payloadSize += chunk.length;
     }
 
     if (payloadHasher) {
@@ -240,7 +251,10 @@ export class WARCSerializer extends BaseAsyncIterReader {
         this.getDigest(payloadHasher),
       );
     } else if (type === "revisit" && payloadDigestForRevisit) {
-      record.warcHeaders.headers.set("WARC-Payload-Digest", payloadDigestForRevisit);
+      record.warcHeaders.headers.set(
+        "WARC-Payload-Digest",
+        payloadDigestForRevisit,
+      );
     }
 
     if (blockHasher) {
@@ -250,13 +264,15 @@ export class WARCSerializer extends BaseAsyncIterReader {
       );
     }
 
-    record.warcHeaders.headers.set("Content-Length", size.toString());
+    const totalSize = payloadSize + headersSize;
+
+    record.warcHeaders.headers.set("Content-Length", totalSize.toString());
 
     this.warcHeadersBuff = encoder.encode(record.warcHeaders.toString());
 
     this._alreadyDigested = true;
 
-    return size;
+    return !returnPayloadOnlySize ? totalSize : payloadSize;
   }
 
   async *generateRecord() {
