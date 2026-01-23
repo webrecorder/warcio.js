@@ -580,6 +580,121 @@ set-cookie: greeting=hello, name=world\r\n\
     }
   });
 
+  test("create record with multiple header value", async () => {
+    const url = "https://example.com/";
+    const date = "2000-01-01T00:00:00Z";
+    const type = "request";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+      "WARC-Protocol": multiValueHeader("WARC-Protocol", ["h2", "tls/1.0"]),
+    };
+    const httpHeaders: [string, string][] = [
+      // other header repeated multiple times
+      ["Content-Security-Policy", "image-src 'self'"],
+      ["Content-Security-Policy", "frame-src 'self'"],
+      ["Content-Security-Policy", "script-src 'self'"],
+    ];
+
+    const statusline = "GET /file HTTP/1.1";
+
+    const record = await WARCRecord.create({
+      url,
+      date,
+      type,
+      warcHeaders,
+      httpHeaders,
+      statusline,
+      keepHeadersCase: true,
+    });
+
+    expect(record.warcType).toBe("request");
+
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const res = decoder.decode(pako.inflate(gzipped));
+
+    expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Protocol: h2\r\n\
+WARC-Protocol: tls/1.0\r\n\
+WARC-Target-URI: https://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:97e0b14dc2509c7e082aa1cec8f2075a6478dbbf03727403fcc40c6988a16118\r\n\
+Content-Length: 152\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Content-Security-Policy: image-src 'self'\r\n\
+Content-Security-Policy: frame-src 'self'\r\n\
+Content-Security-Policy: script-src 'self'\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+    );
+  });
+
+  test("create record with multiple header value as combined dict", async () => {
+    const url = "https://example.com/";
+    const date = "2000-01-01T00:00:00Z";
+    const type = "request";
+    const warcHeaders = {
+      "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+      "WARC-Protocol": multiValueHeader("WARC-Protocol", ["h2", "tls/1.0"]),
+    };
+    const httpHeaders = {
+      "Content-Security-Policy": multiValueHeader("Content-Security-Policy", [
+        "image-src 'self'",
+        "frame-src 'self'",
+        "script-src 'self'",
+      ]),
+    };
+
+    const statusline = "GET /file HTTP/1.1";
+
+    const record = await WARCRecord.create({
+      url,
+      date,
+      type,
+      warcHeaders,
+      httpHeaders,
+      statusline,
+      keepHeadersCase: true,
+    });
+
+    expect(record.warcType).toBe("request");
+
+    const gzipped = await WARCSerializer.serialize(record, { gzip: true });
+    const res = decoder.decode(pako.inflate(gzipped));
+
+    expect(res).toBe(
+      "\
+WARC/1.0\r\n\
+WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
+WARC-Protocol: h2\r\n\
+WARC-Protocol: tls/1.0\r\n\
+WARC-Target-URI: https://example.com/\r\n\
+WARC-Date: 2000-01-01T00:00:00Z\r\n\
+WARC-Type: request\r\n\
+Content-Type: application/http; msgtype=request\r\n\
+WARC-Payload-Digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\r\n\
+WARC-Block-Digest: sha256:97e0b14dc2509c7e082aa1cec8f2075a6478dbbf03727403fcc40c6988a16118\r\n\
+Content-Length: 152\r\n\
+\r\n\
+GET /file HTTP/1.1\r\n\
+Content-Security-Policy: image-src 'self'\r\n\
+Content-Security-Policy: frame-src 'self'\r\n\
+Content-Security-Policy: script-src 'self'\r\n\
+\r\n\
+\r\n\
+\r\n\
+",
+    );
+  });
+
   test("create warcinfo", async () => {
     const filename = "/my/web/archive.warc";
     const type = "warcinfo";

@@ -323,9 +323,6 @@ const MULTI_VALUE_ALLOWED = [
 const JOIN_MARKER = ",,,";
 
 export function multiValueHeader(name: string, value: string[]) {
-  if (!MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
-    throw new Error("not a valid multi value header");
-  }
   return value.join(JOIN_MARKER);
 }
 
@@ -346,21 +343,28 @@ export class HeadersMultiMap extends Map<string, string> {
     }
   }
 
+  isMultiValue(name: string, value: string) {
+    return (
+      MULTI_VALUE_ALLOWED.includes(name.toLowerCase()) ||
+      value.indexOf(JOIN_MARKER) > 0
+    );
+  }
+
   getMultiple(name: string): string[] | undefined {
     const value = super.get(name);
     if (!value) {
       return undefined;
     }
-    if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+    if (this.isMultiValue(name, value)) {
       return value.split(JOIN_MARKER);
     }
     return [value];
   }
 
   append(name: string, value: string) {
-    if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
-      const prev = this.get(name);
-      this.set(name, prev !== undefined ? prev + JOIN_MARKER + value : value);
+    const prev = this.get(name);
+    if (prev) {
+      this.set(name, prev + JOIN_MARKER + value);
     } else {
       this.set(name, value);
     }
@@ -368,7 +372,7 @@ export class HeadersMultiMap extends Map<string, string> {
 
   override *[Symbol.iterator](): IterableIterator<[string, string]> {
     for (const [name, value] of super[Symbol.iterator]()) {
-      if (MULTI_VALUE_ALLOWED.includes(name.toLowerCase())) {
+      if (this.isMultiValue(name, value)) {
         for (const v of value.split(JOIN_MARKER)) {
           yield [name, v];
         }
