@@ -637,6 +637,26 @@ Content-Security-Policy: script-src 'self'\r\n\
     );
   });
 
+  test("invalid multi-value headers", () => {
+    const invalidWarcHeaders = () => {
+      return {
+        "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
+        "WARC-Type": multiValueHeader("WARC-Type", ["response", "request"]),
+      }
+    };
+
+    expect(invalidWarcHeaders).toThrow("Invalid multi value WARC header: WARC-Type");
+
+    const invalidHttpHeaders = () => {
+      return {
+        "Custom": multiValueHeader("Custom", ["A", "B"]),
+        "Content-Length": multiValueHeader("Content-Length", ["123", "456"]),
+      }
+    };
+
+    expect(invalidHttpHeaders).toThrow("Invalid multi value HTTP header: Content-Length");
+  });
+
   test("create record with multiple header value as combined dict", async () => {
     const url = "https://example.com/";
     const date = "2000-01-01T00:00:00Z";
