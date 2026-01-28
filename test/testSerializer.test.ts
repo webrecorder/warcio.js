@@ -642,19 +642,22 @@ Content-Security-Policy: script-src 'self'\r\n\
       return {
         "WARC-Record-ID": "<urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>",
         "WARC-Type": multiValueHeader("WARC-Type", ["response", "request"]),
-      }
+      };
     };
 
-    expect(invalidWarcHeaders).toThrow("Invalid multi value WARC header: WARC-Type");
+    expect(invalidWarcHeaders).toThrow(
+      "Invalid multi value WARC header: WARC-Type",
+    );
 
     const invalidHttpHeaders = () => {
       return {
-        "Custom": multiValueHeader("Custom", ["A", "B"]),
+        Custom: multiValueHeader("Custom", ["A", "B"]),
         "Content-Length": multiValueHeader("Content-Length", ["123", "456"]),
-      }
+      };
     };
 
-    expect(invalidHttpHeaders).toThrow("Invalid multi value HTTP header: Content-Length");
+    // invalid multi-value HTTP headers are allowed
+    expect(invalidHttpHeaders).not.toThrow();
   });
 
   test("create record with multiple header value as combined dict", async () => {

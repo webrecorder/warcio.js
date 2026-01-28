@@ -312,20 +312,10 @@ export function latin1ToUTF(str: string) {
 
 // ===========================================================================
 // headers multi map
-const WARC_MULTI_VALUE_ALLOWED = [
+export const WARC_ALLOWED_MULTI_VALUE_HEADERS = [
   "warc-concurrent-to",
   "warc-protocol",
 ];
-
-const HTTP_MULTI_VALUE_DISALLOW = [
-  "content-length",
-  "content-type",
-  "authorization",
-  "proxy-authorization",
-  "referer",
-  "user-agent",
-  "strict-transport-security"
-]
 
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value
@@ -334,11 +324,9 @@ const JOIN_MARKER = ",,,";
 export function isValidMultiValueHeaderName(name: string) {
   const nameLower = name.toLowerCase();
   if (nameLower.startsWith("warc-")) {
-    if (!WARC_MULTI_VALUE_ALLOWED.includes(nameLower)) {
+    if (!WARC_ALLOWED_MULTI_VALUE_HEADERS.includes(nameLower)) {
       throw new Error("Invalid multi value WARC header: " + name);
     }
-  } else if (HTTP_MULTI_VALUE_DISALLOW.includes(nameLower)) {
-    throw new Error("Invalid multi value HTTP header: " + name);
   }
 
   return true;
