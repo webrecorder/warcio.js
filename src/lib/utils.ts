@@ -55,7 +55,7 @@ export function getSurt(url: string) {
   }
 }
 
-export function postToGetUrl(request: Request) {
+export function postToGetUrl(request: Request, maxQuerySize = 0) {
   const { method, headers, postData = "" } = request;
 
   if (method === "GET") {
@@ -130,6 +130,10 @@ export function postToGetUrl(request: Request) {
     } catch (_) {
       // just clear out invalid query string
       query = "";
+    }
+
+    if (maxQuerySize > 0 && query.length > maxQuerySize) {
+      query = query.slice(0, maxQuerySize);
     }
 
     request.url = appendRequestQuery(request.url, query, request.method);

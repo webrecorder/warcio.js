@@ -12,6 +12,8 @@ import {
 
 export const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 
+export const DEFAULT_MAX_QUERY_SIZE = 8192;
+
 // ===========================================================================
 abstract class BaseIndexer {
   opts: Partial<IndexCommandArgs>;
@@ -313,6 +315,7 @@ export class CDXIndexer extends Indexer {
     reqRecord: WARCRecord | null,
     indexOffset: IndexerOffsetLength,
     filename: string,
+    maxQuerySize = DEFAULT_MAX_QUERY_SIZE,
   ) {
     let method;
     let requestBody;
@@ -329,7 +332,7 @@ export class CDXIndexer extends Indexer {
 
       method = request.method;
 
-      if (postToGetUrl(request)) {
+      if (postToGetUrl(request, maxQuerySize)) {
         requestBody = request.requestBody;
         url = request.url;
       }
