@@ -12,7 +12,7 @@ import {
 
 export const DEFAULT_FIELDS = ["offset", "warc-type", "warc-target-uri"];
 
-export const DEFAULT_MAX_QUERY_SIZE = 8192;
+export const DEFAULT_MAX_QUERY_SIZE = 4096;
 
 // ===========================================================================
 abstract class BaseIndexer {

@@ -124,16 +124,16 @@ export function postToGetUrl(request: Request, maxQuerySize = 0) {
   }
 
   if (query != null) {
+    if (maxQuerySize > 0 && query.length > maxQuerySize) {
+      query = query.slice(0, maxQuerySize);
+    }
+
     request.requestBody = query;
     try {
       query = decodeURI(query);
     } catch (_) {
       // just clear out invalid query string
       query = "";
-    }
-
-    if (maxQuerySize > 0 && query.length > maxQuerySize) {
-      query = query.slice(0, maxQuerySize);
     }
 
     request.url = appendRequestQuery(request.url, query, request.method);
