@@ -318,6 +318,7 @@ export function latin1ToUTF(str: string) {
 // headers multi map
 export const WARC_ALLOWED_MULTI_VALUE_HEADERS = [
   "warc-concurrent-to",
+  "warc-json-metadata",
   "warc-protocol",
 ];
 
