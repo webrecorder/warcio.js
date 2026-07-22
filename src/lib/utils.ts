@@ -318,9 +318,13 @@ export function latin1ToUTF(str: string) {
 // headers multi map
 export const WARC_ALLOWED_MULTI_VALUE_HEADERS = [
   "warc-concurrent-to",
-  "warc-json-metadata",
   "warc-protocol",
 ];
+
+// header fields which can contain data which could allow
+// them to be mistaken for a multi-value field, but which
+// should always be handled as a single value
+export const WARC_NEVER_MULTI_VALUE_HEADERS = ["warc-json-metadata"];
 
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value
@@ -361,6 +365,10 @@ export class HeadersMultiMap extends Map<string, string> {
   }
 
   isMultiValue(name: string, value: string) {
+    if (WARC_NEVER_MULTI_VALUE_HEADERS.includes(name.toLowerCase())) {
+      return false;
+    }
+
     return value.indexOf(JOIN_MARKER) > 0 && isValidMultiValueHeaderName(name);
   }
 
