@@ -1,4 +1,11 @@
-import { jsonToQueryString, postToGetUrl, getSurt } from "../src/lib";
+import {
+  jsonToQueryString,
+  postToGetUrl,
+  getSurt,
+  multiValueHeader,
+  HeadersMultiMap,
+  isValidMultiValueHeaderName,
+} from "../src/lib";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toQuery(json: Record<string, any>) {
@@ -170,5 +177,108 @@ describe("utils", () => {
     expect(
       getSurt("https://www.example.com/some/path?e+f=&a b&a+b=c&g^h=&d "),
     ).toBe("com,example)/some/path?a%20b&a+b=c&d&e+f=&g^h=");
+  });
+
+  test("isValidMultiValueHeaderName accepts recognized headers", () => {
+    expect(isValidMultiValueHeaderName("WARC-Protocol")).toBe(true);
+    expect(isValidMultiValueHeaderName("WARC-Concurrent-to")).toBe(true);
+  });
+
+  test("isValidMultiValueHeaderName returns true for non-warc-prefixed values", () => {
+    expect(isValidMultiValueHeaderName("BLAH-blah")).toBe(true);
+  });
+
+  test("isValidMultiValueHeaderName raises an exception for other headers", () => {
+    expect(() => {
+      isValidMultiValueHeaderName("WARC-JSON-metadata");
+    }).toThrow();
+  });
+
+  test("multiValueHeader joins string arrays for valid headers", () => {
+    expect(multiValueHeader("WARC-Protocol", ["a", "b", "c"])).toEqual(
+      "a,,,b,,,c",
+    );
+  });
+
+  test("multiValueHeader raises an exception for other headers", () => {
+    expect(() => {
+      multiValueHeader("WARC-JSON-metadata", ["a", "b", "c"]);
+    }).toThrow();
+  });
+
+  test("valid multi value headers are recognized correctly if they contain a join marker", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-Protocol", "a,,,b,,,c");
+    map.set("WARC-Concurrent-to", "a,,,b");
+    expect(map.isMultiValue("WARC-Protocol", "a,,,b,,,c")).toBe(true);
+    expect(map.isMultiValue("WARC-Concurrent-to", "a,,,b")).toBe(true);
+  });
+
+  test("invalid multi value headers raise an exception", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-blah", "a,,,b,,,c");
+    expect(() => {
+      map.isMultiValue("WARC-blah", "a,,,b,,,c");
+    }).toThrow();
+  });
+
+  test("WARC-JSON-metadata is not multi value even if it contains the join marker", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-JSON-metadata", "abc,,,def");
+    expect(map.isMultiValue("WARC-JSON-metadata", "abc,,,def")).toBe(false);
+
+    expect(() => {
+      map.isMultiValue("WARC-JSON-metadata", "abc,,,def");
+    }).not.toThrow();
+  });
+
+  test("appending to valid multi value header types doesn't raise an exception", () => {
+    const map = new HeadersMultiMap();
+    map.append("WARC-Protocol", "a");
+    map.append("WARC-Protocol", "b");
+    map.append("WARC-Concurrent-to", "a");
+    map.append("WARC-Concurrent-to", "b");
+  });
+
+  test("appending to invalid multi value header types raises an exception", () => {
+    const map = new HeadersMultiMap();
+    expect(() => {
+      map.append("WARC-JSON-metadata", "a");
+      map.append("WARC-JSON-metadata", "b");
+    }).toThrow();
+  });
+
+  test("getting value of multi value header correctly splits", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-Protocol", "a,,,b,,,c");
+    expect(map.getMultiple("WARC-Protocol")).toEqual(["a", "b", "c"]);
+  });
+
+  test("getting value of WARC-JSON-metadata returns the original string without splitting", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-JSON-metadata", "abc,,,def");
+    expect(map.getMultiple("WARC-JSON-metadata")).toEqual(["abc,,,def"]);
+  });
+
+  test("iterating over map containing WARC-JSON-metadata with a join marker works", () => {
+    const map = new HeadersMultiMap();
+    map.set("WARC-JSON-metadata", "abc,,,def");
+    map.set("WARC-Resource-Type", "type");
+    map.set(
+      "WARC-Protocol",
+      multiValueHeader("WARC-Protocol", ["a", "b", "c"]),
+    );
+
+    // This would raise an exception if WARC-JSON-metadata
+    // with a join marker was being misinterpreted.
+    expect(() => {
+      expect(Array.from(map[Symbol.iterator]())).toEqual([
+        ["WARC-JSON-metadata", "abc,,,def"],
+        ["WARC-Resource-Type", "type"],
+        ["WARC-Protocol", "a"],
+        ["WARC-Protocol", "b"],
+        ["WARC-Protocol", "c"],
+      ]);
+    }).not.toThrow();
   });
 });
