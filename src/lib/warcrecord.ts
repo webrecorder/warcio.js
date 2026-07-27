@@ -23,7 +23,8 @@ export type WARCType =
   | "metadata"
   | "revisit"
   | "conversion"
-  | "continuation";
+  | "continuation"
+  | "";
 
 const defaultRecordCT: Partial<Record<WARCType, string>> = {
   warcinfo: "application/warc-fields",
