@@ -1,7 +1,10 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext"
+    "module": "ESNext",
+    "rootDir": "../",
+    "noEmit": true,
+    "types": ["node", "jest"]
   },
   "include": ["**/*"]
 }

@@ -327,7 +327,10 @@ const JOIN_MARKER = ",,,";
 
 export function isValidMultiValueHeaderName(name: string) {
   const nameLower = name.toLowerCase();
-  return !nameLower.startsWith("warc-") || WARC_ALLOWED_MULTI_VALUE_HEADERS.includes(nameLower);
+  return (
+    !nameLower.startsWith("warc-") ||
+    WARC_ALLOWED_MULTI_VALUE_HEADERS.includes(nameLower)
+  );
 }
 
 // same as above, but throw if invalid
@@ -361,7 +364,11 @@ export class HeadersMultiMap extends Map<string, string> {
   }
 
   isMultiValue(name: string, value?: string) {
-    return value && value.indexOf(JOIN_MARKER) > 0 && isValidMultiValueHeaderName(name);
+    return (
+      value &&
+      value.indexOf(JOIN_MARKER) > 0 &&
+      isValidMultiValueHeaderName(name)
+    );
   }
 
   getMultiple(name: string): string[] | undefined {
