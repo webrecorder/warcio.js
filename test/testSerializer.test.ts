@@ -661,7 +661,8 @@ Content-Security-Policy: script-src 'self'\r\n\
   });
 
   test("create record with multiple header value as combined dict", async () => {
-    const url = "https://example.com/";
+    // ignore ,,, in other headers
+    const url = "https://example.com/some,,,path";
     const date = "2000-01-01T00:00:00Z";
     const type = "request";
     const warcHeaders = {
@@ -699,7 +700,7 @@ WARC/1.0\r\n\
 WARC-Record-ID: <urn:uuid:12345678-feb0-11e6-8f83-68a86d1772ce>\r\n\
 WARC-Protocol: h2\r\n\
 WARC-Protocol: tls/1.0\r\n\
-WARC-Target-URI: https://example.com/\r\n\
+WARC-Target-URI: https://example.com/some,,,path\r\n\
 WARC-Date: 2000-01-01T00:00:00Z\r\n\
 WARC-Type: request\r\n\
 Content-Type: application/http; msgtype=request\r\n\

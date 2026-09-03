@@ -5,6 +5,7 @@ import {
   multiValueHeader,
   HeadersMultiMap,
   isValidMultiValueHeaderName,
+  assertValidMultiValueHeaderName,
 } from "../src/lib";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,8 +190,10 @@ describe("utils", () => {
   });
 
   test("isValidMultiValueHeaderName raises an exception for other headers", () => {
+    expect(isValidMultiValueHeaderName("WARC-JSON-Metadata")).toBe(false);
+
     expect(() => {
-      isValidMultiValueHeaderName("WARC-JSON-metadata");
+      assertValidMultiValueHeaderName("WARC-JSON-Metadata");
     }).toThrow();
   });
 
@@ -217,19 +220,13 @@ describe("utils", () => {
   test("invalid multi value headers raise an exception", () => {
     const map = new HeadersMultiMap();
     map.set("WARC-blah", "a,,,b,,,c");
-    expect(() => {
-      map.isMultiValue("WARC-blah", "a,,,b,,,c");
-    }).toThrow();
+    expect(map.isMultiValue("WARC-blah", "a,,,b,,,c")).toBeFalsy();
   });
 
-  test("WARC-JSON-metadata is not multi value even if it contains the join marker", () => {
+  test("WARC-JSON-Metadata is not multi value even if it contains the join marker", () => {
     const map = new HeadersMultiMap();
     map.set("WARC-JSON-metadata", "abc,,,def");
     expect(map.isMultiValue("WARC-JSON-metadata", "abc,,,def")).toBe(false);
-
-    expect(() => {
-      map.isMultiValue("WARC-JSON-metadata", "abc,,,def");
-    }).not.toThrow();
   });
 
   test("appending to valid multi value header types doesn't raise an exception", () => {
@@ -243,8 +240,8 @@ describe("utils", () => {
   test("appending to invalid multi value header types raises an exception", () => {
     const map = new HeadersMultiMap();
     expect(() => {
-      map.append("WARC-JSON-metadata", "a");
-      map.append("WARC-JSON-metadata", "b");
+      map.append("WARC-JSON-Metadata", "a");
+      map.append("WARC-JSON-Metadata", "b");
     }).toThrow();
   });
 

@@ -321,29 +321,28 @@ export const WARC_ALLOWED_MULTI_VALUE_HEADERS = [
   "warc-protocol",
 ];
 
-// header fields which can contain data which could allow
-// them to be mistaken for a multi-value field, but which
-// should always be handled as a single value
-export const WARC_NEVER_MULTI_VALUE_HEADERS = ["warc-json-metadata"];
-
 // using something other than comma to reduce change of any collisions with actual data
 // in theory, collision still possible with arbitrary cookie value
 const JOIN_MARKER = ",,,";
 
 export function isValidMultiValueHeaderName(name: string) {
   const nameLower = name.toLowerCase();
-  if (nameLower.startsWith("warc-")) {
-    if (!WARC_ALLOWED_MULTI_VALUE_HEADERS.includes(nameLower)) {
-      throw new Error("Invalid multi value WARC header: " + name);
-    }
-  }
+  return (
+    !nameLower.startsWith("warc-") ||
+    WARC_ALLOWED_MULTI_VALUE_HEADERS.includes(nameLower)
+  );
+}
 
+// same as above, but throw if invalid
+export function assertValidMultiValueHeaderName(name: string) {
+  if (!isValidMultiValueHeaderName(name)) {
+    throw new Error("Invalid multi value WARC header: " + name);
+  }
   return true;
 }
 
 export function multiValueHeader(name: string, value: string[]) {
-  isValidMultiValueHeaderName(name);
-
+  assertValidMultiValueHeaderName(name);
   return value.join(JOIN_MARKER);
 }
 
@@ -364,12 +363,12 @@ export class HeadersMultiMap extends Map<string, string> {
     }
   }
 
-  isMultiValue(name: string, value: string) {
-    if (WARC_NEVER_MULTI_VALUE_HEADERS.includes(name.toLowerCase())) {
-      return false;
-    }
-
-    return value.indexOf(JOIN_MARKER) > 0 && isValidMultiValueHeaderName(name);
+  isMultiValue(name: string, value?: string) {
+    return (
+      value &&
+      value.indexOf(JOIN_MARKER) > 0 &&
+      isValidMultiValueHeaderName(name)
+    );
   }
 
   getMultiple(name: string): string[] | undefined {
@@ -386,7 +385,7 @@ export class HeadersMultiMap extends Map<string, string> {
   append(name: string, value: string) {
     const prev = this.get(name);
     if (prev) {
-      isValidMultiValueHeaderName(name);
+      assertValidMultiValueHeaderName(name);
       this.set(name, prev + JOIN_MARKER + value);
     } else {
       this.set(name, value);
