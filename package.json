@@ -44,6 +44,7 @@
   ],
   "scripts": {
     "build": "tsup && tsup --define.browser='true'",
+    "build-dev": "tsup --sourcemap --no-minify && tsup --define.browser='true' --sourcemap --no-minify",
     "check": "tsc --noEmit",
     "format": "prettier --write src test",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
